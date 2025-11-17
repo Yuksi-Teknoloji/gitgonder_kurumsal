@@ -16,7 +16,7 @@
 body {
   background-color: var(--background-color);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
   /* Concentric rings directly on body */
   background-image: repeating-radial-gradient(

@@ -89,7 +89,7 @@ export default function Charts() {
   const fetchRestaurants = React.useCallback(async () => {
     setError(null);
     try {
-      const res = await fetch("/yuksi/dealer/restaurants", {
+      const res = await fetch("/yuksi/corporate/restaurants", {
         cache: "no-store",
         headers,
       });
@@ -121,7 +121,7 @@ export default function Charts() {
     setError(null);
     try {
       const res = await fetch(
-        `/yuksi/dealer/restaurants/${option}/order-history`,
+        `/yuksi/corporate/restaurants/${option}/order-history`,
         { cache: "no-store", headers }
       );
 
@@ -148,7 +148,7 @@ export default function Charts() {
     params.append("end_date", formatDateYMD(endDate));
 
     const res = await fetch(
-      `/yuksi/dealer/restaurants/${option2}/order-history?${params.toString()}`,
+      `/yuksi/corporate/restaurants/${option2}/order-history?${params.toString()}`,
       { cache: "no-store", headers }
     );
 

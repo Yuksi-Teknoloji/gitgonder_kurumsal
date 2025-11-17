@@ -228,6 +228,7 @@ export default function CorporateLogisticsTrackingPage() {
               setDeliveryType(e.target.value === "" ? "" : e.target.value)
             }
           >
+            <option value="">Hepsi</option>
             <option value="immediate">Bugün</option>
             <option value="scheduled">Randevulu</option>
           </select>
