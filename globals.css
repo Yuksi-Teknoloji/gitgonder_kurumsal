@@ -1,4 +1,13 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+@font-face {
+  font-family: "CircularStd";
+  font-style: normal;
+  font-weight: 500;
+  src: url("/fonts/circular-std-medium-500.ttf") format("truetype");
+  font-display: swap;
+}
 
 :root {
   --foreground: #171717;
@@ -16,7 +25,8 @@
 body {
   background-color: var(--background-color);
   color: var(--foreground);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "CircularStd", "Inter", system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
 
   /* Concentric rings directly on body */
   background-image: repeating-radial-gradient(
@@ -46,8 +56,6 @@ body {
     background-size: 180% 180%;
   }
 }
-
-@import "leaflet/dist/leaflet.css";
 
 /* küçük, emoji tabanlı marker */
 .leaflet-marker-div {
