@@ -13,11 +13,47 @@ type DeliveryTypeAPI = "immediate" | "scheduled";
 
 type ExtraService = { name: string; price: number; serviceId: number };
 
-type ExtraServiceKey = "extraStop" | "fragile" | "carryHelp";
-const EXTRA_CATALOG: Record<ExtraServiceKey, { label: string; price: number; serviceId: number }> = {
-  extraStop: { label: 'Durak Ekleme', price: 100, serviceId: 1 },
-  fragile:   { label: 'Kırılabilir / Özenli Taşıma', price: 50,  serviceId: 2 },
-  carryHelp: { label: 'Taşıma Yardımı', price: 100, serviceId: 3 },
+type ExtraServiceDTO = {
+  id: string;
+  service_name: string;
+  price: number;
+  carrier_type: string;
+  created_at: string;
+};
+
+type ExtraServiceUI = {
+  id: string;
+  label: string;
+  price: number;
+  carrierType: string;
+};
+
+type CityPriceDTO = {
+  id: string;
+  route_name: string;
+  country_id: number;
+  state_id: number;
+  city_id: number;
+  courier_price: number;
+  minivan_price: number;
+  panelvan_price: number;
+  kamyonet_price: number;
+  kamyon_price: number;
+};
+
+type CityPriceUI = {
+  id: string;
+  label: string;
+  countryId: number;
+  stateId: number;
+  cityId: number;
+  stateName: string;
+  cityName: string;
+  courier: number;
+  minivan: number;
+  panelvan: number;
+  kamyonet: number;
+  kamyon: number;
 };
 
 type HeadersDict = HeadersInit;
@@ -69,13 +105,49 @@ function collectErrors(x: any): string {
   return msgs.join(" | ");
 }
 
-const toTRDate = (d: string) => (d ? d.split('-').reverse().join('.') : '');
+const toTRDate = (d: string) => (d ? d.split("-").reverse().join(".") : "");
 const toTRTime = (t: string) => t || "";
 const toNum = (v: unknown) => {
   if (typeof v === "number") return v;
   const n = Number(String(v).replace(",", "."));
   return Number.isFinite(n) ? n : 0;
 };
+
+function pickCityBasePrice(
+  p: CityPriceUI | undefined,
+  carrierType: string
+): number {
+  if (!p) return 0;
+  switch (carrierType) {
+    case "courier":
+      return p.courier;
+    case "minivan":
+      return p.minivan;
+    case "panelvan":
+      return p.panelvan;
+    case "truck":
+      return p.kamyonet || p.kamyon;
+    default:
+      return 0;
+  }
+}
+
+function haversineKm(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 6371;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
 export default function CorporateCreateLoadPage() {
   const token = React.useMemo(getAuthToken, []);
@@ -104,28 +176,29 @@ export default function CorporateCreateLoadPage() {
   const [dLat, setDLat] = React.useState("");
   const [dLng, setDLng] = React.useState("");
 
+  const [pickupCityName, setPickupCityName] = React.useState("");
+  const [pickupStateName, setPickupStateName] = React.useState("");
+  const [dropCityName, setDropCityName] = React.useState("");
+  const [dropStateName, setDropStateName] = React.useState("");
+
   const [specialNotes, setSpecialNotes] = React.useState("");
 
   const [coupon, setCoupon] = React.useState("");
   const [couponApplied, setCouponApplied] = React.useState<string | null>("");
 
-  const [extraFlags, setExtraFlags] = React.useState<
-    Record<ExtraServiceKey, boolean>
-  >({
-    extraStop: false,
-    fragile: false,
-    carryHelp: false,
-  });
-
-  const [basePrice, setBasePrice] = React.useState<number | "">("");
-  const extrasTotal = React.useMemo(
-    () =>
-      (Object.keys(extraFlags) as ExtraServiceKey[])
-        .filter((k) => extraFlags[k])
-        .reduce((s, k) => s + EXTRA_CATALOG[k].price, 0),
-    [extraFlags]
+  const [extraServices, setExtraServices] = React.useState<ExtraServiceUI[]>(
+    []
   );
-  const computedTotal = Number(basePrice || 0) + extrasTotal;
+  const [extrasSelected, setExtrasSelected] = React.useState<
+    Record<string, boolean>
+  >({});
+  const [extrasLoading, setExtrasLoading] = React.useState(false);
+
+  const [cityPrices, setCityPrices] = React.useState<CityPriceUI[]>([]);
+  const [cityPricesLoading, setCityPricesLoading] = React.useState(false);
+  const [cityPricesError, setCityPricesError] = React.useState<string | null>(
+    null
+  );
 
   const [paymentMethod, setPaymentMethod] = React.useState<
     "cash" | "card" | "transfer" | ""
@@ -134,8 +207,233 @@ export default function CorporateCreateLoadPage() {
   const [imageFileIds, setImageFileIds] = React.useState<string[]>([]);
   const [newImageId, setNewImageId] = React.useState("");
 
-  const toggleExtra = (k: ExtraServiceKey) =>
-    setExtraFlags((p) => ({ ...p, [k]: !p[k] }));
+  React.useEffect(() => {
+    let cancelled = false;
+
+    const loadExtraServices = async () => {
+      setExtrasLoading(true);
+      try {
+        const res = await fetch("/yuksi/admin/extra-services", {
+          cache: "no-store",
+          headers,
+        });
+        const j: any = await readJson(res);
+        if (!res.ok || j?.success === false)
+          throw new Error(pickMsg(j, `HTTP $(res.status)`));
+
+        const list: ExtraServiceDTO[] = Array.isArray(j?.data)
+          ? j.data
+          : Array.isArray(j)
+          ? j
+          : [];
+
+        if (cancelled) return;
+
+        const mapped: ExtraServiceUI[] = list.map((x) => ({
+          id: String(x.id),
+          label: x.service_name,
+          price: Number(x.price) || 0,
+          carrierType: x.carrier_type,
+        }));
+
+        setExtraServices(mapped);
+        setExtrasSelected((prev) => {
+          const next = { ...prev };
+          for (const s of mapped)
+            if (next[s.id] === undefined) next[s.id] = false;
+          return next;
+        });
+      } catch (e: any) {
+        if (!cancelled)
+          setErrMsg(
+            (prev) => prev || e?.message || "Ek hizmetler yüklenemedi."
+          );
+      } finally {
+        if (!cancelled) setExtrasLoading(false);
+      }
+    };
+
+    loadExtraServices();
+    return () => {
+      cancelled = true;
+    };
+  }, [headers]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    const loadCityPrices = async () => {
+      setCityPricesLoading(true);
+      setCityPricesError(null);
+      try {
+        const res = await fetch("/yuksi/admin/city-prices", {
+          cache: "no-store",
+          headers,
+        });
+        const j: any = await readJson(res);
+        if (!res.ok || j?.success === false)
+          throw new Error(pickMsg(j, `HTTP ${res.status}`));
+
+        const list: CityPriceDTO[] = Array.isArray(j?.data)
+          ? j.data
+          : Array.isArray(j)
+          ? j
+          : [];
+
+        if (cancelled) return;
+
+        const countryIds = new Set<number>();
+        const stateIds = new Set<number>();
+
+        for (const x of list) {
+          if (Number.isFinite(Number(x.country_id)))
+            countryIds.add(Number(x.country_id));
+          if (Number.isFinite(Number(x.state_id)))
+            countryIds.add(Number(x.state_id));
+        }
+
+        const stateMap = new Map<number, string>();
+        await Promise.all(
+          Array.from(countryIds).map(async (cid) => {
+            const url = new URL("/yuksi/geo/states", location.origin);
+            url.searchParams.set("country_id", String(cid));
+            url.searchParams.set("limit", "500");
+            url.searchParams.set("offset", "0");
+            const r = await fetch(url.toString(), { cache: "no-store" });
+            const d: any = await readJson(r);
+            if (r.ok) {
+              const arr: any[] = Array.isArray(d)
+                ? d
+                : Array.isArray(d?.data)
+                ? d.data
+                : [];
+              for (const s of arr) {
+                const sid = Number(s?.id);
+                const name = String(s?.name ?? "");
+                if (Number.isFinite(sid) && name) stateMap.set(sid, name);
+              }
+            }
+          })
+        );
+
+        const cityMap = new Map<number, string>();
+        await Promise.all(
+          Array.from(stateIds).map(async (sid) => {
+            const url = new URL("/yuksi/geo/cities", location.origin);
+            url.searchParams.set("state_id", String(sid));
+            url.searchParams.set("limit", "1000");
+            url.searchParams.set("offset", "0");
+            const r = await fetch(url.toString(), { cache: "no-store" });
+            const d: any = await readJson(r);
+            if (r.ok) {
+              const arr: any[] = Array.isArray(d)
+                ? d
+                : Array.isArray(d?.data)
+                ? d.data
+                : [];
+              for (const c of arr) {
+                const cid = Number(c?.id);
+                const name = String(c?.name ?? "");
+                if (Number.isFinite(cid) && name) cityMap.set(cid, name);
+              }
+            }
+          })
+        );
+
+        if (cancelled) return;
+
+        const mapped: CityPriceUI[] = list.map((x) => ({
+          id: String(x.id),
+          label: String(x.route_name ?? ""),
+          countryId: Number(x.country_id),
+          stateId: Number(x.state_id),
+          cityId: Number(x.city_id),
+          stateName: stateMap.get(Number(x.state_id)) ?? "",
+          cityName: cityMap.get(Number(x.city_id)) ?? "",
+          courier: Number(x.courier_price ?? 0),
+          minivan: Number(x.minivan_price ?? 0),
+          panelvan: Number(x.panelvan_price ?? 0),
+          kamyonet: Number(x.kamyonet_price ?? 0),
+          kamyon: Number(x.kamyonet_price ?? 0),
+        }));
+
+        setCityPrices(mapped);
+      } catch (e: any) {
+        if (!cancelled)
+          setCityPricesError(e?.message || "Şehir fiyatları alınamadı.");
+      } finally {
+        if (!cancelled) setCityPricesLoading(false);
+      }
+    };
+
+    loadCityPrices();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [headers]);
+
+  const distanceKm = React.useMemo(() => {
+    if (!pLat || !pLng || !dLat || !dLng) return 0;
+    const lat1 = toNum(pLat);
+    const lon1 = toNum(pLng);
+    const lat2 = toNum(dLat);
+    const lon2 = toNum(dLng);
+    
+    if (
+      !Number.isFinite(lat1) ||
+      !Number.isFinite(lon1) ||
+      !Number.isFinite(lat2) ||
+      !Number.isFinite(lon2)
+    ) {
+      return 0;
+    }
+    return haversineKm(lat1, lon1, lat2, lon2);
+  }, [pLat, pLng, dLat, dLng]);
+
+  const baseKmPrice = React.useMemo(() => {
+    if (!cityPrices.length) return 0;
+
+    const city = (dropCityName || pickupCityName || "").toLowerCase().trim();
+    const state = (dropStateName || pickupStateName || "").toLowerCase().trim();
+
+    if (!city || !state) return 0;
+
+    let match: CityPriceUI | undefined = cityPrices.find(
+      (p) =>
+        p.cityName.toLowerCase() === city && p.stateName.toLowerCase() === state
+    );
+
+    if (!match)
+      match = cityPrices.find((p) => p.stateName.toLowerCase() === state);
+
+    return pickCityBasePrice(match, carrierType);
+  }, [
+    cityPrices,
+    carrierType,
+    pickupCityName,
+    pickupStateName,
+    dropCityName,
+    dropStateName,
+  ]);
+
+  const basePrice = React.useMemo(() => {
+    if (!distanceKm || !baseKmPrice) return 0;
+    return Math.round(distanceKm * baseKmPrice);
+  }, [distanceKm, baseKmPrice]);
+
+  const extrasTotal = React.useMemo(
+    () =>
+      extraServices
+        .filter((s) => extrasSelected[s.id])
+        .reduce((sum, s) => sum + s.price, 0),
+    [extraServices, extrasSelected]
+  );
+
+  const computedTotal = basePrice + extrasTotal;
+
+  const toggleExtra = (id: string) =>
+    setExtrasSelected((p) => ({ ...p, [id]: !p[id] }));
 
   const applyCoupon = () => {
     if (coupon.trim()) setCouponApplied(coupon.trim());
@@ -172,15 +470,21 @@ export default function CorporateCreateLoadPage() {
       return;
     }
 
-    const extraServices: ExtraService[] = (
-      Object.keys(extraFlags) as ExtraServiceKey[]
-    )
-      .filter((k) => extraFlags[k])
-      .map((k) => ({
-        name: EXTRA_CATALOG[k].label,
-        price: EXTRA_CATALOG[k].price,
-        serviceId: EXTRA_CATALOG[k].serviceId,
-      }));
+    if (!basePrice || basePrice <= 0) {
+      setErrMsg(
+        "Seçilen şehir/ilçe, taşıyıcı tipi veya mesafe için fiyat hesaplanamadı. Lütfen önce admin panelinden city-prices tanımlayın ve adresleri/konumları kontrol edin."
+      );
+      return;
+    }
+
+    const selectedExtras = extraServices.filter((s) => extrasSelected[s.id]);
+    const extraServicesPayload: ExtraService[] = selectedExtras.map(
+      (s, index) => ({
+        name: s.label,
+        price: s.price,
+        serviceId: index + 1,
+      })
+    );
 
     const body = {
       campainCode: couponApplied || coupon.trim() || undefined,
@@ -198,7 +502,7 @@ export default function CorporateCreateLoadPage() {
       pickupAddress: pickupAddress,
       pickupCoordinates: [toNum(pLat), toNum(pLng)],
 
-      extraServices,
+      extraServices: extraServicesPayload,
       extraServicesTotal: extrasTotal,
 
       imageFileIds,
@@ -231,11 +535,18 @@ export default function CorporateCreateLoadPage() {
       setDropoffAddress("");
       setDLat("");
       setDLng("");
+      setPickupCityName("");
+      setPickupStateName("");
+      setDropCityName("");
+      setDropStateName("");
       setSpecialNotes("");
       setCoupon("");
       setCouponApplied(null);
-      setExtraFlags({ extraStop: false, fragile: false, carryHelp: false });
-      setBasePrice("");
+      setExtrasSelected(() => {
+        const next: Record<string, boolean> = {};
+        for (const s of extraServices) next[s.id] = false;
+        return next;
+      });
       setPaymentMethod("");
       setImageFileIds([]);
       setNewImageId("");
@@ -283,22 +594,24 @@ export default function CorporateCreateLoadPage() {
           </button>
           <button
             type="button"
-            onClick={() => setDeliveryType('appointment')}
+            onClick={() => setDeliveryType("appointment")}
             className={[
-              'rounded-xl px-5 py-2 text-sm font-semibold shadow-sm border',
-              deliveryType === 'appointment'
-                ? 'bg-indigo-500 text-white border-indigo-500'
-                : 'bg-white text-neutral-800 border-neutral-300 hover:bg-neutral-50',
-            ].join(' ')}
+              "rounded-xl px-5 py-2 text-sm font-semibold shadow-sm border",
+              deliveryType === "appointment"
+                ? "bg-indigo-500 text-white border-indigo-500"
+                : "bg-white text-neutral-800 border-neutral-300 hover:bg-neutral-50",
+            ].join(" ")}
           >
             Randevulu (scheduled)
           </button>
         </div>
 
-        {deliveryType === 'appointment' && (
+        {deliveryType === "appointment" && (
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-2 block text-sm font-semibold">Teslim Tarihi</label>
+              <label className="mb-2 block text-sm font-semibold">
+                Teslim Tarihi
+              </label>
               <input
                 type="date"
                 value={schedDate}
@@ -307,7 +620,9 @@ export default function CorporateCreateLoadPage() {
               />
             </div>
             <div>
-              <label className="mb-2 block text-sm font-semibold">Teslim Saati</label>
+              <label className="mb-2 block text-sm font-semibold">
+                Teslim Saati
+              </label>
               <input
                 type="time"
                 value={schedTime}
@@ -322,7 +637,9 @@ export default function CorporateCreateLoadPage() {
       <section className="rounded-2xl border border-neutral-200/70 bg-white p-6 shadow-sm soft-card">
         <div className="grid gap-5 md:grid-cols-2">
           <div>
-            <label className="mb-2 block text-sm font-semibold">Taşıyıcı Tipi</label>
+            <label className="mb-2 block text-sm font-semibold">
+              Taşıyıcı Tipi
+            </label>
             <select
               value={carrierType}
               onChange={(e) => setCarrierType(e.target.value)}
@@ -335,7 +652,9 @@ export default function CorporateCreateLoadPage() {
             </select>
           </div>
           <div>
-            <label className="mb-2 block text-sm font-semibold">Araç Tipi</label>
+            <label className="mb-2 block text-sm font-semibold">
+              Araç Tipi
+            </label>
             <select
               value={vehicleType}
               onChange={(e) => setVehicleType(e.target.value)}
@@ -352,27 +671,47 @@ export default function CorporateCreateLoadPage() {
         <MapPicker
           label="Pickup Konumu"
           value={
-            pLat && pLng ? { lat: Number(pLat), lng: Number(pLng), address: pickupAddress || undefined } : null
+            pLat && pLng
+              ? {
+                  lat: Number(pLat),
+                  lng: Number(pLng),
+                  address: pickupAddress || undefined,
+                }
+              : null
           }
           onChange={(pos) => {
-            setPLat(String(pos.lat)); setPLng(String(pos.lng));
+            setPLat(String(pos.lat));
+            setPLng(String(pos.lng));
             if (pos.address) setPickupAddress(pos.address);
+            if (pos.cityName) setPickupCityName(String(pos.cityName));
+            if (pos.stateName) setPickupStateName(String(pos.stateName));
           }}
         />
 
         <MapPicker
           label="Drop-off Konumu"
           value={
-            dLat && dLng ? { lat: Number(dLat), lng: Number(dLng), address: dropoffAddress || undefined } : null
+            dLat && dLng
+              ? {
+                  lat: Number(dLat),
+                  lng: Number(dLng),
+                  address: dropoffAddress || undefined,
+                }
+              : null
           }
           onChange={(pos) => {
-            setDLat(String(pos.lat)); setDLng(String(pos.lng));
+            setDLat(String(pos.lat));
+            setDLng(String(pos.lng));
             if (pos.address) setDropoffAddress(pos.address);
+            if (pos.cityName) setDropCityName(String(pos.cityName));
+            if (pos.stateName) setDropStateName(String(pos.stateName));
           }}
         />
 
         <div className="mt-6">
-          <label className="mb-2 block text-sm font-semibold">Özel Notlar</label>
+          <label className="mb-2 block text-sm font-semibold">
+            Özel Notlar
+          </label>
           <textarea
             rows={4}
             value={specialNotes}
@@ -385,7 +724,9 @@ export default function CorporateCreateLoadPage() {
 
       <section className="rounded-2xl border border-neutral-200/70 bg-white p-6 shadow-sm soft-card">
         <div className="mb-6">
-          <label className="mb-2 block text-sm font-semibold">Kampanya Kodu</label>
+          <label className="mb-2 block text-sm font-semibold">
+            Kampanya Kodu
+          </label>
           <div className="flex overflow-hidden rounded-xl border border-neutral-300">
             <input
               value={coupon}
@@ -393,46 +734,102 @@ export default function CorporateCreateLoadPage() {
               placeholder="Kod"
               className="w-full bg-neutral-100 px-3 py-2 outline-none"
             />
-            <button type="button" onClick={applyCoupon} className="bg-rose-50 px-4 text-rose-600 hover:bg-rose-100">
+            <button
+              type="button"
+              onClick={applyCoupon}
+              className="bg-rose-50 px-4 text-rose-600 hover:bg-rose-100"
+            >
               Uygula
             </button>
           </div>
-          {couponApplied && <div className="mt-2 text-sm text-emerald-600">“{couponApplied}” uygulandı.</div>}
+          {couponApplied && (
+            <div className="mt-2 text-sm text-emerald-600">
+              “{couponApplied}” uygulandı.
+            </div>
+          )}
         </div>
 
         <div className="mb-2 text-sm font-semibold">Ek Hizmetler</div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {(Object.keys(EXTRA_CATALOG) as ExtraServiceKey[]).map((k) => (
-            <label key={k} className="flex cursor-pointer items-center justify-between rounded-xl border border-neutral-200 px-3 py-2 hover:bg-neutral-50">
-              <div className="flex items-center gap-2">
-                <input type="checkbox" checked={extraFlags[k]} onChange={() => toggleExtra(k)} className="h-4 w-4" />
-                <span className="text-sm">{EXTRA_CATALOG[k].label}</span>
-              </div>
-              <span className="text-sm font-semibold">{EXTRA_CATALOG[k].price}₺</span>
-            </label>
-          ))}
-        </div>
+        {extrasLoading && (
+          <div className="mb-2 text-sm text-neutral-500">
+            Ek hizmetler yükleniyor...
+          </div>
+        )}
+
+        {!extrasLoading && extraServices.length === 0 && (
+          <div className="mb-4 text-sm text-neutral-500">
+            Tanımlı ek hizmet bulunmuyor.
+          </div>
+        )}
+
+        {extraServices.length > 0 && (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid cols-3">
+            {extraServices.map((s) => (
+              <label
+                key={s.id}
+                className="flex cursor-pointer items-center justify-between rounded-xl border border-neutral-200 px-3 py-2 hover:bg-neutral-50"
+              >
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={!!extrasSelected[s.id]}
+                    onChange={() => toggleExtra(s.id)}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-sm">
+                    {s.label} ({s.carrierType})
+                  </span>
+                </div>
+                <span className="text-sm font-semibold">
+                  {s.price.toFixed(0)} ₺
+                </span>
+              </label>
+            ))}
+          </div>
+        )}
 
         <div className="mt-4 grid gap-4 md:grid-cols-3">
           <div>
-            <label className="mb-1 block text-sm font-semibold">Taban Ücret (₺)</label>
-            <input
-              type="number"
-              min={0}
-              value={basePrice}
-              onChange={(e) => setBasePrice(e.target.value === '' ? '' : Math.max(0, Number(e.target.value)))}
-              className="w-full rounded-xl border border-neutral-300 bg-neutral-100 px-3 py-2 outline-none focus:bg-white focus:ring-2 focus:ring-sky-200"
-            />
+            <label className="mb-1 block text-sm font-semibold">
+              Taban Ücret (₺)
+            </label>
+            <div className="w-full rounded-xl border border-neutral-300 bg-neutral-100 px-3 py-2 text-sm text-neutral-900">
+              {cityPricesLoading
+                ? "Şehir fiyatları yükleniyor..."
+                : basePrice > 0
+                ? `${basePrice}₺` +
+                  (distanceKm && baseKmPrice
+                    ? `(≈ ${distanceKm.toFixed(1)} km × ${baseKmPrice.toFixed(
+                        0
+                      )}₺/km)`
+                    : "")
+                : cityPricesError
+                ? `Hata: ${cityPricesError}`
+                : "Şehir/ilçe, taşıyıcı tipi veya mesafe için fiyat bulunamadı."}
+            </div>
+            <div className="mt-1 text-xs text-neutral-500">
+              Km başı fiyat admin panelindeki <code>city-prices</code>{" "}
+              tablosundan, mesafe ise harita konumları üzerinden otomatik
+              hesaplanır.
+            </div>
           </div>
           <div className="self-end text-sm">
-            <div><span className="font-semibold">Ek Hizmet Toplamı: </span>{extrasTotal}₺</div>
-            <div><span className="font-semibold">Genel Toplam: </span>{computedTotal}₺</div>
+            <div>
+              <span className="font-semibold">Ek Hizmet Toplamı: </span>
+              {extrasTotal}₺
+            </div>
+            <div>
+              <span className="font-semibold">Genel Toplam: </span>
+              {computedTotal}₺
+            </div>
           </div>
         </div>
 
         {/* Ödeme yöntemi */}
         <div className="mt-6">
-          <label className="mb-2 block text-sm font-semibold">Ödeme Yöntemi</label>
+          <label className="mb-2 block text-sm font-semibold">
+            Ödeme Yöntemi
+          </label>
           <select
             value={paymentMethod}
             onChange={(e) => setPaymentMethod(e.target.value as any)}
@@ -446,7 +843,9 @@ export default function CorporateCreateLoadPage() {
         </div>
 
         <div className="mt-6 space-y-2">
-          <label className="block text-sm font-semibold">Image File IDs (UUID)</label>
+          <label className="block text-sm font-semibold">
+            Image File IDs (UUID)
+          </label>
           <div className="flex gap-2">
             <input
               value={newImageId}
@@ -454,7 +853,11 @@ export default function CorporateCreateLoadPage() {
               placeholder="f232f2b8-2e42-46f8-b3b5-d91a62f8b001"
               className="flex-1 rounded-xl border border-neutral-300 bg-neutral-100 px-3 py-2 outline-none focus:bg-white focus:ring-2 focus:ring-sky-200"
             />
-            <button type="button" onClick={addImageId} className="rounded-xl bg-neutral-800 px-3 py-2 text-sm text-white hover:bg-neutral-900">
+            <button
+              type="button"
+              onClick={addImageId}
+              className="rounded-xl bg-neutral-800 px-3 py-2 text-sm text-white hover:bg-neutral-900"
+            >
               Ekle
             </button>
           </div>
@@ -483,7 +886,7 @@ export default function CorporateCreateLoadPage() {
           disabled={busy}
           className="rounded-2xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-600 disabled:opacity-60"
         >
-          {busy ? 'Gönderiliyor…' : 'Kaydet'}
+          {busy ? "Gönderiliyor…" : "Kaydet"}
         </button>
       </div>
     </form>

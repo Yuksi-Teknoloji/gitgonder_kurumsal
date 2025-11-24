@@ -189,7 +189,7 @@ export default function CorporateLoginPage() {
             disabled={loading}
             className="w-full py-2 px-4 bg-orange-600 text-white font-semibold rounded-lg shadow-md hover:bg-orange-700 transition disabled:opacity-60"
           >
-            {loading ? "Giriş yapılıyor..." : "Bayi Giriş"}
+            {loading ? "Giriş yapılıyor..." : "Kurumsal Üye Giriş"}
           </button>
         </form>
 
