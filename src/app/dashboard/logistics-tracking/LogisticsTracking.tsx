@@ -434,7 +434,7 @@ function RouteMap({ start, end }: { start: LatLng; end: LatLng }) {
     (start.lat + end.lat) / 2,
     (start.lng + end.lng) / 2,
   ];
-  const polyPositions = point.length
+  const polyPositions = points.length
     ? (points as [number, number][])
     : ([
         [start.lat, start.lng],
