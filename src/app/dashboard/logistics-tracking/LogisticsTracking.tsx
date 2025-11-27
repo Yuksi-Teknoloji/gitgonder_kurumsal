@@ -75,6 +75,22 @@ export default function CorporateLogisticsTrackingPage() {
   const [end, setEnd] = React.useState<LatLng | null>(null);
   const [routeErr, setRouteErr] = React.useState<string | null>(null);
 
+  // edit modal
+  const [editOpen, setEditOpen] = React.useState(false);
+  const [editBusy, setEditBusy] = React.useState(false);
+  const [editing, setEditing] = React.useState<CorporateJob | null>(null);
+
+  const [okMsg, setOkMsg] = React.useState<string | null>(null);
+  const [errMsg, setErrMsg] = React.useState<string | null>(null);
+  const ok = (m: string) => {
+    setOkMsg(m);
+    setTimeout(() => setOkMsg(null), 3500);
+  };
+  const err = (m: string) => {
+    setErrMsg(m);
+    setTimeout(() => setErrMsg(null), 4500);
+  };
+
   async function loadList() {
     setLoading(true);
     setError(null);
@@ -172,6 +188,55 @@ export default function CorporateLogisticsTrackingPage() {
     }
   }
 
+  async function showEdit(row: CorporateJob) {
+    setEditing({ ...row });
+    setEditOpen(true);
+  }
+
+  async function saveEdit() {
+    if (!editing) return;
+    setEditBusy(true);
+    try {
+      const id = editing.id;
+      const body = {
+        carrierType: editing.carrierType ?? "",
+        vehicleType: editing.vehicleType ?? "",
+        pickupAddress: editing.pickupAddress ?? "",
+        dropoffAddress: editing.dropoffAddress ?? "",
+      };
+      const res = await fetch(`/yuksi/corporate/jobs/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify(body),
+      });
+      const j = await readJson(res);
+      if (!res.ok) throw new Error(pickMsg(j, `HTTP ${res.status}`));
+      ok("Yük güncellendi.");
+      setEditOpen(false);
+      await loadList();
+    } catch (e: any) {
+      err(e?.message || "Güncelleme başarısız.");
+    } finally {
+      setEditBusy(false);
+    }
+  }
+
+  async function onDelete(id: number | string) {
+    if (!confirm("Bu yükü silmek istediğinize emin misiniz?")) return;
+    try {
+      const res = await fetch(`/yuksi/corporate/jobs/${id}`, {
+        method: "DELETE",
+        headers,
+      });
+      const j = await readJson(res);
+      if (!res.ok) throw new Error(pickMsg(j, `HTTP ${res.status}`));
+      ok("Yük silindi.");
+      await loadList();
+    } catch (e: any) {
+      err(e?.message || "Silme işlemi başarısız.");
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -241,9 +306,18 @@ export default function CorporateLogisticsTrackingPage() {
         </button>
       </div>
 
-      {error && (
-        <div className="rounded-md bg-rose-50 px-4 py-3 text-sm text-rose-700 whitespace-pre-line">
-          {error}
+      {(okMsg || errMsg || error) && (
+        <div className="space-y-2">
+          {okMsg && (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+              {okMsg}
+            </div>
+          )}
+          {(errMsg || error) && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {errMsg || error}
+            </div>
+          )}
         </div>
       )}
 
@@ -261,7 +335,7 @@ export default function CorporateLogisticsTrackingPage() {
                 <th className="px-6 py-3 font-medium">Fiyat</th>
                 <th className="px-6 py-3 font-medium">Ödeme</th>
                 <th className="px-6 py-3 font-medium">Oluşturma</th>
-                <th className="px-6 py-3" />
+                <th className="px-6 py-3 font-medium">İşlemler</th>
               </tr>
             </thead>
             <tbody>
@@ -298,6 +372,18 @@ export default function CorporateLogisticsTrackingPage() {
                         className="rounded-md bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-700"
                       >
                         Haritada Göster
+                      </button>
+                      <button
+                        onClick={() => showEdit(r)}
+                        className="rounded-md bg-green-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-600"
+                      >
+                        Düzenle
+                      </button>
+                      <button
+                        onClick={() => onDelete(r.id)}
+                        className="rounded-md bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-600"
+                      >
+                        Sil
                       </button>
                     </div>
                   </td>
@@ -366,6 +452,104 @@ export default function CorporateLogisticsTrackingPage() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {editOpen && editing && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
+          <div className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white p-5 shadow-xl">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="text-lg font-semibold">Yük Düzenle</div>
+              <button
+                onClick={() => setEditOpen(false)}
+                className="rounded-full p-2 hover:bg-neutral-100"
+                aria-label="Kapat"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="max-h-[75vh] overflow-auto grid gap-4 p-1 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium">Taşıyıcı Tipi</label>
+                <select
+                  value={editing.carrierType ?? ""}
+                  onChange={(e) =>
+                    setEditing({ ...editing, carrierType: e.target.value })
+                  }
+                  required
+                  className="w-full rounded-xl border border-neutral-300 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-200"
+                >
+                  <option value="courier">Kurye</option>
+                  <option value="minivan">Minivan</option>
+                  <option value="panelvan">Panelvan</option>
+                  <option value="truck">Kamyonet/Kamyon</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">
+                  Araç Tipi
+                </label>
+                <input
+                  value={editing.vehicleType ?? ""}
+                  onChange={(e) =>
+                    setEditing({ ...editing, vehicleType: e.target.value })
+                  }
+                  required
+                  className="w-full rounded-xl border border-neutral-300 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-200"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">
+                  Alım Adresi
+                </label>
+                <input
+                  value={String(editing.pickupAddress ?? "")}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      pickupAddress: e.target.value,
+                    })
+                  }
+                  required
+                  className="w-full rounded-xl border border-neutral-300 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-200"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium">
+                  Teslim Adresi
+                </label>
+                <input
+                  value={String(editing.dropoffAddress ?? "")}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      dropoffAddress: e.target.value,
+                    })
+                  }
+                  required
+                  className="w-full rounded-xl border border-neutral-300 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-200"
+                />
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setEditOpen(false)}
+                className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm hover:bg-neutral-50"
+              >
+                İptal
+              </button>
+              <button
+                onClick={saveEdit}
+                disabled={editBusy}
+                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+              >
+                {editBusy ? "Kaydediliyor…" : "Kaydet"}
+              </button>
+            </div>
           </div>
         </div>
       )}
