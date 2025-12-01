@@ -432,13 +432,8 @@ export default function CorporateLogisticsTrackingPage() {
               </div>
             ))}
             {rows.length === 0 && !loading && (
-              <div>
-                <div
-                  colSpan={9}
-                  className="px-6 py-10 text-center text-sm text-neutral-500"
-                >
-                  Kayıt bulunamadı.
-                </div>
+              <div className="px-6 py-10 text-center text-sm text-neutral-500">
+                Kayıt bulunamadı.
               </div>
             )}
           </div>
