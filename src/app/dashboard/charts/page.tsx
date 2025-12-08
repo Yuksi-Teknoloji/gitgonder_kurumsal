@@ -74,7 +74,7 @@ export default function Charts() {
 
   return (
     <div className="flex flex-wrap">
-      <div className="w-full max-w-[500px] h-[300px] bg-white rounded-md shadow">
+      <div className="w-full max-w-[500px] h-[300px] bg-white rounded-md shadow overflow-auto">
         <div className="flex justify-between items-center p-3">
             <span className="text-sm font-semibold">Kurumsal Üye Komisyonları</span>
             <span className="bg-gray-100 px-2 py-1 text-sm fonst-semibold rounded">
