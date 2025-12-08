@@ -203,10 +203,15 @@ export default function CorporateLogisticsTrackingPage() {
     try {
       const id = editing.id;
       const body = {
-        carrierType: editing.carrierType ?? "",
-        vehicleType: editing.vehicleType ?? "",
-        pickupAddress: editing.pickupAddress ?? "",
-        dropoffAddress: editing.dropoffAddress ?? "",
+        deliveryType: editing.deliveryType,
+        paymentMethod: editing.paymentMethod ?? "cash",
+        carrierType: editing.carrierType,
+        vehicleType: editing.vehicleType,
+        pickupAddress: editing.pickupAddress,
+        dropoffAddress: editing.dropoffAddress,
+        totalPrice: Number(editing.totalPrice ?? 0),
+        specialNotes: editing.specialNotes ?? "",
+        imageFileIds: Array.isArray(editing.imageFileIds) ? editing.imageFileIds : undefined,
       };
       const res = await fetch(`/yuksi/corporate/jobs/${id}`, {
         method: "PUT",
@@ -386,8 +391,16 @@ export default function CorporateLogisticsTrackingPage() {
                   <div>
                     {r.commissionRate != null && r.commissionRate > 0 && (
                       <span className="text-xs text-neutral-500">
-                        Komisyon: {`${ r.totalPrice! *  r.commissionRate / 100 } (${r.commissionRate}%)`} <br />
-                        Taşıyıcı Ödemesi: {`${ r.totalPrice! - ( r.totalPrice! *  r.commissionRate / 100) }₺`}
+                        Komisyon:{" "}
+                        {`${(r.totalPrice! * r.commissionRate) / 100} (${
+                          r.commissionRate
+                        }%)`}{" "}
+                        <br />
+                        Taşıyıcı Ödemesi:{" "}
+                        {`${
+                          r.totalPrice! -
+                          (r.totalPrice! * r.commissionRate) / 100
+                        }₺`}
                       </span>
                     )}
                   </div>
@@ -397,11 +410,11 @@ export default function CorporateLogisticsTrackingPage() {
                     Ödeme
                   </div>
                   {r.paymentMethod ?? "—"}
-                  </div>
+                </div>
                 <div className="px-6 py-3">
                   <div className="md:hidden text-[11px] text-neutral-500">
                     Oluşturma
-                  </div>  
+                  </div>
                   {fmtDT(r.createdAt)}
                 </div>
                 <div className="px-6 py-3">
@@ -509,6 +522,44 @@ export default function CorporateLogisticsTrackingPage() {
             <div className="max-h-[75vh] overflow-auto grid gap-4 p-1 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-sm font-medium">
+                  Teslim Tipi
+                </label>
+                <select
+                  value={editing.deliveryType ?? "immediate"}
+                  onChange={(e) => {
+                    const value = e.target.value as "immediate" | "scheduled";
+                    setEditing({ ...editing, deliveryType: value });
+                  }}
+                  required
+                  className="w-full rounded-xl border border-neutral-300 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-200"
+                >
+                  <option value="immediate">immediate</option>
+                  <option value="scheduled">scheduled</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">
+                  Ödeme Yöntemi
+                </label>
+                <select
+                  value={editing.paymentMethod ?? "cash"}
+                  onChange={(e) => {
+                    const value = e.target.value as
+                      | "cash"
+                      | "card"
+                      | "transfer";
+                    setEditing({ ...editing, paymentMethod: value });
+                  }}
+                  required
+                  className="w-full rounded-xl border border-neutral-300 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-200"
+                >
+                  <option value="cash">Nakit</option>
+                  <option value="card">Kart</option>
+                  <option value="transfer">Transfer</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">
                   Taşıyıcı Tipi
                 </label>
                 <select
@@ -568,6 +619,59 @@ export default function CorporateLogisticsTrackingPage() {
                     })
                   }
                   required
+                  className="w-full rounded-xl border border-neutral-300 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-200"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium">
+                  Toplam Fiyat (₺)
+                </label>
+                <input
+                  type="number"
+                  value={Number(editing.totalPrice ?? "")}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      totalPrice: Number(e.target.value),
+                    })
+                  }
+                  required
+                  className="w-full rounded-xl border border-neutral-300 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-200"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium">
+                  Özel Notlar
+                </label>
+                <textarea
+                  value={editing.specialNotes ?? ""}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      specialNotes: e.target.value,
+                    })
+                  }
+                  required
+                  className="w-full rounded-xl border border-neutral-300 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-200"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium">
+                  Görsel ID’ler (virgülle ayır)
+                </label>
+                <input
+                  value={(editing.imageFileIds ?? []).join(",")}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      imageFileIds: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
+                    })
+                  }
+                  required
+                  placeholder="uuid1, uuid2, uuid3"
                   className="w-full rounded-xl border border-neutral-300 px-3 py-2 outline-none focus:ring-2 focus:ring-sky-200"
                 />
               </div>
