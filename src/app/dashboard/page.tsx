@@ -19,14 +19,12 @@ export default function CorporateHome() {
   const claims = decodeJwt(token);
 
   if (!claims || isExpired(claims)) {
-    console.log("claims isexpired");
     redirect("/");
   }
 
   const role = String(roleSegment(claims.userType) || "").toLowerCase();
 
   if (role !== "corporate") {
-    console.log("role");
     redirect("/");
   }
 
