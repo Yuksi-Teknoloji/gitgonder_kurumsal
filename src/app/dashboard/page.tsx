@@ -3,23 +3,30 @@
 import { redirect } from "next/navigation";
 import { getAuthToken } from "@/src/utils/auth";
 import { decodeJwt, isExpired, roleSegment } from "@/src/utils/jwt";
+import { useEffect, useState } from "react";
 
 export default function CorporateHome() {
-  const token = getAuthToken();
+  const [token, setToken] = useState<string | null>(null);
 
-  if (!token) {
-    redirect("/");
+  useEffect(() => {
+    setToken(getAuthToken());
+  }, []);
+
+  if (token === null) {
+    return null;
   }
 
   const claims = decodeJwt(token);
 
   if (!claims || isExpired(claims)) {
+    console.log("claims isexpired");
     redirect("/");
   }
 
   const role = String(roleSegment(claims.userType) || "").toLowerCase();
 
   if (role !== "corporate") {
+    console.log("role");
     redirect("/");
   }
 
