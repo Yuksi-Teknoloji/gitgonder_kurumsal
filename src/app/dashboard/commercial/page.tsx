@@ -234,6 +234,7 @@ const FUEL_TYPES = ['gasoline', 'diesel', 'electric', 'hybrid', 'lpg'] as const;
 const CONDITIONS = ['new', 'second_hand', 'damaged'] as const;
 const TRANSMISSIONS = ['manual', 'automatic', 'semi_automatic'] as const;
 const SOURCES = ['user', 'sahibinden', 'gallery', 'other'] as const;
+const BODY_TYPES = ['motorsiklet', 'minivan', 'panelvan', 'kamyonet', 'kamyon'] as const;
 
 /* ========= Page ========= */
 export default function CommercialListingsPage() {
@@ -1208,12 +1209,18 @@ export default function CommercialListingsPage() {
 
                             <div>
                                 <label className="mb-1 block text-sm font-semibold">Kasa Tipi</label>
-                                <input
+                                <select
                                     value={qBody}
                                     onChange={(e) => setQBody(e.target.value)}
-                                    placeholder="Örn: motorsiklet"
                                     className="w-full rounded-xl border border-neutral-300 bg-neutral-100 px-3 py-2 text-sm outline-none focus:bg-white"
-                                />
+                                >
+                                    <option value="">(hepsi)</option>
+                                    {BODY_TYPES.map((x) => (
+                                        <option key={x} value={x}>
+                                            {x}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                             <div>
                                 <label className="mb-1 block text-sm font-semibold">Renk</label>
@@ -1485,11 +1492,17 @@ export default function CommercialListingsPage() {
 
                             <div>
                                 <label className="mb-1 block text-sm font-semibold">Kasa Tipi</label>
-                                <input
+                                <select
                                     value={form.body_type}
                                     onChange={(e) => setForm((p) => ({ ...p, body_type: e.target.value }))}
                                     className="w-full rounded-xl border border-neutral-300 bg-neutral-100 px-3 py-2 text-sm outline-none focus:bg-white"
-                                />
+                                >
+                                    {BODY_TYPES.map((x) => (
+                                        <option key={x} value={x}>
+                                            {x}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                             <div>
                                 <label className="mb-1 block text-sm font-semibold">Renk</label>
@@ -1994,13 +2007,13 @@ export default function CommercialListingsPage() {
                                     </div>
 
                                     <div>
-                                        <label className="mb-1 block text-sm font-semibold">Araç Durumu</label>
+                                        <label className="mb-1 block text-sm font-semibold">Yakıt</label>
                                         <select
-                                            value={form.condition}
-                                            onChange={(e) => setForm((p) => ({ ...p, condition: e.target.value }))}
+                                            value={form.fuel_type}
+                                            onChange={(e) => setForm((p) => ({ ...p, fuel_type: e.target.value }))}
                                             className="w-full rounded-xl border border-neutral-300 bg-neutral-100 px-3 py-2 text-sm outline-none focus:bg-white"
                                         >
-                                            {CONDITIONS.map((x) => (
+                                            {FUEL_TYPES.map((x) => (
                                                 <option key={x} value={x}>
                                                     {x}
                                                 </option>
@@ -2024,11 +2037,17 @@ export default function CommercialListingsPage() {
 
                                     <div>
                                         <label className="mb-1 block text-sm font-semibold">Kasa Tipi</label>
-                                        <input
+                                        <select
                                             value={form.body_type}
                                             onChange={(e) => setForm((p) => ({ ...p, body_type: e.target.value }))}
                                             className="w-full rounded-xl border border-neutral-300 bg-neutral-100 px-3 py-2 text-sm outline-none focus:bg-white"
-                                        />
+                                        >
+                                            {BODY_TYPES.map((x) => (
+                                                <option key={x} value={x}>
+                                                    {x}
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
                                     <div>
                                         <label className="mb-1 block text-sm font-semibold">Renk</label>
