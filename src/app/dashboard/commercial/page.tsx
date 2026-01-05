@@ -135,6 +135,29 @@ function normalizeFileGetResponse(j: any): { url: string | null; name?: string |
     return { url: url ? String(url) : null, name: name ? String(name) : null };
 }
 
+/* ========= Listing image helper ========= */
+function normalizeListingImages(images: any): Array<{
+    id?: string;
+    file_id?: string;
+    order_index?: number;
+    file_url?: string | null;
+    file_name?: string | null;
+}> {
+    if (!images) return [];
+    if (Array.isArray(images)) return images;
+
+    if (typeof images === 'string') {
+        const s = images.trim();
+        if (!s) return [];
+        try {
+            const parsed = JSON.parse(s);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
+    }
+    return [];
+}
 
 /* ========= Types (lightweight) ========= */
 type ListingStatus = 'in_review' | 'approved' | 'rejected' | 'sold' | string;
@@ -340,6 +363,15 @@ export default function CommercialListingsPage() {
     const [editOpen, setEditOpen] = React.useState(false);
     const [editBusy, setEditBusy] = React.useState(false);
 
+    // Edit images state (edit modal içinde yönetilecek)
+    const [editImages, setEditImages] = React.useState<
+        Array<{ id?: string; file_id?: string; order_index?: number; file_url?: string | null; file_name?: string | null }>
+    >([]);
+
+    const [editImgFileId, setEditImgFileId] = React.useState('');
+    const [editImgOrderIndex, setEditImgOrderIndex] = React.useState('0');
+    const [editImgBusy, setEditImgBusy] = React.useState(false);
+
     // Add image flow (requires file_id from your upload service)
     const [imgOpen, setImgOpen] = React.useState(false);
     const [imgBusy, setImgBusy] = React.useState(false);
@@ -502,7 +534,8 @@ export default function CommercialListingsPage() {
                     sort_order: qSortOrder,
                 });
                 const j = await apiGet(`/yuksi/ticarim/ilan/search${qs}`, false);
-                const arr: any[] = Array.isArray(j?.data) ? j.data : Array.isArray(j) ? j : [];
+                const list = j?.data?.listings ?? j?.listings ?? j?.data ?? j;
+                const arr: any[] = Array.isArray(list) ? list : [];
                 setSearchResults(arr as ListingBase[]);
                 if (opts?.resetOffset) setSearchOffset(0);
             } catch (e: any) {
@@ -575,9 +608,15 @@ export default function CommercialListingsPage() {
                     : await apiGet(`/yuksi/ticarim/ilan/${id}`, false);
 
             const d = (j?.data && typeof j.data === 'object' ? j.data : j) as ListingBase;
-            setDetail(d);
+
+            // images bazen JSON-string geliyor -> normalize
+            const normalizedImages = normalizeListingImages((d as any).images);
+            const dFixed: ListingBase = { ...d, images: normalizedImages };
+
+            setDetail(dFixed);
+
             // images içinde file_url yoksa file_id ile resolve et
-            const imgs = Array.isArray(d?.images) ? d.images : [];
+            const imgs = dFixed.images || [];
             const need = imgs.filter((im) => im?.file_id && !im?.file_url).map((im) => String(im.file_id));
             if (need.length) {
                 // paralel resolve
@@ -588,7 +627,8 @@ export default function CommercialListingsPage() {
                             if (!url) return;
                             setDetail((prev) => {
                                 if (!prev) return prev;
-                                const nextImages = (prev.images || []).map((im) =>
+                                const prevImgs = normalizeListingImages((prev as any).images);
+                                const nextImages = prevImgs.map((im) =>
                                     im?.file_id === fid && !im?.file_url ? { ...im, file_url: url } : im
                                 );
                                 return { ...prev, images: nextImages };
@@ -657,6 +697,8 @@ export default function CommercialListingsPage() {
         try {
             const j = await apiGet(`/yuksi/ticarim/ilan/my-listings/${id}`, true);
             const d = (j?.data && typeof j.data === 'object' ? j.data : j) as ListingBase;
+            const imgs = normalizeListingImages((d as any).images);
+            setEditImages(imgs);
 
             setForm((p) => ({
                 ...p,
@@ -685,6 +727,36 @@ export default function CommercialListingsPage() {
             setErrMsg(e?.message || 'İlan detayı alınamadı (edit).');
         }
     };
+    async function refreshEditImages(listingId: string) {
+        const j = await apiGet(`/yuksi/ticarim/ilan/my-listings/${listingId}`, true);
+        const d = (j?.data && typeof j.data === 'object' ? j.data : j) as ListingBase;
+        setEditImages(normalizeListingImages((d as any).images));
+    }
+
+    async function editAddImage(listingId: string, file_id: string, order_index: number) {
+        const body = { listing_id: listingId, file_id, order_index };
+        return apiSend(`/yuksi/ticarim/ilan/${listingId}/images`, 'POST', body, true);
+    }
+
+    async function editDeleteImage(listingId: string, imageId: string) {
+        return apiSend(`/yuksi/ticarim/ilan/${listingId}/images/${imageId}`, 'DELETE', undefined, true);
+    }
+
+    async function editSetMainImage(listingId: string, imageId: string) {
+        const body = { image_id: imageId };
+        return apiSend(`/yuksi/ticarim/ilan/${listingId}/images/${imageId}/main`, 'PUT', body, true);
+    }
+    async function addImageToEditListing(fileId: string, orderIndex?: number) {
+        if (!editId) throw new Error('editId yok.');
+        const fid = String(fileId || '').trim();
+        if (!fid) throw new Error('file_id zorunlu.');
+
+        const oi = Number.isFinite(orderIndex as any) ? (orderIndex as number) : toNum(editImgOrderIndex);
+
+        await editAddImage(editId, fid, oi);
+        await refreshEditImages(editId);
+        await loadMine();
+    }
 
     async function submitEdit(e: React.FormEvent) {
         e.preventDefault();
@@ -693,14 +765,30 @@ export default function CommercialListingsPage() {
         setOkMsg(null);
         setErrMsg(null);
         setEditBusy(true);
+
         try {
+            // ✅ editImages üzerinden file_id listesi üret
+            const imageFileIds = Array.from(
+                new Set(
+                    (editImages || [])
+                        .map((im) => String(im?.file_id || '').trim())
+                        .filter(Boolean)
+                )
+            );
+
+            if (imageFileIds.length === 0) {
+                setErrMsg('Bu endpoint için en az 1 resim zorunlu. Önce resim ekleyip tekrar deneyin.');
+                return;
+            }
+
             const body: CreateListingBody = {
                 ...form,
                 year: Math.max(1950, toNum(form.year)),
                 km: Math.max(0, toNum(form.km)),
                 engine_size: Math.max(0, toNum(form.engine_size)),
                 price: Math.max(0, toNum(form.price)),
-                image_file_ids: (form.image_file_ids || []).filter(Boolean),
+                // ✅ burası kritik
+                image_file_ids: imageFileIds,
             };
 
             const j = await apiSend(`/yuksi/ticarim/ilan/${editId}`, 'PUT', body, true);
@@ -785,9 +873,6 @@ export default function CommercialListingsPage() {
         <section className="rounded-2xl border border-neutral-200/70 bg-white p-6 shadow-sm">{children}</section>
     ), []);
 
-    const [thumbUrl, setThumbUrl] = React.useState<string | null>(null);
-    const [thumbBusy, setThumbBusy] = React.useState(false);
-
     const ListingRow = ({
         x,
         mode,
@@ -808,33 +893,39 @@ export default function CommercialListingsPage() {
 
         const price = x.price != null ? `${toNum(x.price).toLocaleString('tr-TR')}₺` : '—';
 
+        // ✅ thumb state row-local
+        const [thumbUrl, setThumbUrl] = React.useState<string | null>(null);
+        const [thumbBusy, setThumbBusy] = React.useState(false);
+
         React.useEffect(() => {
             let alive = true;
 
             async function run() {
-                // sadece "ilanlarım" alanında gösterelim
-                if (mode !== 'mine') return;
-
                 const main = x.main_image_url ? String(x.main_image_url) : null;
+
+                // ✅ public/mine fark etmez: main_image_url varsa direkt bas
                 if (main) {
                     if (alive) setThumbUrl(main);
                     return;
                 }
 
-                const first = Array.isArray(x.images) && x.images.length > 0 ? x.images[0] : null;
+                // images fallback
+                const imgs = normalizeListingImages((x as any).images);
+                const first = imgs.length > 0 ? imgs[0] : null;
+
                 if (!first) {
                     if (alive) setThumbUrl(null);
                     return;
                 }
 
-                // file_url varsa direkt kullan
+                // file_url varsa direkt kullan (public/mine)
                 if (first.file_url) {
                     if (alive) setThumbUrl(String(first.file_url));
                     return;
                 }
 
-                // file_id varsa resolve et
-                if (first.file_id) {
+                // ✅ file_id resolve işlemini sadece mine'da yap (auth gerekebilir)
+                if (mode === 'mine' && first.file_id) {
                     try {
                         setThumbBusy(true);
                         const url = await ensureFileUrl(String(first.file_id));
@@ -844,6 +935,9 @@ export default function CommercialListingsPage() {
                     } finally {
                         if (alive) setThumbBusy(false);
                     }
+                } else {
+                    // public'da file_id var ama file_url yoksa boş geç
+                    if (alive) setThumbUrl(null);
                 }
             }
 
@@ -851,29 +945,26 @@ export default function CommercialListingsPage() {
             return () => {
                 alive = false;
             };
-            // x.images referansı değişirse tekrar denesin
         }, [mode, x.id, x.main_image_url, x.images]);
+
 
         return (
             <div className="flex flex-col gap-3 rounded-2xl border border-neutral-200 p-4 hover:bg-neutral-50">
                 <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start justify-between gap-4">
                         <div className="flex min-w-0 gap-3">
-                            {/* Thumbnail (sadece mine) */}
-                            {mode === 'mine' && (
-                                <div className="shrink-0">
-                                    <div className="h-16 w-16 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">
-                                        {thumbUrl ? (
-                                            // eslint-disable-next-line @next/next/no-img-element
-                                            <img src={thumbUrl} alt="thumb" className="h-full w-full object-cover" />
-                                        ) : (
-                                            <div className="flex h-full w-full items-center justify-center text-[11px] text-neutral-500">
-                                                {thumbBusy ? '…' : 'no img'}
-                                            </div>
-                                        )}
-                                    </div>
+                            <div className="shrink-0">
+                                <div className="h-44 w-44 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">
+                                    {thumbUrl ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img src={thumbUrl} alt="thumb" className="h-full w-full object-cover" />
+                                    ) : (
+                                        <div className="flex h-full w-full items-center justify-center text-[11px] text-neutral-500">
+                                            {thumbBusy ? '…' : 'no img'}
+                                        </div>
+                                    )}
                                 </div>
-                            )}
+                            </div>
                         </div>
                     </div>
                     <div className="min-w-0">
@@ -959,7 +1050,7 @@ export default function CommercialListingsPage() {
                 <div>
                     <h1 className="text-2xl font-semibold text-neutral-900">Ticarim (Commercial)</h1>
                     <p className="mt-1 text-sm text-neutral-600">
-                        İlan oluştur, listele, ara, detay incele. Endpoint’ler: <code className="rounded bg-neutral-100 px-1">/ticarim/ilan/*</code>
+                        İlan oluştur, listele, ara, detay incele.
                     </p>
                 </div>
 
@@ -1004,7 +1095,6 @@ export default function CommercialListingsPage() {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <h2 className="text-lg font-semibold">Öne Çıkan İlanlar</h2>
-                            <p className="mt-1 text-sm text-neutral-600">GET <code>/yuksi/ticarim/ilan/featured</code></p>
                         </div>
 
                         <div className="flex items-center gap-2">
@@ -1043,7 +1133,6 @@ export default function CommercialListingsPage() {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <h2 className="text-lg font-semibold">İlan Ara</h2>
-                            <p className="mt-1 text-sm text-neutral-600">GET <code>/yuksi/ticarim/ilan/search</code></p>
                         </div>
 
                         <div className="flex items-center gap-2">
@@ -1341,9 +1430,6 @@ export default function CommercialListingsPage() {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <h2 className="text-lg font-semibold">İlanlarım</h2>
-                            <p className="mt-1 text-sm text-neutral-600">
-                                GET <code>/yuksi/ticarim/ilan/my-listings</code> • GET <code>/yuksi/ticarim/ilan/my-listings/{`{listing_id}`}</code>
-                            </p>
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2">
@@ -1385,7 +1471,6 @@ export default function CommercialListingsPage() {
                     </div>
                 </Card>
             )}
-
             {/* ===== Create ===== */}
             {tab === 'create' && (
                 <Card>
@@ -1393,7 +1478,7 @@ export default function CommercialListingsPage() {
                         <div>
                             <h2 className="text-lg font-semibold">Yeni İlan Oluştur</h2>
                             <p className="mt-1 text-sm text-neutral-600">
-                                POST <code>/yuksi/ticarim/ilan</code>
+                                Yeni bir ilan oluşturmak için aşağıdaki formu doldurun.
                             </p>
                         </div>
                     </div>
@@ -1803,17 +1888,6 @@ export default function CommercialListingsPage() {
                                 <div className="text-sm font-semibold text-neutral-900 truncate">
                                     İlan Detayı {detailMode === 'mine' ? '(My)' : '(Public)'}
                                 </div>
-                                <div className="mt-1 text-xs text-neutral-500">
-                                    {detailMode === 'mine' ? (
-                                        <span>
-                                            GET <code>/yuksi/ticarim/ilan/my-listings/{`{listing_id}`}</code>
-                                        </span>
-                                    ) : (
-                                        <span>
-                                            GET <code>/yuksi/ticarim/ilan/{`{listing_id}`}</code>
-                                        </span>
-                                    )}
-                                </div>
                             </div>
                             <button
                                 type="button"
@@ -1865,10 +1939,6 @@ export default function CommercialListingsPage() {
 
                                     <div>
                                         <div className="text-sm font-semibold text-neutral-900">Resimler</div>
-                                        <div className="mt-2 text-xs text-neutral-500">
-                                            <span className="rounded bg-neutral-100 px-1">main_image_url</span> veya <span className="rounded bg-neutral-100 px-1">images</span> alanı varsa gösterir.
-                                        </div>
-
                                         <div className="mt-3 grid gap-3">
                                             {(detail.main_image_url || null) && (
                                                 <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-50">
@@ -1902,14 +1972,6 @@ export default function CommercialListingsPage() {
                                                     Resim bulunamadı.
                                                 </div>
                                             )}
-
-                                            {detailMode === 'mine' && (
-                                                <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-xs text-sky-800 whitespace-pre-line">
-                                                    Resim eklemek için: <code>POST /yuksi/ticarim/ilan/{`{listing_id}`}/images</code>
-                                                    {'\n'}
-                                                    Bu sayfada “Resim Ekle” butonu ile file_id ve order_index girerek gönderiyoruz.
-                                                </div>
-                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -1922,13 +1984,10 @@ export default function CommercialListingsPage() {
             {/* ===== Edit Modal ===== */}
             {editOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-                    <div className="w-full max-w-3xl rounded-2xl border border-neutral-200 bg-white shadow-xl">
+                    <div className="w-full max-w-6xl rounded-2xl border border-neutral-200 bg-white shadow-xl max-h-[90vh] flex flex-col">
                         <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-4">
                             <div className="min-w-0">
                                 <div className="text-sm font-semibold text-neutral-900 truncate">İlan Güncelle</div>
-                                <div className="mt-1 text-xs text-neutral-500">
-                                    PUT <code>/yuksi/ticarim/ilan/{editId || '{listing_id}'}</code>
-                                </div>
                             </div>
                             <button
                                 type="button"
@@ -1942,7 +2001,7 @@ export default function CommercialListingsPage() {
                             </button>
                         </div>
 
-                        <div className="p-5">
+                        <div className="p-5 overflow-y-auto">
                             <form onSubmit={submitEdit} className="grid gap-4">
                                 <div className="grid gap-4 md:grid-cols-2">
                                     <div>
@@ -2114,25 +2173,322 @@ export default function CommercialListingsPage() {
                                         />
                                     </div>
 
-                                    <div className="md:col-span-2">
-                                        <label className="mb-1 block text-sm font-semibold">image_file_ids</label>
-                                        <textarea
-                                            rows={4}
-                                            value={(form.image_file_ids || []).join('\n')}
-                                            onChange={(e) =>
-                                                setForm((p) => ({
-                                                    ...p,
-                                                    image_file_ids: e.target.value
-                                                        .split('\n')
-                                                        .map((s) => s.trim())
-                                                        .filter(Boolean),
-                                                }))
-                                            }
-                                            placeholder="file_id1\nfile_id2\n…"
-                                            className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs outline-none"
-                                        />
-                                        <div className="mt-1 text-xs text-neutral-500">
-                                            (Güncelleme endpoint’i de örnek body içinde <code>image_file_ids</code> alıyor.)
+                                    {/* ===== Edit: Images Management ===== */}
+                                    <div className="md:col-span-2 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <div className="text-sm font-semibold text-neutral-900">Resimler (Edit)</div>
+                                            <button
+                                                type="button"
+                                                onClick={async () => {
+                                                    if (!editId) return;
+                                                    try {
+                                                        setErrMsg(null);
+                                                        await refreshEditImages(editId);
+                                                        setOkMsg('Resimler yenilendi.');
+                                                    } catch (e: any) {
+                                                        setErrMsg(e?.message || 'Resimler yenilenemedi.');
+                                                    }
+                                                }}
+                                                className="rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold hover:bg-neutral-50"
+                                            >
+                                                Yenile
+                                            </button>
+                                        </div>
+
+                                        {/* Add image (POST) */}
+                                        {/* ===== Edit: Create-like Upload + File Picker ===== */}
+                                        <div className="mt-3 rounded-2xl border border-neutral-200 bg-white p-4">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <div className="text-sm font-semibold text-neutral-900">Resim Ekle (Upload)</div>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={async () => {
+                                                        try {
+                                                            setErrMsg(null);
+                                                            setOkMsg(null);
+
+                                                            const uid = (uploadUserId || userIdFromToken || '').trim();
+                                                            if (!uid) return setErrMsg('Upload için user_id gerekli (token’dan gelmiyorsa elle gir).');
+
+                                                            setUploadBusy(true);
+                                                            const list = await fileGetByUser(uid);
+                                                            setUploaded(list);
+                                                            setOkMsg('Kullanıcının yüklediği dosyalar getirildi.');
+                                                        } catch (e: any) {
+                                                            setErrMsg(e?.message || 'Dosyalar alınamadı.');
+                                                        } finally {
+                                                            setUploadBusy(false);
+                                                        }
+                                                    }}
+                                                    className="rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold hover:bg-neutral-50 disabled:opacity-60"
+                                                    disabled={uploadBusy}
+                                                    title="GET /yuksi/file/user/{user_id}"
+                                                >
+                                                    {uploadBusy ? '…' : 'Dosyalarım'}
+                                                </button>
+                                            </div>
+
+                                            <div className="mt-3 grid gap-2 md:grid-cols-3">
+                                                <div className="md:col-span-2">
+                                                    <label className="mb-1 block text-xs font-semibold text-neutral-600">user_id (UUID)</label>
+                                                    <input
+                                                        value={uploadUserId}
+                                                        onChange={(e) => setUploadUserId(e.target.value)}
+                                                        placeholder={userIdFromToken ? `token: ${userIdFromToken}` : 'Token’dan gelmiyorsa buraya gir'}
+                                                        className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs outline-none"
+                                                    />
+                                                    {userIdFromToken && (
+                                                        <div className="mt-1 text-[11px] text-neutral-500">
+                                                            Token’dan okunan: <code className="rounded bg-neutral-100 px-1">{userIdFromToken}</code>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div>
+                                                    <label className="mb-1 block text-xs font-semibold text-neutral-600">order_index</label>
+                                                    <input
+                                                        value={editImgOrderIndex}
+                                                        onChange={(e) => setEditImgOrderIndex(e.target.value)}
+                                                        className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs outline-none"
+                                                    />
+                                                    <div className="mt-1 text-[11px] text-neutral-500">(+Ekle / Upload sonrası default)</div>
+                                                </div>
+
+                                                <div className="md:col-span-3">
+                                                    <label className="mb-1 block text-xs font-semibold text-neutral-600">Dosya seç</label>
+                                                    <input
+                                                        type="file"
+                                                        multiple
+                                                        onChange={(e) => setUploadFiles(e.target.files)}
+                                                        className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs outline-none"
+                                                    />
+
+                                                    <div className="mt-2 flex flex-wrap gap-2 justify-end">
+                                                        <button
+                                                            type="button"
+                                                            onClick={async () => {
+                                                                try {
+                                                                    setErrMsg(null);
+                                                                    setOkMsg(null);
+
+                                                                    const uid = (uploadUserId || userIdFromToken || '').trim();
+                                                                    if (!uid) return setErrMsg('Upload için user_id gerekli.');
+                                                                    if (!uploadFiles || uploadFiles.length === 0) return setErrMsg('Dosya seçmedin.');
+                                                                    if (!editId) return setErrMsg('editId yok.');
+
+                                                                    setUploadBusy(true);
+
+                                                                    const items =
+                                                                        uploadFiles.length === 1
+                                                                            ? await fileUploadSingle(uid, uploadFiles[0])
+                                                                            : await fileUploadMultiple(uid, uploadFiles);
+
+                                                                    setUploaded((p) => [...items, ...p]);
+
+                                                                    // ✅ Create'den farkı: editte upload sonrası otomatik ilana ekliyoruz
+                                                                    const ids = items.map((x) => x.file_id).filter(Boolean);
+
+                                                                    for (const fid of ids) {
+                                                                        await addImageToEditListing(fid, toNum(editImgOrderIndex));
+                                                                    }
+
+                                                                    setOkMsg(`Upload + ekleme tamam: ${ids.length} resim ilana eklendi.`);
+                                                                } catch (e: any) {
+                                                                    setErrMsg(e?.message || 'Upload/ekleme başarısız.');
+                                                                } finally {
+                                                                    setUploadBusy(false);
+                                                                }
+                                                            }}
+                                                            className="rounded-xl bg-indigo-500 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-600 disabled:opacity-60"
+                                                            disabled={uploadBusy || editImgBusy}
+                                                            title="POST /yuksi/file/upload-multiple + POST /ticarim/ilan/{id}/images"
+                                                        >
+                                                            {uploadBusy ? 'Yükleniyor…' : 'Upload + İlana Ekle'}
+                                                        </button>
+
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setUploadFiles(null);
+                                                                setUploaded([]);
+                                                                setFileUrlMap({});
+                                                            }}
+                                                            className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold hover:bg-neutral-50"
+                                                            disabled={uploadBusy}
+                                                        >
+                                                            Sıfırla
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Manual file_id + add (create'deki textarea mantığına benzer) */}
+                                            <div className="mt-4 grid gap-2 md:grid-cols-3">
+                                                <div className="flex items-end">
+                                                    <button
+                                                        type="button"
+                                                        onClick={async () => {
+                                                            try {
+                                                                setErrMsg(null);
+                                                                setOkMsg(null);
+                                                                setEditImgBusy(true);
+
+                                                                await addImageToEditListing(editImgFileId.trim(), toNum(editImgOrderIndex));
+                                                                setOkMsg('Resim ilana eklendi.');
+                                                                setEditImgFileId('');
+                                                            } catch (e: any) {
+                                                                setErrMsg(e?.message || 'Resim eklenemedi.');
+                                                            } finally {
+                                                                setEditImgBusy(false);
+                                                            }
+                                                        }}
+                                                        className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold hover:bg-neutral-50 disabled:opacity-60"
+                                                        disabled={editImgBusy}
+                                                        title="POST /yuksi/ticarim/ilan/{listing_id}/images"
+                                                    >
+                                                        {editImgBusy ? '…' : '+Ekle'}
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {uploaded.length > 0 && (
+                                                <div className="mt-4">
+                                                    <div className="text-xs font-semibold text-neutral-700">Yüklenenler</div>
+                                                    <div className="mt-2 grid gap-2">
+                                                        {uploaded.slice(0, 10).map((f, idx) => (
+                                                            <div
+                                                                key={`${f.file_id}-${idx}`}
+                                                                className="flex items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-neutral-50 p-2"
+                                                            >
+                                                                <div className="min-w-0">
+                                                                    <div className="truncate text-xs text-neutral-900">
+                                                                        <span className="font-semibold">file_id:</span> {f.file_id}
+                                                                    </div>
+                                                                    {f.file_name && <div className="truncate text-[11px] text-neutral-500">{f.file_name}</div>}
+                                                                </div>
+
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={async () => {
+                                                                        try {
+                                                                            setErrMsg(null);
+                                                                            setOkMsg(null);
+                                                                            setEditImgBusy(true);
+
+                                                                            await addImageToEditListing(f.file_id, toNum(editImgOrderIndex));
+                                                                            setOkMsg('Resim ilana eklendi.');
+                                                                        } catch (e: any) {
+                                                                            setErrMsg(e?.message || 'Resim eklenemedi.');
+                                                                        } finally {
+                                                                            setEditImgBusy(false);
+                                                                        }
+                                                                    }}
+                                                                    className="shrink-0 rounded-lg border border-neutral-300 bg-white px-2 py-1 text-[11px] font-semibold hover:bg-neutral-50 disabled:opacity-60"
+                                                                    disabled={editImgBusy}
+                                                                >
+                                                                    +Ekle
+                                                                </button>
+                                                            </div>
+                                                        ))}
+
+                                                        {uploaded.length > 10 && <div className="text-[11px] text-neutral-500">(+{uploaded.length - 10} daha…)</div>}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Existing images list + actions (PUT main / DELETE) */}
+                                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                            {editImages.length === 0 ? (
+                                                <div className="sm:col-span-2 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-600">
+                                                    Resim yok.
+                                                </div>
+                                            ) : (
+                                                editImages.map((im, idx) => {
+                                                    const imageId = String(im.id || '');
+                                                    const url = im.file_url || null;
+
+                                                    return (
+                                                        <div key={im.id || im.file_id || idx} className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+                                                            <div className="h-32 w-full bg-neutral-50">
+                                                                {url ? (
+                                                                    // eslint-disable-next-line @next/next/no-img-element
+                                                                    <img src={String(url)} alt={im.file_name || 'image'} className="h-full w-full object-cover" />
+                                                                ) : (
+                                                                    <div className="flex h-full items-center justify-center text-xs text-neutral-500">file_url yok</div>
+                                                                )}
+                                                            </div>
+
+                                                            <div className="border-t border-neutral-200 p-2 text-xs text-neutral-700">
+                                                                <div>image_id: {im.id || '—'}</div>
+                                                                <div>file_id: {im.file_id || '—'}</div>
+                                                                <div>order_index: {im.order_index ?? '—'}</div>
+                                                            </div>
+
+                                                            <div className="flex gap-2 border-t border-neutral-200 p-2">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={async () => {
+                                                                        if (!editId) return;
+                                                                        if (!imageId) return setErrMsg('image_id bulunamadı.');
+
+                                                                        try {
+                                                                            setErrMsg(null);
+                                                                            setOkMsg(null);
+                                                                            setEditImgBusy(true);
+
+                                                                            const j = await editSetMainImage(editId, imageId);
+                                                                            setOkMsg(j?.message || 'Ana resim güncellendi.');
+
+                                                                            await refreshEditImages(editId);
+                                                                            await loadMine();
+                                                                        } catch (e: any) {
+                                                                            setErrMsg(e?.message || 'Ana resim belirlenemedi.');
+                                                                        } finally {
+                                                                            setEditImgBusy(false);
+                                                                        }
+                                                                    }}
+                                                                    className="w-full rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-60"
+                                                                    disabled={editImgBusy}
+                                                                    title="PUT /yuksi/ticarim/ilan/{listing_id}/images/{image_id}/main"
+                                                                >
+                                                                    Ana Yap
+                                                                </button>
+
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={async () => {
+                                                                        if (!editId) return;
+                                                                        if (!imageId) return setErrMsg('image_id bulunamadı.');
+
+                                                                        try {
+                                                                            setErrMsg(null);
+                                                                            setOkMsg(null);
+                                                                            setEditImgBusy(true);
+
+                                                                            const j = await editDeleteImage(editId, imageId);
+                                                                            setOkMsg(j?.message || 'Resim silindi.');
+
+                                                                            await refreshEditImages(editId);
+                                                                            await loadMine();
+                                                                        } catch (e: any) {
+                                                                            setErrMsg(e?.message || 'Resim silinemedi.');
+                                                                        } finally {
+                                                                            setEditImgBusy(false);
+                                                                        }
+                                                                    }}
+                                                                    className="w-full rounded-xl border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-60"
+                                                                    disabled={editImgBusy}
+                                                                    title="DELETE /yuksi/ticarim/ilan/{listing_id}/images/{image_id}"
+                                                                >
+                                                                    Sil
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -2170,9 +2526,6 @@ export default function CommercialListingsPage() {
                         <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-4">
                             <div className="min-w-0">
                                 <div className="text-sm font-semibold text-neutral-900 truncate">Resim Ekle</div>
-                                <div className="mt-1 text-xs text-neutral-500">
-                                    POST <code>/yuksi/ticarim/ilan/{imgListingId || '{listing_id}'}/images</code>
-                                </div>
                             </div>
                             <button
                                 type="button"
@@ -2233,9 +2586,6 @@ export default function CommercialListingsPage() {
                                         }}
                                         className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs outline-none"
                                     />
-                                    <div className="text-[11px] text-neutral-500">
-                                        Endpoint: <code>/yuksi/file/upload</code> (multipart: user_id + file)
-                                    </div>
                                 </div>
                             </div>
                             <div>
