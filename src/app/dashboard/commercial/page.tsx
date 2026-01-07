@@ -949,7 +949,7 @@ export default function CommercialListingsPage() {
 
 
         return (
-            <div className="flex flex-col gap-3 rounded-2xl border border-neutral-200 p-4 hover:bg-neutral-50">
+            <div className="flex flex-col gap-3 rounded-2xl border border-neutral-200 p-4 hover:bg-neutral-50 shadow-sm soft-card">
                 <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start justify-between gap-4">
                         <div className="flex min-w-0 gap-3">
@@ -1147,7 +1147,7 @@ export default function CommercialListingsPage() {
                         </div>
                     </div>
 
-                    <div className="mt-5 grid gap-4 lg:grid-cols-3">
+                    <div className="mt-5 grid gap-4 lg:grid-cols-3 shadow-sm soft-card p-4 border border-neutral-200 rounded-2xl bg-white">
                         <div className="lg:col-span-2 grid gap-3 sm:grid-cols-2">
                             <div>
                                 <label className="mb-1 block text-sm font-semibold">Arama</label>
@@ -1360,7 +1360,7 @@ export default function CommercialListingsPage() {
                             </div>
                         </div>
 
-                        <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+                        <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4 shadow-sm soft-card hover:shadow-md transition">
                             <div className="text-sm font-semibold text-neutral-900">Sayfalama</div>
                             <div className="mt-3 grid grid-cols-2 gap-2">
                                 <div>
@@ -1483,7 +1483,7 @@ export default function CommercialListingsPage() {
                         </div>
                     </div>
 
-                    <form onSubmit={submitCreate} className="mt-5 grid gap-4">
+                    <form onSubmit={submitCreate} className="mt-5 grid gap-4 shadow-sm soft-card p-4 border border-neutral-200 rounded-2xl bg-white ">
                         <div className="grid gap-4 md:grid-cols-2">
                             <div>
                                 <label className="mb-1 block text-sm font-semibold">Başlık</label>
