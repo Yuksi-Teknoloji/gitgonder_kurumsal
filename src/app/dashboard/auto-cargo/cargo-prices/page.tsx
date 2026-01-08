@@ -293,7 +293,7 @@ export default function CargoPricesPage() {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-3 border-t border-neutral-200 bg-neutral-50 px-6 py-4">
+        <div className="flex items-center justify-end gap-3 border-t border-neutral-200 bg-neutral-60 px-6 py-4">
           <button onClick={resetAll} className="text-sm font-semibold text-neutral-700 hover:text-neutral-900">
             İptal Et
           </button>
@@ -315,7 +315,7 @@ export default function CargoPricesPage() {
       {/* Table Panel */}
       <div className="mt-4 rounded-xl border border-neutral-200 bg-white overflow-hidden">
         <div className="border-b border-neutral-200 bg-neutral-50 px-4 py-3">
-          <div className="grid grid-cols-[120px_120px_120px_120px_250px_160px_140px] gap-3 text-xs font-semibold text-neutral-600">
+          <div className="grid grid-cols-[180px_120px_120px_120px_250px_160px_50px] gap-3 text-xs font-semibold text-neutral-600">
             <div>Kargo Şirketi ⓘ</div>
             <div>Hizmet Türü ⓘ</div>
             <div>Teslimat Süresi ⓘ</div>
@@ -325,7 +325,7 @@ export default function CargoPricesPage() {
             <div />
           </div>
 
-          <div className="mt-3 grid grid-cols-[120px_120px_120px_120px_250px_160px_140px] gap-3">
+          <div className="mt-3 grid grid-cols-[180px_120px_120px_120px_250px_160px_60px] gap-3">
             <select
               value={selectedCompany}
               onChange={(e) => setSelectedCompany(e.target.value)}
@@ -377,14 +377,14 @@ export default function CargoPricesPage() {
         <div className="divide-y divide-neutral-100">
           {filteredRows.map((r) => (
             <div key={r.company} className="px-4 py-4">
-              <div className="grid grid-cols-[120px_120px_120px_120px_250px_160px_140px] items-center gap-3 text-sm">
+              <div className="grid grid-cols-[180px_120px_120px_120px_250px_160px_60px] items-center gap-3 text-sm">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 overflow-hidden rounded-lg border border-neutral-200 bg-white flex items-center justify-center">
+                  <div className="h-16 w-16 overflow-hidden rounded-lg border border-neutral-200 bg-white flex items-center justify-center">
                     {COMPANY_LOGO[r.company] ? (
                       <img
                         src={COMPANY_LOGO[r.company]}
                         alt={`${r.company} logo`}
-                        className="h-full w-full object-contain p-1"
+                        className="h-full w-full object-contain p-0"
                         loading="lazy"
                       />
                     ) : (

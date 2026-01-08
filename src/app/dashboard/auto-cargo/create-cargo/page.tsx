@@ -498,7 +498,7 @@ export default function CreateCargoPage() {
                     <div key={r.name} className="px-4 py-4">
                       <div className="grid grid-cols-[180px_100px_120px_160px_200px_120px_40px] items-center gap-3 text-sm">
                         <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 overflow-hidden rounded-lg border border-neutral-200 bg-white flex items-center justify-center">
+                          <div className="h-16 w-16 overflow-hidden rounded-lg border border-neutral-200 bg-white flex items-center justify-center">
                             {CARRIER_LOGO[r.name] ? (
                               <img
                                 src={CARRIER_LOGO[r.name]}
