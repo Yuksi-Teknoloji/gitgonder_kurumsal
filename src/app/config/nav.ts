@@ -154,7 +154,7 @@ export const NAV: Record<Role, RawNavGroup[]> = {
       ],
     },
     {
-      title: "Oto-Kargo",
+      title: "Yüksi-Kargo",
       items: [
         { label: "Ana Sayfa", path: "dashboard/auto-cargo/home" },
         { label: "Kargo Oluştur", path: "dashboard/auto-cargo/create-cargo" },
