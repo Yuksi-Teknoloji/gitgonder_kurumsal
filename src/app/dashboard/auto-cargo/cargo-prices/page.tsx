@@ -18,10 +18,10 @@ type PriceRow = {
   price: string;
 };
 const COMPANY_LOGO: Record<string, string> = {
-  HepsiJET: "/Cargo/hepsijet.png",
+  "HepsiJET": "/Cargo/hepsijet.png",
   "Sürat Kargo": "/Cargo/surat.png",
-  Kargoist: "/Cargo/kargoist.png",
-  "Aras Kargo Şehirler Arası": "/Cargo/aras.png",
+  "Kargoist": "/Cargo/kargoist.png",
+  "Aras Kargo": "/Cargo/aras.png",
   "Yurtiçi Kargo": "/Cargo/yurtici.png",
   "Kolay Gelsin": "/Cargo/kolaygelsin.png",
   "PTT Kargo": "/Cargo/ptt.png",
@@ -31,7 +31,7 @@ const MOCK_PRICES: PriceRow[] = [
   { company: "HepsiJET", service: "Hızlı", eta: "1 ile 3 İş Günü", pickup: ["Adresten Alım"], delivery: "Müşteri adresine teslim", price: "₺ 86,00" },
   { company: "Sürat Kargo", service: "Hızlı", eta: "1 ile 3 İş Günü", pickup: ["Şubeye Teslim"], delivery: "Müşteri adresine teslim", price: "₺ 103,00" },
   { company: "Kargoist", service: "Hızlı", eta: "1 ile 3 İş Günü", pickup: ["Şubeye Teslim", "Adresten Alım"], delivery: "Müşteri adresine teslim", price: "₺ 116,00" },
-  { company: "Aras Kargo Şehirler Arası", service: "Hızlı", eta: "1 ile 3 İş Günü", pickup: ["Şubeye Teslim"], delivery: "Müşteri adresine teslim", price: "₺ 117,00" },
+  { company: "Aras Kargo", service: "Hızlı", eta: "1 ile 3 İş Günü", pickup: ["Şubeye Teslim"], delivery: "Müşteri adresine teslim", price: "₺ 117,00" },
   { company: "Yurtiçi Kargo", service: "Hızlı", eta: "1 ile 3 İş Günü", pickup: ["Şubeye Teslim"], delivery: "Müşteri adresine teslim", price: "₺ 119,00" },
   { company: "Kolay Gelsin", service: "Hızlı", eta: "1 ile 3 İş Günü", pickup: ["Adresten Alım"], delivery: "Müşteri adresine teslim", price: "₺ 125,00" },
   { company: "PTT Kargo", service: "Hızlı", eta: "1 ile 7 İş Günü", pickup: ["Şubeye Teslim"], delivery: "Müşteri adresine teslim", price: "₺ 142,00" },
@@ -378,19 +378,22 @@ export default function CargoPricesPage() {
           {filteredRows.map((r) => (
             <div key={r.company} className="px-4 py-4">
               <div className="grid grid-cols-[120px_120px_120px_120px_250px_160px_140px] items-center gap-3 text-sm">
-                <div className="h-13 w-13 overflow-hidden rounded-lg border border-neutral-200 bg-white flex items-center justify-center">
-                  {COMPANY_LOGO[r.company] ? (
-                    <img
-                      src={COMPANY_LOGO[r.company]}
-                      alt={`${r.company} logo`}
-                      className="h-full w-full object-contain p-1"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <span className="text-xs text-neutral-500">🏷️</span>
-                  )}
-                </div>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 overflow-hidden rounded-lg border border-neutral-200 bg-white flex items-center justify-center">
+                    {COMPANY_LOGO[r.company] ? (
+                      <img
+                        src={COMPANY_LOGO[r.company]}
+                        alt={`${r.company} logo`}
+                        className="h-full w-full object-contain p-1"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <span className="text-xs text-neutral-500">🏷️</span>
+                    )}
+                  </div>
 
+                  <div className="font-semibold text-neutral-900">{r.company}</div>
+                </div>
                 <div className="text-neutral-700">{r.service}</div>
 
                 <div>

@@ -35,12 +35,24 @@ type CarrierRow = {
   delivery: "Müşteri adresine teslim";
   price: string;
 };
+const CARRIER_LOGO: Record<string, string> = {
+  "HepsiJET": "/Cargo/hepsijet.png",
+  "Sürat Kargo": "/Cargo/surat.png",
+  "Kargoist": "/Cargo/kargoist.png",
+  "Aras Kargo": "/Cargo/aras.png",
+  "Yurtiçi Kargo": "/Cargo/yurtici.png",
+  "Kolay Gelsin": "/Cargo/kolaygelsin.png",
+  "PTT Kargo": "/Cargo/ptt.png",
+};
 
 const MOCK_CARRIERS: CarrierRow[] = [
   { name: "Kargoist", service: "Hızlı", eta: "1 ile 3 İş Günü", pickup: "Şubeye Teslim", delivery: "Müşteri adresine teslim", price: "₺ 156,00" },
-  { name: "Sürat Kargo Kapıda Ödeme", service: "Hızlı", eta: "1 ile 3 İş Günü", pickup: "Şubeye Teslim", delivery: "Müşteri adresine teslim", price: "₺ 162,00" },
-  { name: "Aras Kargo Şehirler Arası", service: "Hızlı", eta: "1 ile 3 İş Günü", pickup: "Şubeye Teslim", delivery: "Müşteri adresine teslim", price: "₺ 192,00" },
+  { name: "Sürat Kargo", service: "Hızlı", eta: "1 ile 3 İş Günü", pickup: "Şubeye Teslim", delivery: "Müşteri adresine teslim", price: "₺ 162,00" },
+  { name: "Aras Kargo", service: "Hızlı", eta: "1 ile 3 İş Günü", pickup: "Şubeye Teslim", delivery: "Müşteri adresine teslim", price: "₺ 192,00" },
   { name: "PTT Kargo", service: "Hızlı", eta: "1 ile 7 İş Günü", pickup: "Şubeye Teslim", delivery: "Müşteri adresine teslim", price: "₺ 220,00" },
+  { name: "Kolay Gelsin", service: "Hızlı", eta: "1 ile 7 İş Günü", pickup: "Şubeye Teslim", delivery: "Müşteri adresine teslim", price: "₺ 128,00" },
+  { name: "Yurtiçi Kargo", service: "Hızlı", eta: "1 ile 7 İş Günü", pickup: "Şubeye Teslim", delivery: "Müşteri adresine teslim", price: "₺ 220,00" },
+  { name: "HepsiJET", service: "Hızlı", eta: "1 ile 7 İş Günü", pickup: "Şubeye Teslim", delivery: "Müşteri adresine teslim", price: "₺ 220,00" },
 ];
 
 export default function CreateCargoPage() {
@@ -444,7 +456,7 @@ export default function CreateCargoPage() {
             <div className="mt-4 rounded-xl border border-neutral-200 bg-white overflow-hidden">
               {/* table header */}
               <div className="border-b border-neutral-200 bg-neutral-50 px-4 py-3">
-                <div className="grid grid-cols-[240px_140px_200px_260px_220px_140px_140px] gap-3 text-xs font-semibold text-neutral-600">
+                <div className="grid grid-cols-[180px_100px_120px_160px_200px_120px_40px] gap-3 text-xs font-semibold text-neutral-600">
                   <div>Kargo Şirketi ⓘ</div>
                   <div>Hizmet Türü ⓘ</div>
                   <div>Teslimat Süresi ⓘ</div>
@@ -454,7 +466,7 @@ export default function CreateCargoPage() {
                   <div />
                 </div>
 
-                <div className="mt-3 grid grid-cols-[240px_140px_200px_260px_220px_140px_140px] gap-3">
+                <div className="mt-3 grid grid-cols-[180px_100px_120px_160px_200px_120px_40px] gap-3">
                   <select className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm">
                     <option>Seç</option>
                   </select>
@@ -484,8 +496,23 @@ export default function CreateCargoPage() {
                   const active = r.name === selectedCarrier;
                   return (
                     <div key={r.name} className="px-4 py-4">
-                      <div className="grid grid-cols-[240px_140px_200px_260px_220px_140px_140px] items-center gap-3 text-sm">
-                        <div className="font-semibold text-neutral-900">{r.name}</div>
+                      <div className="grid grid-cols-[180px_100px_120px_160px_200px_120px_40px] items-center gap-3 text-sm">
+                        <div className="flex items-center gap-3">
+                          <div className="h-9 w-9 overflow-hidden rounded-lg border border-neutral-200 bg-white flex items-center justify-center">
+                            {CARRIER_LOGO[r.name] ? (
+                              <img
+                                src={CARRIER_LOGO[r.name]}
+                                alt={`${r.name} logo`}
+                                className="h-full w-full object-contain p-1"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <span className="text-xs text-neutral-500">🏷️</span>
+                            )}
+                          </div>
+
+                          <div className="font-semibold text-neutral-900">{r.name}</div>
+                        </div>
                         <div className="text-neutral-700">{r.service}</div>
                         <div>
                           <span className="inline-flex items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
