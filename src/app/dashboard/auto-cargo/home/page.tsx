@@ -1,7 +1,10 @@
+//src/app/dashboard/auto-cargo/home/page.tsx
 "use client";
 
 import * as React from "react";
 import Link from "next/link";
+import CreditTopUpModal from "@/src/components/credit/CreditTopUpModal";
+import CreditChip from "@/src/components/credit/CreditChip";
 
 function cn(...x: Array<string | false | null | undefined>) {
   return x.filter(Boolean).join(" ");
@@ -58,18 +61,24 @@ const METRICS: Metric[] = [
 export default function AutoCargoHomePage() {
   const [range, setRange] = React.useState<"30" | "7" | "1">("30");
 
+  const [creditBalance] = React.useState<number>(0);
+  const [creditOpen, setCreditOpen] = React.useState(false);
+
   return (
     <div className="px-6 py-5 shadow-sm soft-card p-4 border border-neutral-200 rounded-2xl bg-white ">
       {/* Hero */}
       <div className="flex items-start justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <h1 className="text-2xl font-semibold text-neutral-900">Merhaba, Kurumsal Üyemiz</h1>
           <p className="mt-1 text-sm text-neutral-500">
             Tek bir bakışta sorunsuz kargo yönetimi. Operasyonlarınızı kolayca takip edin, yönetin ve optimize edin.
           </p>
         </div>
-      </div>
 
+        <div className="flex shrink-0 items-start">
+          <CreditChip creditBalance={creditBalance} onTopUp={() => setCreditOpen(true)} />
+        </div>
+      </div>
       {/* 3 big cards */}
       <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <CardLink
@@ -124,6 +133,7 @@ export default function AutoCargoHomePage() {
           ))}
         </div>
       </div>
+      <CreditTopUpModal open={creditOpen} onOpenChange={setCreditOpen} creditBalance={creditBalance} />
     </div>
   );
 }

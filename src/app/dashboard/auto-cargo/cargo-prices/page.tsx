@@ -2,6 +2,9 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
+import CreditTopUpModal from "@/src/components/credit/CreditTopUpModal";
+import CreditChip from "@/src/components/credit/CreditChip";
 
 function cn(...x: Array<string | false | null | undefined>) {
   return x.filter(Boolean).join(" ");
@@ -64,6 +67,10 @@ export default function CargoPricesPage() {
   const [cod, setCod] = React.useState(false);
   const [codAmount, setCodAmount] = React.useState<string>("");
 
+  // Credit modal
+  const [creditBalance] = React.useState<number>(0);
+  const [creditOpen, setCreditOpen] = React.useState(false);
+
   // Table filters (mock)
   const [minPrice, setMinPrice] = React.useState("");
   const [maxPrice, setMaxPrice] = React.useState("");
@@ -108,12 +115,17 @@ export default function CargoPricesPage() {
   return (
     <div className="px-6 py-5">
       {/* Header */}
-      <div className="flex items-center gap-2">
-        <div className="h-8 w-8 rounded-lg border border-neutral-200 bg-white flex items-center justify-center">🧮</div>
-        <h1 className="text-2xl font-semibold text-neutral-900">Fiyat Hesaplayıcı</h1>
-        <span className="text-neutral-400">ⓘ</span>
-      </div>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="h-8 w-8 rounded-lg border border-neutral-200 bg-white flex items-center justify-center">🧮</div>
+          <h1 className="text-2xl font-semibold text-neutral-900">Fiyat Hesaplayıcı</h1>
+          <span className="text-neutral-400">ⓘ</span>
+        </div>
 
+        <div className="shrink-0">
+          <CreditChip creditBalance={creditBalance} onTopUp={() => setCreditOpen(true)} />
+        </div>
+      </div>
       {/* Top Panel */}
       <div className="mt-4 rounded-xl border border-neutral-200 bg-white">
         <div className="p-6">
@@ -129,7 +141,6 @@ export default function CargoPricesPage() {
                   className="h-10 w-full rounded-lg border border-neutral-200 px-10 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
                 />
               </div>
-
               <div className="mt-4">
                 <Label text="Kutu Seçin" />
                 {/* X kaymasını düzelt: input + X aynı satırda, buton aşağıda */}
@@ -442,6 +453,7 @@ export default function CargoPricesPage() {
       <div className="mt-3 text-xs text-neutral-500">
         Toplam ağırlık (mock): <span className="font-semibold text-neutral-700">{totalWeight} kg</span>
       </div>
+      <CreditTopUpModal open={creditOpen} onOpenChange={setCreditOpen} creditBalance={creditBalance} />
     </div>
   );
 }

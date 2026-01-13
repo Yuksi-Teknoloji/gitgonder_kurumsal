@@ -1,6 +1,8 @@
-//src/app/dashboardauto-cargo/cargo-list/page.tsx
+//src/app/dashboard/auto-cargo/cargo-list/page.tsx
 "use client";
 
+import CreditTopUpModal from "@/src/components/credit/CreditTopUpModal";
+import CreditChip from "@/src/components/credit/CreditChip";
 import * as React from "react";
 
 function cn(...x: Array<string | false | null | undefined>) {
@@ -21,14 +23,14 @@ type Row = {
   id: string; // OID-...
   orderDate: string; // dd/mm/yyyy hh:mm
   status:
-    | "İptal edildi"
-    | "Teslim edildi"
-    | "İade edildi"
-    | "Kargo Oluşturulmayı Bekleyenler"
-    | "Kargoya Teslim Bekleyenler"
-    | "Kargoya Teslim Edilmiş/Yolda"
-    | "Askıda"
-    | "Tüm Siparişler";
+  | "İptal edildi"
+  | "Teslim edildi"
+  | "İade edildi"
+  | "Kargo Oluşturulmayı Bekleyenler"
+  | "Kargoya Teslim Bekleyenler"
+  | "Kargoya Teslim Edilmiş/Yolda"
+  | "Askıda"
+  | "Tüm Siparişler";
   senderAddress: string; // My Pickup Location
   customerName: string;
 
@@ -225,10 +227,10 @@ function StatusPill({ status }: { status: Row["status"] }) {
     status === "İptal edildi"
       ? "border-rose-200 bg-rose-50 text-rose-700"
       : status === "Teslim edildi"
-      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-      : status === "Kargoya Teslim Edilmiş/Yolda"
-      ? "border-indigo-200 bg-indigo-50 text-indigo-700"
-      : "border-neutral-200 bg-neutral-50 text-neutral-700";
+        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+        : status === "Kargoya Teslim Edilmiş/Yolda"
+          ? "border-indigo-200 bg-indigo-50 text-indigo-700"
+          : "border-neutral-200 bg-neutral-50 text-neutral-700";
 
   return (
     <span className={cn("inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold", cls)}>
@@ -374,6 +376,9 @@ export default function CargoListPage() {
     });
   }
 
+  const [creditBalance] = React.useState<number>(0);
+  const [creditOpen, setCreditOpen] = React.useState(false);
+
   // ✅ NEW: responsive grid (fits page, minimal/no horizontal scroll)
   const GRID =
     "grid-cols-[4px_minmax(120px,1.1fr)_minmax(120px,1fr)_minmax(80px,1.6fr)_minmax(100px,1.1fr)_minmax(100px,1fr)_minmax(100px,1.1fr)_minmax(100px,1.4fr)_minmax(80px,0.9fr)_minmax(100px,1fr)_minmax(80px,1fr)]";
@@ -386,19 +391,15 @@ export default function CargoListPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg border border-neutral-200 bg-white flex items-center justify-center">
-            📦
-          </div>
+          <div className="h-8 w-8 rounded-lg border border-neutral-200 bg-white flex items-center justify-center">📦</div>
           <h1 className="text-2xl font-semibold text-neutral-900">Kargo</h1>
         </div>
-
+        
         <div className="flex items-center gap-3">
           <button
             type="button"
             className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-semibold text-neutral-800 hover:bg-neutral-50"
-            onClick={() => {
-              alert("Mock: Harita Görünümü");
-            }}
+            onClick={() => alert("Mock: Harita Görünümü")}
           >
             🗺️ Harita Görünümü
           </button>
@@ -414,12 +415,11 @@ export default function CargoListPage() {
           <button
             type="button"
             className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-            onClick={() => {
-              alert("Mock: Siparişi Ekle");
-            }}
+            onClick={() => alert("Mock: Siparişi Ekle")}
           >
             + Siparişi Ekle
           </button>
+          <CreditChip creditBalance={creditBalance} onTopUp={() => setCreditOpen(true)} />
         </div>
       </div>
 
@@ -790,6 +790,7 @@ export default function CargoListPage() {
           </div>
         </div>
       ) : null}
+      <CreditTopUpModal open={creditOpen} onOpenChange={setCreditOpen} creditBalance={creditBalance} />
     </div>
   );
 }
