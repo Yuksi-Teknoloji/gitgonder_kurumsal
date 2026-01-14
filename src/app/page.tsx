@@ -1,4 +1,3 @@
-// src/components/auth/AdminLoginForm.tsx
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -33,18 +32,6 @@ function extractToken(raw: any): string | null {
   );
 }
 
-async function persistToken(token: string, exp?: number) {
-  try {
-    localStorage.setItem("auth_token", token);
-  } catch {}
-
-  await fetch("/api/auth/set-cookie", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token, exp }),
-  }).catch(() => {});
-}
-
 export default function CorporateLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -58,16 +45,12 @@ export default function CorporateLoginPage() {
     setLoading(true);
 
     try {
-      // Önce eski cookie'leri temizle - temiz bir login için
-      console.log("=== CLEARING OLD SESSION ===");
+      // Önce eski cookie'leri temizle
       try {
         await fetch("/api/auth/logout", { method: "POST" });
         localStorage.removeItem("auth_token");
         localStorage.removeItem("refresh_token");
-        console.log("Old session cleared");
-      } catch (e) {
-        console.log("No old session to clear or clear failed:", e);
-      }
+      } catch {}
 
       const res = await fetch("/api/login", {
         method: "POST",
@@ -83,11 +66,6 @@ export default function CorporateLoginPage() {
         data = rawText;
       }
 
-      console.log("=== LOGIN RESPONSE ===");
-      console.log("Status:", res.status);
-      console.log("Data:", JSON.stringify(data, null, 2));
-      console.log("====================");
-
       if (!res.ok) {
         const msg =
           (typeof data === "object" && (data?.message || data?.error)) ||
@@ -96,47 +74,32 @@ export default function CorporateLoginPage() {
         return;
       }
 
-      console.log("=== EXTRACTING TOKEN ===");
       const token = extractToken(data);
-      console.log(
-        "Extracted token:",
-        token ? token.substring(0, 20) + "..." : "NOT FOUND"
-      );
-
       if (!token) {
-        console.error("Token extraction failed");
         setErr("Giriş yapılamadı.");
         return;
       }
 
-      console.log("=== DECODING JWT ===");
       const claims = decodeJwt<JwtClaims>(token);
-      console.log("Claims:", claims);
-
       if (!claims) {
-        console.error("JWT decode failed");
         setErr("Token çözümlenemedi.");
         return;
       }
 
       if (isExpired(claims)) {
-        console.error("Token expired");
         setErr("Oturum süresi dolmuş.");
         return;
       }
 
-      console.log("=== CHECKING ROLE ===");
       let userRole = String(roleSegment(claims.userType) || "")
         .toLowerCase()
         .trim();
-      console.log("Role from userType:", userRole);
 
       if (!userRole) {
         const firstRole = Array.isArray(data?.data?.roles)
           ? data.data.roles[0]
           : undefined;
         userRole = firstRole?.toLowerCase().trim();
-        console.log("Role from data.data.roles:", userRole);
       }
 
       if (!userRole) {
@@ -146,29 +109,17 @@ export default function CorporateLoginPage() {
             "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
           ];
         userRole = anyClaimRole?.toLowerCase().trim();
-        console.log("Role from claims.role:", userRole);
       }
 
-      console.log("Final userRole:", userRole);
-
-      // TEMPORARY: Backend şu an "business" olarak kaydediyor, düzeltilene kadar ikisini de kabul et
       if (userRole !== "corporate" && userRole !== "business") {
-        console.error("Invalid role:", userRole);
         setErr("Bu panele sadece kurumsal üyeler erişebilir.");
         return;
       }
 
-      console.log("=== PERSISTING TOKEN ===");
-      // /api/login zaten cookie set ediyor, sadece localStorage'a yaz
+      // localStorage'a kaydet
       try {
         localStorage.setItem("auth_token", token);
-        console.log("Token saved to localStorage");
-      } catch (e) {
-        console.error("Failed to save token to localStorage:", e);
-      }
-
-      // persistToken'ı çağırma çünkü /api/login zaten cookie set ediyor
-      // await persistToken(token, claims.exp);
+      } catch {}
 
       const refreshToken =
         data?.refreshToken ||
@@ -178,32 +129,17 @@ export default function CorporateLoginPage() {
       if (refreshToken) {
         try {
           localStorage.setItem("refresh_token", refreshToken);
-          console.log("Refresh token saved to localStorage");
-        } catch (e) {
-          console.error("Failed to save refresh token:", e);
-        }
-        // istersen cookie de yazabilirsin
+        } catch {}
         document.cookie = `refresh_token=${encodeURIComponent(
           refreshToken
         )}; Path=/; SameSite=Lax`;
       }
 
-      console.log("=== REDIRECTING TO DASHBOARD ===");
-
-      // Cookie kontrolü
-      console.log("Cookies before redirect:", document.cookie);
-
-      // Cookie'nin set edilmesi için kısa bir delay
+      // Cookie set edilmesi için kısa delay
       await new Promise((resolve) => setTimeout(resolve, 200));
 
-      // Cookie kontrolü tekrar
-      console.log("Cookies after delay:", document.cookie);
-
-      // Her zaman window.location kullan - en güvenilir yöntem
-      // router.replace bazen production'da çalışmıyor
-      console.log("Using window.location for redirect");
+      // Dashboard'a yönlendir
       window.location.href = "/dashboard";
-      return;
     } catch {
       setErr("Ağ hatası. Tekrar dene.");
     } finally {
