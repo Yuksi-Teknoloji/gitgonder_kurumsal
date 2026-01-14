@@ -148,8 +148,16 @@ export default function CorporateLoginPage() {
       }
 
       console.log("=== PERSISTING TOKEN ===");
-      await persistToken(token, claims.exp);
-      console.log("Token persisted");
+      // /api/login zaten cookie set ediyor, sadece localStorage'a yaz
+      try {
+        localStorage.setItem("auth_token", token);
+        console.log("Token saved to localStorage");
+      } catch (e) {
+        console.error("Failed to save token to localStorage:", e);
+      }
+
+      // persistToken'ı çağırma çünkü /api/login zaten cookie set ediyor
+      // await persistToken(token, claims.exp);
 
       const refreshToken =
         data?.refreshToken ||
@@ -170,9 +178,20 @@ export default function CorporateLoginPage() {
       }
 
       console.log("=== REDIRECTING TO DASHBOARD ===");
+      // Cookie'nin set edilmesi için kısa bir delay
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       // Middleware status kontrolünü yapacak, biz sadece dashboard'a yönlendir
-      router.replace("/dashboard");
-      console.log("Redirect called");
+      try {
+        router.replace("/dashboard");
+        console.log("Redirect called successfully");
+        // Redirect'ten sonra return et ki kod devam etmesin
+        return;
+      } catch (e) {
+        console.error("Redirect error:", e);
+        // Fallback: window.location kullan
+        window.location.href = "/dashboard";
+      }
     } catch {
       setErr("Ağ hatası. Tekrar dene.");
     } finally {
