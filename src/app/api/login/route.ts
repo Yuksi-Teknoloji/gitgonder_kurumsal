@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { API_BASE } from "@/src/configs/api";
 
-const BACKEND_URL = process.env.AUTH_API ?? "http://40.90.226.14:8080/api/Auth/login";
+// Production'da environment variable set edilmeli, yoksa API_BASE kullanılır
+const BACKEND_URL = process.env.AUTH_API ?? `${API_BASE}/Auth/login`;
 
 export async function POST(req: Request) {
   try {
@@ -14,26 +16,62 @@ export async function POST(req: Request) {
 
     const data = await res.json().catch(() => ({}));
 
+    console.log("=== LOGIN API ROUTE ===");
+    console.log("Backend URL:", BACKEND_URL);
+    console.log("Backend Status:", res.status);
+    console.log("Backend Response:", JSON.stringify(data, null, 2));
+
     if (!res.ok) {
-      // Backend’in döndürdüğü hata mesajını yüzeye çıkar
+      // Backend'in döndürdüğü hata mesajını yüzeye çıkar
       const message =
         (data && (data.message || data.error || data.title)) ||
         `Giriş başarısız (HTTP ${res.status})`;
       return NextResponse.json({ ok: false, message }, { status: res.status });
     }
 
-    // Token alanı backend’e göre değişebilir:
+    // Token alanı backend'e göre değişebilir - extractToken fonksiyonuyla aynı mantık
     const token =
-      data?.token || data?.accessToken || data?.jwt || data?.result?.token;
+      data?.token ||
+      data?.access_token ||
+      data?.accessToken ||
+      data?.jwt ||
+      data?.data?.accessToken ||
+      data?.data?.token ||
+      data?.result?.accessToken ||
+      data?.result?.token ||
+      null;
+
+    console.log(
+      "Extracted Token:",
+      token ? token.substring(0, 20) + "..." : "NOT FOUND"
+    );
+    console.log("Token fields checked:", {
+      "data.token": !!data?.token,
+      "data.access_token": !!data?.access_token,
+      "data.accessToken": !!data?.accessToken,
+      "data.jwt": !!data?.jwt,
+      "data.data.accessToken": !!data?.data?.accessToken,
+      "data.data.token": !!data?.data?.token,
+      "data.result.accessToken": !!data?.result?.accessToken,
+      "data.result.token": !!data?.result?.token,
+    });
 
     if (!token) {
+      console.error("=== TOKEN NOT FOUND ===");
+      console.error("Full response data:", JSON.stringify(data, null, 2));
       return NextResponse.json(
         { ok: false, message: "Token bulunamadı." },
         { status: 500 }
       );
     }
 
-    const resp = NextResponse.json({ ok: true });
+    // Backend response'unu olduğu gibi forward et (ana sayfadaki extractToken ve role kontrolü için)
+    // Cookie'yi de set et
+    const resp = NextResponse.json(data);
+
+    console.log("=== SETTING COOKIE ===");
+    console.log("Cookie will be set with token");
+    console.log("======================");
 
     // 7 gün geçerli, HTTP-only cookie
     resp.cookies.set("auth_token", token, {
