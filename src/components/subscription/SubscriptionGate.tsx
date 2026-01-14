@@ -91,9 +91,15 @@ export function SubscriptionGate({
 
           console.log("[SubscriptionGate] User status:", userStatus);
 
-          // Eğer kullanıcı onboarding sürecindeyse, oraya yönlendir
-          if (userStatus === "PASSIVE_NO_PAYMENT" || userStatus === "PENDING_APPROVAL") {
-            console.log("[SubscriptionGate] User in onboarding, redirecting to /onboarding/setup-fee");
+          // Eğer kullanıcı onboarding sürecindeyse veya ödeme reddedildiyse, oraya yönlendir
+          if (
+            userStatus === "PASSIVE_NO_PAYMENT" ||
+            userStatus === "PENDING_APPROVAL" ||
+            userStatus === "REJECTED"
+          ) {
+            console.log(
+              "[SubscriptionGate] User in onboarding/rejected, redirecting to /onboarding/setup-fee"
+            );
             router.replace("/onboarding/setup-fee");
             return;
           }

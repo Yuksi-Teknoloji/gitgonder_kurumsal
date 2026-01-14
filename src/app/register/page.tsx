@@ -184,7 +184,11 @@ export default function CorporateRegisterPage() {
           router.push("/onboarding/setup-fee");
         } else if (status === "PENDING_APPROVAL") {
           router.push("/onboarding/setup-fee");
+        } else if (status === "REJECTED") {
+          router.push("/onboarding/setup-fee");
         } else if (status === "ACTIVE_READY") {
+          router.push("/dashboard");
+        } else if (status === "SUBSCRIBED") {
           router.push("/dashboard");
         } else if (status === "SUSPENDED") {
           router.push("/suspended");

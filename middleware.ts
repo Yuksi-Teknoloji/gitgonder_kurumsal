@@ -6,6 +6,8 @@ type UserStatus =
   | "PASSIVE_NO_PAYMENT"
   | "PENDING_APPROVAL"
   | "ACTIVE_READY"
+  | "SUBSCRIBED"
+  | "REJECTED"
   | "SUSPENDED";
 
 const BACKEND_URL = "https://www.yuksi.dev/api";
@@ -29,10 +31,7 @@ async function getUserStatusFromBackend(
     });
 
     if (!res.ok) {
-      console.error(
-        "[MIDDLEWARE] Backend status request failed:",
-        res.status
-      );
+      console.error("[MIDDLEWARE] Backend status request failed:", res.status);
       return null;
     }
 
@@ -119,12 +118,13 @@ export async function middleware(request: NextRequest) {
   // Status'e göre yönlendirme mantığı
   if (
     userStatus === "PASSIVE_NO_PAYMENT" ||
-    userStatus === "PENDING_APPROVAL"
+    userStatus === "PENDING_APPROVAL" ||
+    userStatus === "REJECTED"
   ) {
     console.log(
-      "[MIDDLEWARE] User needs setup fee/approval, checking if protected path..."
+      "[MIDDLEWARE] User needs setup fee/approval/re-payment, checking if protected path..."
     );
-    // Kullanıcı setup fee ödemedi veya onay bekliyor
+    // Kullanıcı setup fee ödemedi, onay bekliyor veya ödeme reddedildi
     // Dashboard'a veya korumalı rotalara erişemez
     if (pathname.startsWith("/dashboard") || pathname.startsWith("/packages")) {
       console.log("[MIDDLEWARE] Redirecting to /onboarding/setup-fee");
@@ -134,7 +134,13 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // ACTIVE_READY - tüm sayfalara erişebilir
+  // ACTIVE_READY ve SUBSCRIBED - tüm sayfalara erişebilir
+  if (userStatus === "ACTIVE_READY" || userStatus === "SUBSCRIBED") {
+    console.log("[MIDDLEWARE] User is active/subscribed, allowing access");
+    return NextResponse.next();
+  }
+
+  // Fallback: Diğer durumlar için de erişim ver (gelecekte eklenebilecek durumlar için)
   return NextResponse.next();
 }
 

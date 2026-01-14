@@ -3,6 +3,10 @@ import { API_BASE } from "@/src/configs/api";
 
 const BACKEND_URL = `${API_BASE}/onboarding/status`;
 
+// MOCK MODE: Development/testing için - REJECTED durumunu test etmek için
+const MOCK_STATUS_ENABLED = false; // false yapınca gerçek backend'e istek atar
+const MOCK_STATUS = "PASSIVE_NO_PAYMENT"; // PASSIVE_NO_PAYMENT | PENDING_APPROVAL | ACTIVE_READY | SUBSCRIBED | REJECTED | SUSPENDED
+
 export async function GET(req: Request) {
   try {
     const authHeader = req.headers.get("Authorization");
@@ -12,6 +16,20 @@ export async function GET(req: Request) {
         { success: false, message: "Token bulunamadı." },
         { status: 401 }
       );
+    }
+
+    // Mock mode aktifse, mock status döndür
+    if (MOCK_STATUS_ENABLED) {
+      console.log("=== MOCK STATUS MODE ===");
+      console.log("Mock Status:", MOCK_STATUS);
+      console.log("=======================");
+      return NextResponse.json({
+        success: true,
+        message: "OK",
+        data: {
+          status: MOCK_STATUS,
+        },
+      });
     }
 
     console.log("=== GET ONBOARDING STATUS ===");

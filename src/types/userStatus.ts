@@ -4,10 +4,12 @@
  * User onboarding and subscription status
  */
 export type UserStatus =
-  | "PASSIVE_NO_PAYMENT"    // Kayıt oldu, giriş bedeli ödemedi
-  | "PENDING_APPROVAL"      // Dekont yükledi, admin onayı bekliyor
-  | "ACTIVE_READY"          // Admin onayladı, sistemi kullanabilir
-  | "SUSPENDED";            // Hesap askıya alındı
+  | "PASSIVE_NO_PAYMENT" // Kayıt oldu, giriş bedeli ödemedi
+  | "PENDING_APPROVAL" // Dekont yükledi, admin onayı bekliyor
+  | "ACTIVE_READY" // Admin onayladı, sistemi kullanabilir
+  | "SUBSCRIBED" // Aktif abonelik var
+  | "REJECTED" // Ödeme reddedildi, yeniden ödeme yapmalı
+  | "SUSPENDED"; // Hesap askıya alındı
 
 export interface UserStatusResponse {
   success: boolean;
