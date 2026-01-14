@@ -44,18 +44,75 @@ export function SubscriptionGate({
     let alive = true;
 
     const run = async () => {
+      console.log("[SubscriptionGate] Starting check, pathname:", pathname);
+
       // subscribe sayfasındaysan gate uygulama (sonsuz loop olmasın)
       if (pathname && pathname.startsWith(subscribePath)) {
+        console.log("[SubscriptionGate] On subscribe page, bypassing");
+        if (alive) setChecking(false);
+        return;
+      }
+
+      // onboarding sayfalarındaysan gate uygulama
+      if (pathname && pathname.startsWith("/onboarding")) {
+        console.log("[SubscriptionGate] On onboarding page, bypassing");
         if (alive) setChecking(false);
         return;
       }
 
       const bearer = getBearerToken();
+      console.log("[SubscriptionGate] Bearer token:", bearer ? "exists" : "missing");
+
       if (!bearer) {
+        console.log("[SubscriptionGate] No bearer token, redirecting to /");
         router.replace("/");
         return;
       }
 
+      // ÖNCELİKLE: Onboarding status kontrolü yap
+      console.log("[SubscriptionGate] Checking onboarding status...");
+      try {
+        const statusRes = await fetch("/api/onboarding/status", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${bearer}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        console.log("[SubscriptionGate] Status response:", statusRes.status);
+
+        if (statusRes.ok) {
+          const statusData = await readJson(statusRes);
+          console.log("[SubscriptionGate] Full status data:", JSON.stringify(statusData, null, 2));
+
+          // Backend response: { success: true, data: { status: "..." } }
+          const userStatus = statusData?.data?.status;
+
+          console.log("[SubscriptionGate] User status:", userStatus);
+
+          // Eğer kullanıcı onboarding sürecindeyse, oraya yönlendir
+          if (userStatus === "PASSIVE_NO_PAYMENT" || userStatus === "PENDING_APPROVAL") {
+            console.log("[SubscriptionGate] User in onboarding, redirecting to /onboarding/setup-fee");
+            router.replace("/onboarding/setup-fee");
+            return;
+          }
+
+          if (userStatus === "SUSPENDED") {
+            console.log("[SubscriptionGate] User suspended, redirecting to /suspended");
+            router.replace("/suspended");
+            return;
+          }
+
+          console.log("[SubscriptionGate] User status is ACTIVE_READY, proceeding to subscription check");
+        } else {
+          console.error("[SubscriptionGate] Status check failed with status:", statusRes.status);
+        }
+      } catch (e) {
+        console.error("[SubscriptionGate] Onboarding status check failed:", e);
+      }
+
+      // Onboarding tamamlandıysa, normal subscription kontrolüne geç
       try {
         const res = await fetch("/yuksi/corporate/subscription-guard", {
           method: "GET",

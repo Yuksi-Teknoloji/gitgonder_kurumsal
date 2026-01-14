@@ -33,12 +33,12 @@ function extractToken(raw: any): string | null {
   );
 }
 
-function persistToken(token: string, exp?: number) {
+async function persistToken(token: string, exp?: number) {
   try {
     localStorage.setItem("auth_token", token);
   } catch {}
 
-  fetch("/api/auth/set-cookie", {
+  await fetch("/api/auth/set-cookie", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token, exp }),
@@ -52,7 +52,7 @@ export default function CorporateLoginPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-    const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr(null);
     setLoading(true);
@@ -71,6 +71,11 @@ export default function CorporateLoginPage() {
       } catch {
         data = rawText;
       }
+
+      console.log("=== LOGIN RESPONSE ===");
+      console.log("Status:", res.status);
+      console.log("Data:", JSON.stringify(data, null, 2));
+      console.log("====================");
 
       if (!res.ok) {
         const msg =
@@ -96,28 +101,34 @@ export default function CorporateLoginPage() {
         return;
       }
 
-      let userRole = String(roleSegment(claims.userType) || "").toLowerCase().trim();
+      let userRole = String(roleSegment(claims.userType) || "")
+        .toLowerCase()
+        .trim();
 
       if (!userRole) {
-        const firstRole = Array.isArray(data?.data?.roles) ? data.data.roles[0] : undefined;
+        const firstRole = Array.isArray(data?.data?.roles)
+          ? data.data.roles[0]
+          : undefined;
         userRole = firstRole.toLowerCase().trim();
       }
 
       if (!userRole) {
         const anyClaimRole =
           (claims as any).role ||
-          (claims as any)["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
+          (claims as any)[
+            "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
+          ];
         userRole = anyClaimRole.toLowerCase().trim();
       }
 
-      if (userRole !== "corporate") {
+      // TEMPORARY: Backend şu an "business" olarak kaydediyor, düzeltilene kadar ikisini de kabul et
+      if (userRole !== "corporate" && userRole !== "business") {
         setErr("Bu panele sadece kurumsal üyeler erişebilir.");
         return;
       }
 
-      persistToken(token, claims.exp);
+      await persistToken(token, claims.exp);
 
-      
       const refreshToken =
         data?.refreshToken ||
         data?.data?.refreshToken ||
@@ -133,6 +144,7 @@ export default function CorporateLoginPage() {
         )}; Path=/; SameSite=Lax`;
       }
 
+      // Middleware status kontrolünü yapacak, biz sadece dashboard'a yönlendir
       router.replace("/dashboard");
     } catch {
       setErr("Ağ hatası. Tekrar dene.");
@@ -145,7 +157,9 @@ export default function CorporateLoginPage() {
     <div className="min-h-screen flex items-center justify-center">
       <div className="w-full max-w-md bg-white/90 backdrop-blur-md p-8 rounded-2xl shadow-2xl border border-orange-200">
         <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-orange-600">Kurumsal Üye Paneli</h1>
+          <h1 className="text-3xl font-bold text-orange-600">
+            Kurumsal Üye Paneli
+          </h1>
           <p className="text-gray-600 mt-2">Kurumsal Üye giriş ekranı</p>
         </div>
 
@@ -193,9 +207,21 @@ export default function CorporateLoginPage() {
           </button>
         </form>
 
-        <p className="text-xs text-center text-gray-500 mt-6">
-          Bu panel sadece kurumsal üyeler içindir.
-        </p>
+        <div className="mt-6 text-center">
+          <p className="text-xs text-gray-500">
+            Henüz hesabınız yok mu?{" "}
+            <button
+              type="button"
+              onClick={() => router.push("/register")}
+              className="text-orange-600 hover:underline font-semibold"
+            >
+              Kayıt Ol
+            </button>
+          </p>
+          <p className="text-xs text-gray-500 mt-2">
+            Bu panel sadece kurumsal üyeler içindir.
+          </p>
+        </div>
       </div>
     </div>
   );
