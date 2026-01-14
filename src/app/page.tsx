@@ -85,31 +85,47 @@ export default function CorporateLoginPage() {
         return;
       }
 
+      console.log("=== EXTRACTING TOKEN ===");
       const token = extractToken(data);
+      console.log(
+        "Extracted token:",
+        token ? token.substring(0, 20) + "..." : "NOT FOUND"
+      );
+
       if (!token) {
+        console.error("Token extraction failed");
         setErr("Giriş yapılamadı.");
         return;
       }
 
+      console.log("=== DECODING JWT ===");
       const claims = decodeJwt<JwtClaims>(token);
+      console.log("Claims:", claims);
+
       if (!claims) {
+        console.error("JWT decode failed");
         setErr("Token çözümlenemedi.");
         return;
       }
+
       if (isExpired(claims)) {
+        console.error("Token expired");
         setErr("Oturum süresi dolmuş.");
         return;
       }
 
+      console.log("=== CHECKING ROLE ===");
       let userRole = String(roleSegment(claims.userType) || "")
         .toLowerCase()
         .trim();
+      console.log("Role from userType:", userRole);
 
       if (!userRole) {
         const firstRole = Array.isArray(data?.data?.roles)
           ? data.data.roles[0]
           : undefined;
-        userRole = firstRole.toLowerCase().trim();
+        userRole = firstRole?.toLowerCase().trim();
+        console.log("Role from data.data.roles:", userRole);
       }
 
       if (!userRole) {
@@ -118,16 +134,22 @@ export default function CorporateLoginPage() {
           (claims as any)[
             "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
           ];
-        userRole = anyClaimRole.toLowerCase().trim();
+        userRole = anyClaimRole?.toLowerCase().trim();
+        console.log("Role from claims.role:", userRole);
       }
+
+      console.log("Final userRole:", userRole);
 
       // TEMPORARY: Backend şu an "business" olarak kaydediyor, düzeltilene kadar ikisini de kabul et
       if (userRole !== "corporate" && userRole !== "business") {
+        console.error("Invalid role:", userRole);
         setErr("Bu panele sadece kurumsal üyeler erişebilir.");
         return;
       }
 
+      console.log("=== PERSISTING TOKEN ===");
       await persistToken(token, claims.exp);
+      console.log("Token persisted");
 
       const refreshToken =
         data?.refreshToken ||
@@ -137,15 +159,20 @@ export default function CorporateLoginPage() {
       if (refreshToken) {
         try {
           localStorage.setItem("refresh_token", refreshToken);
-        } catch {}
+          console.log("Refresh token saved to localStorage");
+        } catch (e) {
+          console.error("Failed to save refresh token:", e);
+        }
         // istersen cookie de yazabilirsin
         document.cookie = `refresh_token=${encodeURIComponent(
           refreshToken
         )}; Path=/; SameSite=Lax`;
       }
 
+      console.log("=== REDIRECTING TO DASHBOARD ===");
       // Middleware status kontrolünü yapacak, biz sadece dashboard'a yönlendir
       router.replace("/dashboard");
+      console.log("Redirect called");
     } catch {
       setErr("Ağ hatası. Tekrar dene.");
     } finally {
