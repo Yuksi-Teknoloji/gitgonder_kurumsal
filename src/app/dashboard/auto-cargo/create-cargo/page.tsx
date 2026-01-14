@@ -86,7 +86,6 @@ type CreateOrderCustomer = {
   postcode: string;
   lat: string;
   lon: string;
-  refID: string;
 };
 
 type CreateOrderItem = {
@@ -333,7 +332,6 @@ export default function CreateCargoPage() {
       if (!zip.trim()) return "Posta kodu (customer.postcode) zorunlu.";
       if (!lat.trim()) return "Lat (customer.lat) zorunlu.";
       if (!lon.trim()) return "Lon (customer.lon) zorunlu.";
-      if (!refId.trim()) return "RefID (customer.refID) zorunlu.";
 
       if (cityLoading) return "Şehir listesi yükleniyor, lütfen bekleyin.";
       if (cityLoadErr) return `Şehir listesi hatası: ${cityLoadErr}`;
@@ -441,7 +439,6 @@ export default function CreateCargoPage() {
         postcode: zip.trim(),
         lat: lat.trim(),
         lon: lon.trim(),
-        refID: refId.trim(),
       },
       items,
     };
@@ -614,15 +611,6 @@ export default function CreateCargoPage() {
                   value={receiverEmail}
                   onChange={(e) => setReceiverEmail(e.target.value)}
                   placeholder="test@test.com"
-                  className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-                />
-              </div>
-              <div>
-                <Label text="RefID *" />
-                <input
-                  value={refId}
-                  onChange={(e) => setRefId(e.target.value)}
-                  placeholder="1000012"
                   className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
                 />
               </div>
