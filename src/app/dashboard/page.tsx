@@ -24,7 +24,11 @@ export default function CorporateHome() {
 
   const role = String(roleSegment(claims.userType) || "").toLowerCase();
 
-  if (role !== "corporate") {
+  console.log("[Dashboard Page] Role check:", role);
+
+  // TEMPORARY: Backend "business" olarak kaydediyor
+  if (role !== "corporate" && role !== "business") {
+    console.log("[Dashboard Page] Role mismatch, redirecting to /");
     redirect("/");
   }
 
