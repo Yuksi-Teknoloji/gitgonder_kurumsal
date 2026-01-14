@@ -69,15 +69,19 @@ export async function POST(req: Request) {
     // Cookie'yi de set et
     const resp = NextResponse.json(data);
 
+    const isProduction = process.env.NODE_ENV === "production";
+
     console.log("=== SETTING COOKIE ===");
     console.log("Cookie will be set with token");
+    console.log("Is Production:", isProduction);
+    console.log("Secure:", isProduction);
     console.log("======================");
 
     // 7 gün geçerli, HTTP-only cookie
     resp.cookies.set("auth_token", token, {
       httpOnly: true,
       sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      secure: isProduction,
       path: "/",
       maxAge: 60 * 60 * 24 * 7,
     });
