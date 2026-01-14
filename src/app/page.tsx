@@ -58,6 +58,17 @@ export default function CorporateLoginPage() {
     setLoading(true);
 
     try {
+      // Önce eski cookie'leri temizle - temiz bir login için
+      console.log("=== CLEARING OLD SESSION ===");
+      try {
+        await fetch("/api/auth/logout", { method: "POST" });
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("refresh_token");
+        console.log("Old session cleared");
+      } catch (e) {
+        console.log("No old session to clear or clear failed:", e);
+      }
+
       const res = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -178,20 +189,21 @@ export default function CorporateLoginPage() {
       }
 
       console.log("=== REDIRECTING TO DASHBOARD ===");
-      // Cookie'nin set edilmesi için kısa bir delay
-      await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Middleware status kontrolünü yapacak, biz sadece dashboard'a yönlendir
-      try {
-        router.replace("/dashboard");
-        console.log("Redirect called successfully");
-        // Redirect'ten sonra return et ki kod devam etmesin
-        return;
-      } catch (e) {
-        console.error("Redirect error:", e);
-        // Fallback: window.location kullan
-        window.location.href = "/dashboard";
-      }
+      // Cookie kontrolü
+      console.log("Cookies before redirect:", document.cookie);
+
+      // Cookie'nin set edilmesi için kısa bir delay
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      // Cookie kontrolü tekrar
+      console.log("Cookies after delay:", document.cookie);
+
+      // Her zaman window.location kullan - en güvenilir yöntem
+      // router.replace bazen production'da çalışmıyor
+      console.log("Using window.location for redirect");
+      window.location.href = "/dashboard";
+      return;
     } catch {
       setErr("Ağ hatası. Tekrar dene.");
     } finally {
