@@ -143,7 +143,7 @@ export default function CorporateRegisterPage() {
       if (form.postalCode)
         Object.assign(payload, { postal_code: form.postalCode });
 
-      const res = await fetch("/api/register/corporate", {
+      const res = await fetch("/yuksi/Auth/register/corporate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
