@@ -2,43 +2,36 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import CreditTopUpModal from "@/src/components/credit/CreditTopUpModal";
 import CreditChip from "@/src/components/credit/CreditChip";
+import { getAuthToken } from "@/src/utils/auth";
 
 function cn(...x: Array<string | false | null | undefined>) {
   return x.filter(Boolean).join(" ");
 }
 
-type BoxRow = { l: number; w: number; h: number; weight: number };
+/* ================= Helpers ================= */
 
-type PriceRow = {
-  company: string;
-  service: string;
-  eta: string;
-  pickup: Array<"Adresten Alım" | "Şubeye Teslim">;
-  delivery: "Müşteri adresine teslim";
-  price: string;
-};
-const COMPANY_LOGO: Record<string, string> = {
-  "HepsiJET": "/Cargo/hepsijet.png",
-  "Sürat Kargo": "/Cargo/surat.png",
-  "Kargoist": "/Cargo/kargoist.png",
-  "Aras Kargo": "/Cargo/aras.png",
-  "Yurtiçi Kargo": "/Cargo/yurtici.png",
-  "Kolay Gelsin": "/Cargo/kolaygelsin.png",
-  "PTT Kargo": "/Cargo/ptt.png",
-};
+async function readJson<T = any>(res: Response): Promise<T> {
+  const t = await res.text();
+  try {
+    return t ? JSON.parse(t) : (null as any);
+  } catch {
+    return t as any;
+  }
+}
 
-const MOCK_PRICES: PriceRow[] = [
-  { company: "HepsiJET", service: "Hızlı", eta: "1 ile 3 İş Günü", pickup: ["Adresten Alım"], delivery: "Müşteri adresine teslim", price: "₺ 86,00" },
-  { company: "Sürat Kargo", service: "Hızlı", eta: "1 ile 3 İş Günü", pickup: ["Şubeye Teslim"], delivery: "Müşteri adresine teslim", price: "₺ 103,00" },
-  { company: "Kargoist", service: "Hızlı", eta: "1 ile 3 İş Günü", pickup: ["Şubeye Teslim", "Adresten Alım"], delivery: "Müşteri adresine teslim", price: "₺ 116,00" },
-  { company: "Aras Kargo", service: "Hızlı", eta: "1 ile 3 İş Günü", pickup: ["Şubeye Teslim"], delivery: "Müşteri adresine teslim", price: "₺ 117,00" },
-  { company: "Yurtiçi Kargo", service: "Hızlı", eta: "1 ile 3 İş Günü", pickup: ["Şubeye Teslim"], delivery: "Müşteri adresine teslim", price: "₺ 119,00" },
-  { company: "Kolay Gelsin", service: "Hızlı", eta: "1 ile 3 İş Günü", pickup: ["Adresten Alım"], delivery: "Müşteri adresine teslim", price: "₺ 125,00" },
-  { company: "PTT Kargo", service: "Hızlı", eta: "1 ile 7 İş Günü", pickup: ["Şubeye Teslim"], delivery: "Müşteri adresine teslim", price: "₺ 142,00" },
-];
+function pickMsg(d: any, fb: string) {
+  return d?.error?.message || d?.message || d?.detail || d?.title || d?.otoErrorMessage || fb;
+}
+
+function getBearerToken() {
+  try {
+    return getAuthToken() || localStorage.getItem("auth_token") || sessionStorage.getItem("auth_token") || "";
+  } catch {
+    return getAuthToken() || "";
+  }
+}
 
 function num(v: string) {
   const n = Number(String(v).replace(",", "."));
@@ -54,12 +47,110 @@ function Label({ text, required }: { text: string; required?: boolean }) {
   );
 }
 
+function extractCityName(s: string) {
+  // "Beşiktaş, İstanbul" -> "İstanbul"
+  const t = String(s || "").trim();
+  if (!t) return "";
+  const parts = t.split(",").map((x) => x.trim()).filter(Boolean);
+  return (parts[parts.length - 1] || t).trim();
+}
+
+/* ================= API Types ================= */
+
+type BoxRow = { l: number; w: number; h: number; weight: number };
+
+type InventoryBox = {
+  id: number;
+  boxName: string;
+  length: number;
+  width: number;
+  height: number;
+};
+
+type GetBoxesRes = {
+  success?: boolean;
+  message?: any;
+  warnings?: any;
+  otoErrorCode?: any;
+  otoErrorMessage?: any;
+  boxes?: InventoryBox[];
+};
+
+type AddBoxReq = {
+  name: string;
+  length: number;
+  width: number;
+  height: number;
+};
+
+type AddBoxRes = {
+  success?: boolean;
+  message?: any;
+  warnings?: any;
+  otoErrorCode?: any;
+  otoErrorMessage?: any;
+};
+
+type OtoFeeReq = {
+  weight: number;
+  originCity: string;
+  destinationCity: string;
+  height: number;
+  width: number;
+  length: number;
+  includeEstimatedDate: boolean;
+};
+
+type DeliveryCompany = {
+  serviceType: string | null;
+  deliveryOptionName: string | null;
+  trackingType: any;
+  score5: any;
+  deliveryType: string | null;
+  codCharge: number | null;
+  pickupCutOffTime: string | null;
+  maxOrderValue: number | null;
+  maxCODValue: number | null;
+  deliveryOptionId: number | null;
+  extraWeightPerKg: number | null;
+  estimatedDeliveryDate: string | null;
+  deliveryCompanyName: string | null;
+  estimatedPickupDate: string | null;
+  checkAllBranches: any;
+  returnFee: number | null;
+  maxFreeWeight: number | null;
+  avgDeliveryTime: string | null;
+  price: number | null;
+  logo: string | null;
+  currency: string | null;
+  pickupDropoff: string | null;
+  cardOnDeliveryPercentage: string | null;
+  needToVerifyCrDocStatus: any;
+};
+
+type OtoFeeRes = {
+  success?: boolean;
+  message?: any;
+  warnings?: any;
+  otoErrorCode?: any;
+  otoErrorMessage?: any;
+  deliveryCompany?: DeliveryCompany[];
+};
+
+/* ================= Page ================= */
+
 export default function CargoPricesPage() {
   // Top form
   const [orderSearch, setOrderSearch] = React.useState("");
   const [origin, setOrigin] = React.useState("Beşiktaş, İstanbul");
   const [destination, setDestination] = React.useState("Çankaya, Ankara");
+
+  // Box preset / inventory
   const [boxPreset, setBoxPreset] = React.useState("ambalaj");
+  const [inventoryBoxes, setInventoryBoxes] = React.useState<InventoryBox[]>([]);
+  const [boxesLoading, setBoxesLoading] = React.useState(false);
+  const [boxesErr, setBoxesErr] = React.useState<string | null>(null);
+  const [savingBox, setSavingBox] = React.useState(false);
 
   const [boxes, setBoxes] = React.useState<BoxRow[]>([{ l: 1, w: 1, h: 1, weight: 1 }]);
   const totalWeight = boxes.reduce((a, b) => a + (Number.isFinite(b.weight) ? b.weight : 0), 0);
@@ -71,32 +162,119 @@ export default function CargoPricesPage() {
   const [creditBalance] = React.useState<number>(0);
   const [creditOpen, setCreditOpen] = React.useState(false);
 
-  // Table filters (mock)
+  // Prices state (NO MOCK)
+  const [pricesLoading, setPricesLoading] = React.useState(false);
+  const [pricesErr, setPricesErr] = React.useState<string | null>(null);
+  const [rows, setRows] = React.useState<DeliveryCompany[]>([]);
+
+  // Table filters
   const [minPrice, setMinPrice] = React.useState("");
   const [maxPrice, setMaxPrice] = React.useState("");
-
   const [selectedCompany, setSelectedCompany] = React.useState<string>("");
 
-  const filteredRows = React.useMemo(() => {
-    const min = minPrice ? num(minPrice) : null;
-    const max = maxPrice ? num(maxPrice) : null;
-
-    return MOCK_PRICES.filter((r) => {
-      if (selectedCompany && r.company !== selectedCompany) return false;
-
-      const numeric = Number(String(r.price).replace(/[^\d,]/g, "").replace(",", "."));
-      if (min !== null && numeric < min) return false;
-      if (max !== null && numeric > max) return false;
-      return true;
-    });
-  }, [minPrice, maxPrice, selectedCompany]);
-
-  function addBox() {
+  function addBoxRowLocal() {
     setBoxes((b) => [...b, { l: 1, w: 1, h: 1, weight: 1 }]);
   }
 
   function updateBox(i: number, patch: Partial<BoxRow>) {
     setBoxes((prev) => prev.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
+  }
+
+  function applyInventoryBoxToFirstRow(bx: InventoryBox) {
+    setBoxes((prev) => {
+      const w = prev[0]?.weight ?? 1;
+      const next: BoxRow[] = [{ l: bx.length, w: bx.width, h: bx.height, weight: w }, ...prev.slice(1)];
+      return next;
+    });
+  }
+
+  async function loadInventoryBoxes() {
+    setBoxesErr(null);
+    setBoxesLoading(true);
+
+    const bearer = getBearerToken();
+    if (!bearer) {
+      setBoxesLoading(false);
+      setBoxesErr("Token yok.");
+      return;
+    }
+
+    try {
+      const res = await fetch("/yuksi/oto/inventory/box", {
+        method: "GET",
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${bearer}`,
+        },
+      });
+
+      const json = await readJson<GetBoxesRes>(res);
+      if (!res.ok) throw new Error(pickMsg(json, `HTTP ${res.status}`));
+
+      const list = Array.isArray(json?.boxes) ? json.boxes : [];
+      setInventoryBoxes(list);
+
+      // input ile eşleşen varsa auto-apply
+      const match = list.find((x) => String(x.boxName).toLowerCase() === String(boxPreset).toLowerCase());
+      if (match) applyInventoryBoxToFirstRow(match);
+    } catch (e: any) {
+      setInventoryBoxes([]);
+      setBoxesErr(e?.message || "Kutu listesi alınamadı.");
+    } finally {
+      setBoxesLoading(false);
+    }
+  }
+
+  async function saveBoxToInventory() {
+    setBoxesErr(null);
+
+    const name = String(boxPreset || "").trim();
+    if (!name) {
+      setBoxesErr("Kutu adı zorunlu.");
+      return;
+    }
+
+    const first = boxes[0];
+    const length = Math.max(0, Math.round(first?.l ?? 0));
+    const width = Math.max(0, Math.round(first?.w ?? 0));
+    const height = Math.max(0, Math.round(first?.h ?? 0));
+    if (!(length > 0 && width > 0 && height > 0)) {
+      setBoxesErr("Kutu boyutları 0 olamaz.");
+      return;
+    }
+
+    const bearer = getBearerToken();
+    if (!bearer) {
+      setBoxesErr("Token yok.");
+      return;
+    }
+
+    setSavingBox(true);
+    try {
+      const body: AddBoxReq = { name, length, width, height };
+
+      const res = await fetch("/yuksi/oto/inventory/add-box", {
+        method: "POST",
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${bearer}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      const json = await readJson<AddBoxRes>(res);
+      if (!res.ok || json?.success === false) throw new Error(pickMsg(json, `HTTP ${res.status}`));
+
+      // refresh list
+      await loadInventoryBoxes();
+    } catch (e: any) {
+      setBoxesErr(e?.message || "Kutu eklenemedi.");
+    } finally {
+      setSavingBox(false);
+    }
   }
 
   function resetAll() {
@@ -110,7 +288,93 @@ export default function CargoPricesPage() {
     setMinPrice("");
     setMaxPrice("");
     setSelectedCompany("");
+    setPricesErr(null);
+    setRows([]);
   }
+
+  async function fetchPrices() {
+    setPricesErr(null);
+    setPricesLoading(true);
+
+    const bearer = getBearerToken();
+    if (!bearer) {
+      setPricesLoading(false);
+      setPricesErr("Token yok.");
+      return;
+    }
+
+    try {
+      const originCity = extractCityName(origin);
+      const destinationCity = extractCityName(destination);
+
+      const first = boxes[0] || { l: 0, w: 0, h: 0, weight: 0 };
+
+      const payload: OtoFeeReq = {
+        weight: Math.max(0, Number(totalWeight || first.weight || 0)),
+        originCity,
+        destinationCity,
+        height: Math.max(0, Number(first.h || 0)),
+        width: Math.max(0, Number(first.w || 0)),
+        length: Math.max(0, Number(first.l || 0)),
+        includeEstimatedDate: true,
+      };
+
+      const res = await fetch("/yuksi/oto/logistics/oto-fee", {
+        method: "POST",
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${bearer}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await readJson<OtoFeeRes>(res);
+      if (!res.ok || json?.success === false) throw new Error(pickMsg(json, `HTTP ${res.status}`));
+
+      const list = Array.isArray(json?.deliveryCompany) ? json.deliveryCompany : [];
+      setRows(list);
+
+      // company filter reset if now invalid
+      if (selectedCompany && !list.some((x) => (x.deliveryOptionName || x.deliveryCompanyName || "") === selectedCompany)) {
+        setSelectedCompany("");
+      }
+    } catch (e: any) {
+      setRows([]);
+      setPricesErr(e?.message || "Fiyatlar alınamadı.");
+    } finally {
+      setPricesLoading(false);
+    }
+  }
+
+  const filteredRows = React.useMemo(() => {
+    const min = minPrice ? num(minPrice) : null;
+    const max = maxPrice ? num(maxPrice) : null;
+
+    return rows.filter((r) => {
+      const name = (r.deliveryOptionName || r.deliveryCompanyName || "").trim();
+
+      if (selectedCompany && name !== selectedCompany) return false;
+
+      const numeric = Number(r.price ?? NaN);
+      if (Number.isFinite(numeric)) {
+        if (min !== null && numeric < min) return false;
+        if (max !== null && numeric > max) return false;
+      } else {
+        // fiyat yoksa filtrelerden etkilenmesin
+        if (min !== null || max !== null) return false;
+      }
+
+      return true;
+    });
+  }, [rows, minPrice, maxPrice, selectedCompany]);
+
+  React.useEffect(() => {
+    // sayfa açılır açılmaz kutuları çek
+    loadInventoryBoxes().catch(() => void 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="px-6 py-5">
@@ -126,9 +390,23 @@ export default function CargoPricesPage() {
           <CreditChip creditBalance={creditBalance} onTopUp={() => setCreditOpen(true)} />
         </div>
       </div>
+
       {/* Top Panel */}
       <div className="mt-4 rounded-xl border border-neutral-200 bg-white">
         <div className="p-6">
+          {/* errors */}
+          {boxesErr ? (
+            <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {boxesErr}
+            </div>
+          ) : null}
+
+          {pricesErr ? (
+            <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {pricesErr}
+            </div>
+          ) : null}
+
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <div>
               <Label text="Sipariş Seçin" />
@@ -141,15 +419,43 @@ export default function CargoPricesPage() {
                   className="h-10 w-full rounded-lg border border-neutral-200 px-10 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
                 />
               </div>
+
               <div className="mt-4">
-                <Label text="Kutu Seçin" />
-                {/* X kaymasını düzelt: input + X aynı satırda, buton aşağıda */}
+                <div className="flex items-center justify-between">
+                  <Label text="Kutu Seçin" />
+                  <button
+                    type="button"
+                    onClick={loadInventoryBoxes}
+                    disabled={boxesLoading}
+                    className="text-xs font-semibold rounded-lg px-2 py-1 border border-neutral-200 hover:bg-neutral-50 disabled:opacity-60"
+                  >
+                    {boxesLoading ? "Yükleniyor…" : "Yenile"}
+                  </button>
+                </div>
+
+                {/* Kutu adı input + datalist */}
                 <div className="relative">
                   <input
                     value={boxPreset}
-                    onChange={(e) => setBoxPreset(e.target.value)}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setBoxPreset(v);
+
+                      const match = inventoryBoxes.find(
+                        (x) => String(x.boxName).toLowerCase() === String(v).toLowerCase()
+                      );
+                      if (match) applyInventoryBoxToFirstRow(match);
+                    }}
                     className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 pr-10 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+                    list="box-presets"
+                    placeholder="Kutu adı (envanterden seç ya da yeni isim yaz)"
                   />
+                  <datalist id="box-presets">
+                    {inventoryBoxes.map((b) => (
+                      <option key={b.id} value={b.boxName} />
+                    ))}
+                  </datalist>
+
                   <button
                     type="button"
                     onClick={() => setBoxPreset("")}
@@ -160,13 +466,23 @@ export default function CargoPricesPage() {
                   </button>
                 </div>
 
-                <div className="mt-2 flex justify-end">
+                <div className="mt-2 flex items-center justify-end gap-2">
                   <button
                     type="button"
-                    onClick={addBox}
+                    onClick={addBoxRowLocal}
                     className="inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
                   >
-                    + Yeni kutu ekle
+                    + Kutu satırı ekle
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={saveBoxToInventory}
+                    disabled={savingBox}
+                    className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                    title="İlk kutunun ölçülerini bu isimle envantere kaydeder"
+                  >
+                    {savingBox ? "Kaydediliyor…" : "Kutuyu Kaydet"}
                   </button>
                 </div>
               </div>
@@ -211,6 +527,10 @@ export default function CargoPricesPage() {
                       </div>
                     </div>
                   ))}
+                </div>
+
+                <div className="mt-2 text-xs text-neutral-500">
+                  Envanterden kutu seçersen, <span className="font-semibold">ilk kutunun</span> ölçüleri otomatik dolar.
                 </div>
               </div>
             </div>
@@ -283,7 +603,6 @@ export default function CargoPricesPage() {
               </label>
             </div>
 
-            {/* Kapıda ödeme = Evet ise kutuyu göster */}
             {cod ? (
               <div className="mt-4">
                 <Label text="Kapıda Ödeme Tutarı" required />
@@ -311,14 +630,11 @@ export default function CargoPricesPage() {
 
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-            onClick={() => {
-              // TODO: endpoint gelince fetch
-              // Şimdilik tablo zaten görünür; istersen burada "loading" açtırırız.
-              void 0;
-            }}
+            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+            onClick={fetchPrices}
+            disabled={pricesLoading}
           >
-            🧾 Kargo Fiyatlarını Göster
+            {pricesLoading ? "Hesaplanıyor…" : "🧾 Kargo Fiyatlarını Göster"}
           </button>
         </div>
       </div>
@@ -326,44 +642,47 @@ export default function CargoPricesPage() {
       {/* Table Panel */}
       <div className="mt-4 rounded-xl border border-neutral-200 bg-white overflow-hidden">
         <div className="border-b border-neutral-200 bg-neutral-50 px-4 py-3">
-          <div className="grid grid-cols-[180px_120px_120px_120px_250px_160px_50px] gap-3 text-xs font-semibold text-neutral-600">
+          <div className="grid grid-cols-[180px_120px_140px_160px_250px_160px_60px] gap-3 text-xs font-semibold text-neutral-600">
             <div>Kargo Şirketi ⓘ</div>
             <div>Hizmet Türü ⓘ</div>
             <div>Teslimat Süresi ⓘ</div>
-            <div>Teslim Alma / Teslim Etme Koşulları ⓘ</div>
+            <div>Teslim Alma Koşulu ⓘ</div>
             <div>Teslimat Türü ⓘ</div>
             <div>Fiyat ⓘ</div>
             <div />
           </div>
 
-          <div className="mt-3 grid grid-cols-[180px_120px_120px_120px_250px_160px_60px] gap-3">
+          <div className="mt-3 grid grid-cols-[180px_120px_140px_160px_250px_160px_60px] gap-3">
             <select
               value={selectedCompany}
               onChange={(e) => setSelectedCompany(e.target.value)}
               className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm"
+              disabled={rows.length === 0}
             >
               <option value="">Seç</option>
-              {Array.from(new Set(MOCK_PRICES.map((x) => x.company))).map((c) => (
+              {Array.from(
+                new Set(rows.map((x) => (x.deliveryOptionName || x.deliveryCompanyName || "").trim()).filter(Boolean))
+              ).map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>
               ))}
             </select>
 
-            <select className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm">
-              <option>Seç</option>
+            <select className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm" disabled>
+              <option>—</option>
             </select>
 
-            <select className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm">
-              <option>Seç</option>
+            <select className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm" disabled>
+              <option>—</option>
             </select>
 
-            <select className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm">
-              <option>Seç</option>
+            <select className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm" disabled>
+              <option>—</option>
             </select>
 
-            <select className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm">
-              <option>Seç</option>
+            <select className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm" disabled>
+              <option>—</option>
             </select>
 
             <div className="flex gap-2">
@@ -372,12 +691,14 @@ export default function CargoPricesPage() {
                 onChange={(e) => setMinPrice(e.target.value)}
                 className="h-9 w-full rounded-lg border border-neutral-200 px-3 text-sm"
                 placeholder="En az"
+                disabled={rows.length === 0}
               />
               <input
                 value={maxPrice}
                 onChange={(e) => setMaxPrice(e.target.value)}
                 className="h-9 w-full rounded-lg border border-neutral-200 px-3 text-sm"
                 placeholder="En fazla"
+                disabled={rows.length === 0}
               />
             </div>
 
@@ -386,73 +707,103 @@ export default function CargoPricesPage() {
         </div>
 
         <div className="divide-y divide-neutral-100">
-          {filteredRows.map((r) => (
-            <div key={r.company} className="px-4 py-4">
-              <div className="grid grid-cols-[180px_120px_120px_120px_250px_160px_60px] items-center gap-3 text-sm">
-                <div className="flex items-center gap-3">
-                  <div className="h-16 w-16 overflow-hidden rounded-lg border border-neutral-200 bg-white flex items-center justify-center">
-                    {COMPANY_LOGO[r.company] ? (
-                      <img
-                        src={COMPANY_LOGO[r.company]}
-                        alt={`${r.company} logo`}
-                        className="h-full w-full object-contain p-0"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <span className="text-xs text-neutral-500">🏷️</span>
-                    )}
+          {filteredRows.map((r, idx) => {
+            const companyName = (r.deliveryOptionName || r.deliveryCompanyName || `company-${idx}`).trim();
+            const currency = (r.currency || "").trim();
+            const priceStr =
+              r.price === null || r.price === undefined
+                ? "-"
+                : currency
+                ? `${Number(r.price).toLocaleString("tr-TR")} ${currency}`
+                : `${Number(r.price).toLocaleString("tr-TR")}`;
+
+            const eta =
+              (r.estimatedDeliveryDate && String(r.estimatedDeliveryDate)) ||
+              (r.avgDeliveryTime && String(r.avgDeliveryTime)) ||
+              "—";
+
+            const pickupReadable =
+              r.pickupDropoff === "freePickup"
+                ? "🚚 Ücretsiz adresten alım"
+                : r.pickupDropoff
+                ? String(r.pickupDropoff)
+                : "—";
+
+            const deliveryReadable =
+              r.deliveryType === "toCustomerDoorstepOrPickupByCustomer"
+                ? "📍 Adrese teslim / müşteri teslim alabilir"
+                : r.deliveryType
+                ? `📍 ${r.deliveryType}`
+                : "—";
+
+            return (
+              <div key={`${companyName}-${idx}`} className="px-4 py-4">
+                <div className="grid grid-cols-[180px_120px_140px_160px_250px_160px_60px] items-center gap-3 text-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="h-16 w-16 overflow-hidden rounded-lg border border-neutral-200 bg-white flex items-center justify-center">
+                      {r.logo ? (
+                        <img
+                          src={r.logo}
+                          alt={`${companyName} logo`}
+                          className="h-full w-full object-contain p-0"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <span className="text-xs text-neutral-500">🏷️</span>
+                      )}
+                    </div>
+                    <div className="font-semibold text-neutral-900">{companyName || "—"}</div>
                   </div>
 
-                  <div className="font-semibold text-neutral-900">{r.company}</div>
-                </div>
-                <div className="text-neutral-700">{r.service}</div>
+                  <div className="text-neutral-700">{r.serviceType || "—"}</div>
 
-                <div>
-                  <span className="inline-flex items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
-                    {r.eta}
-                  </span>
-                </div>
+                  <div>
+                    <span className="inline-flex items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
+                      {eta}
+                    </span>
+                  </div>
 
-                <div className="text-neutral-700">
-                  {r.pickup.includes("Adresten Alım") ? (
-                    <div className="flex items-center gap-2">🚚 Adresten Alım</div>
-                  ) : null}
-                  {r.pickup.includes("Şubeye Teslim") ? (
-                    <div className={cn("flex items-center gap-2", r.pickup.includes("Adresten Alım") ? "mt-1" : "")}>
-                      🏢 Şubeye Teslim
-                    </div>
-                  ) : null}
-                </div>
+                  <div className="text-neutral-700">{pickupReadable}</div>
 
-                <div className="text-neutral-700">📍 {r.delivery}</div>
+                  <div className="text-neutral-700">{deliveryReadable}</div>
 
-                <div className="font-semibold text-neutral-900">{r.price}</div>
+                  <div className="font-semibold text-neutral-900">{priceStr}</div>
 
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    className="h-10 w-28 rounded-lg bg-indigo-600 text-sm font-semibold text-white hover:bg-indigo-700"
-                    onClick={() => {
-                      // TODO: endpoint gelince select action
-                      alert(`Mock: seçildi → ${r.company} (${r.price})`);
-                    }}
-                  >
-                    Seç
-                  </button>
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      className="h-10 w-28 rounded-lg bg-indigo-600 text-sm font-semibold text-white hover:bg-indigo-700"
+                      onClick={() => {
+                        alert(
+                          `Seçildi → ${companyName}\nprice=${priceStr}\ndeliveryOptionId=${r.deliveryOptionId ?? "-"}`
+                        );
+                      }}
+                    >
+                      Seç
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
-          {filteredRows.length === 0 ? (
+          {rows.length === 0 && !pricesLoading ? (
+            <div className="px-4 py-10 text-center text-sm text-neutral-500">
+              Henüz veri yok. Üstten <span className="font-semibold">“Kargo Fiyatlarını Göster”</span> deyip fiyat çek.
+            </div>
+          ) : null}
+
+          {filteredRows.length === 0 && rows.length > 0 ? (
             <div className="px-4 py-10 text-center text-sm text-neutral-500">Filtreye göre sonuç bulunamadı.</div>
           ) : null}
         </div>
       </div>
+
       {/* tiny footer note */}
       <div className="mt-3 text-xs text-neutral-500">
-        Toplam ağırlık (mock): <span className="font-semibold text-neutral-700">{totalWeight} kg</span>
+        Toplam ağırlık: <span className="font-semibold text-neutral-700">{totalWeight} kg</span>
       </div>
+
       <CreditTopUpModal open={creditOpen} onOpenChange={setCreditOpen} creditBalance={creditBalance} />
     </div>
   );

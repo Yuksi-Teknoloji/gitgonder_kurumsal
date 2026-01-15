@@ -153,6 +153,25 @@ type CitiesRes = {
   };
 };
 
+/* ===== Inventory Box Types (Swagger ekranındaki) ===== */
+
+type InventoryBox = {
+  id: number;
+  boxName: string;
+  length: number;
+  width: number;
+  height: number;
+};
+
+type GetBoxesRes = {
+  success: boolean;
+  message: any;
+  warnings: any;
+  otoErrorCode: any;
+  otoErrorMessage: any;
+  boxes?: InventoryBox[];
+};
+
 /* ================= Page ================= */
 
 export default function CreateCargoPage() {
@@ -199,18 +218,38 @@ export default function CreateCargoPage() {
   const [refId, setRefId] = React.useState("");
 
   // ========== STEP 2 ==========
-  const [boxes, setBoxes] = React.useState<Array<{ l: number; w: number; h: number; weight: number }>>([
-    { l: 10, w: 10, h: 10, weight: 1 },
-    { l: 10, w: 10, h: 10, weight: 1 },
+  // ✅ Önceki boxes state'ini koruyoruz ama artık l/w/h'yi inventory box'tan seçeceğiz.
+  const [boxes, setBoxes] = React.useState<Array<{ boxId: number | ""; weight: number }>>([
+    { boxId: "", weight: 1 },
+    { boxId: "", weight: 1 },
   ]);
+
+  // ✅ Inventory kutu listesi (GET /oto/inventory/box)
+  const [invBoxes, setInvBoxes] = React.useState<InventoryBox[]>([]);
+  const [invLoading, setInvLoading] = React.useState(false);
+  const [invErr, setInvErr] = React.useState<string | null>(null);
+
+  // ✅ Inventory kutu ekleme UI (POST /oto/inventory/add-box)
+  const [addBoxOpen, setAddBoxOpen] = React.useState(false);
+  const [addBoxSubmitting, setAddBoxSubmitting] = React.useState(false);
+  const [newBoxName, setNewBoxName] = React.useState("");
+  const [newBoxL, setNewBoxL] = React.useState<number | "">(10);
+  const [newBoxW, setNewBoxW] = React.useState<number | "">(10);
+  const [newBoxH, setNewBoxH] = React.useState<number | "">(10);
 
   const totalWeight = boxes.reduce((a, b) => a + (Number.isFinite(b.weight) ? b.weight : 0), 0);
   const packageCount = boxes.length;
 
-  // API tek set ölçü alıyor: 1. kutuyu basıyoruz
-  const boxWidth = Math.max(0, Math.round(boxes[0]?.w ?? 0));
-  const boxLength = Math.max(0, Math.round(boxes[0]?.l ?? 0));
-  const boxHeight = Math.max(0, Math.round(boxes[0]?.h ?? 0));
+  // ✅ API tek set ölçü alıyor: 1. satırdaki seçili inventory kutuyu basacağız
+  const selectedFirstBox = React.useMemo(() => {
+    const firstId = boxes[0]?.boxId;
+    if (!firstId) return null;
+    return invBoxes.find((b) => b.id === Number(firstId)) || null;
+  }, [boxes, invBoxes]);
+
+  const boxWidth = Math.max(0, Math.round(selectedFirstBox?.width ?? 0));
+  const boxLength = Math.max(0, Math.round(selectedFirstBox?.length ?? 0));
+  const boxHeight = Math.max(0, Math.round(selectedFirstBox?.height ?? 0));
   const packageWeight = Math.max(0, totalWeight);
 
   const [packageContent, setPackageContent] = React.useState("");
@@ -303,7 +342,126 @@ export default function CreateCargoPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [country]);
 
-  function updateBox(i: number, patch: Partial<{ l: number; w: number; h: number; weight: number }>) {
+  /* ================= Inventory: GET /oto/inventory/box ================= */
+
+  const loadInventoryBoxes = React.useCallback(async () => {
+    setInvErr(null);
+    setInvLoading(true);
+
+    const bearer = getBearerToken();
+    if (!bearer) {
+      setInvLoading(false);
+      router.replace("/");
+      return;
+    }
+
+    try {
+      const res = await fetch(`/yuksi/oto/inventory/box`, {
+        method: "GET",
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${bearer}`,
+        },
+      });
+
+      const json = await readJson<GetBoxesRes>(res);
+
+      if (res.status === 401 || res.status === 403) {
+        router.replace("/");
+        return;
+      }
+      if (!res.ok) throw new Error(pickMsg(json, `HTTP ${res.status}`));
+
+      const list = Array.isArray(json?.boxes) ? json.boxes : [];
+      setInvBoxes(list);
+
+      // Eğer seçili boxId artık yoksa temizle
+      setBoxes((prev) =>
+        prev.map((p) => {
+          if (!p.boxId) return p;
+          const ok = list.some((b) => b.id === Number(p.boxId));
+          return ok ? p : { ...p, boxId: "" };
+        })
+      );
+    } catch (e: any) {
+      setInvBoxes([]);
+      setInvErr(e?.message || "Kutu listesi alınamadı.");
+    } finally {
+      setInvLoading(false);
+    }
+  }, [router]);
+
+  // Step 2’ye geldiğinde (ve ilk mount’ta) kutuları çek
+  React.useEffect(() => {
+    loadInventoryBoxes();
+  }, [loadInventoryBoxes]);
+
+  /* ================= Inventory: POST /oto/inventory/add-box ================= */
+
+  async function addInventoryBox() {
+    setAddBoxSubmitting(true);
+    setInvErr(null);
+
+    const bearer = getBearerToken();
+    if (!bearer) {
+      setAddBoxSubmitting(false);
+      router.replace("/");
+      return;
+    }
+
+    try {
+      const name = String(newBoxName || "").trim();
+      const length = Number(newBoxL || 0);
+      const width = Number(newBoxW || 0);
+      const height = Number(newBoxH || 0);
+
+      if (!name) throw new Error("Kutu adı (name) zorunlu.");
+      if (!(length > 0 && width > 0 && height > 0)) throw new Error("Kutu ölçüleri 0 olamaz.");
+
+      const res = await fetch(`/yuksi/oto/inventory/add-box`, {
+        method: "POST",
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${bearer}`,
+        },
+        body: JSON.stringify({
+          name,
+          length,
+          width,
+          height,
+        }),
+      });
+
+      const json: any = await readJson(res);
+
+      if (res.status === 401 || res.status === 403) {
+        router.replace("/");
+        return;
+      }
+      if (!res.ok) throw new Error(pickMsg(json, `HTTP ${res.status}`));
+
+      if (json?.success !== true) throw new Error(pickMsg(json, "Kutu eklenemedi."));
+
+      // Refresh list
+      await loadInventoryBoxes();
+
+      // UI reset
+      setAddBoxOpen(false);
+      setNewBoxName("");
+      setNewBoxL(10);
+      setNewBoxW(10);
+      setNewBoxH(10);
+    } catch (e: any) {
+      setInvErr(e?.message || "Kutu ekleme başarısız.");
+    } finally {
+      setAddBoxSubmitting(false);
+    }
+  }
+
+  function updateBox(i: number, patch: Partial<{ boxId: number | ""; weight: number }>) {
     setBoxes((prev) => prev.map((b, idx) => (idx === i ? { ...b, ...patch } : b)));
   }
 
@@ -339,13 +497,22 @@ export default function CreateCargoPage() {
 
     if (s === 2) {
       if (boxes.length < 1) return "En az 1 kutu olmalı.";
-      if (!(boxWidth > 0 && boxLength > 0 && boxHeight > 0)) return "Kutu ölçüleri 0 olamaz.";
+
+      // ✅ Inventory üzerinden kutu seçimi zorunlu (en az ilk satır)
+      if (!boxes[0]?.boxId) return "En az 1 kutu tipi seçmelisin (ilk satır).";
+
+      // ✅ seçilen inventory kutu ölçüleri 0 olamaz
+      if (!(boxWidth > 0 && boxLength > 0 && boxHeight > 0)) return "Seçili kutunun ölçüleri 0 olamaz.";
+
       if (!(packageWeight > 0)) return "Toplam ağırlık 0 olamaz.";
       if (!packageContent.trim()) return "Paket içeriği zorunlu.";
       if (packageValue === "" || !(Number(packageValue) > 0)) return "Paket değeri zorunlu.";
       if (cod) {
         if (codAmount === "" || !(Number(codAmount) > 0)) return "Kapıda ödeme tutarı zorunlu.";
       }
+
+      if (invLoading) return "Kutu listesi yükleniyor, lütfen bekleyin.";
+      if (invErr) return `Kutu listesi hatası: ${invErr}`;
     }
 
     if (s === 3) return null;
@@ -417,6 +584,8 @@ export default function CreateCargoPage() {
 
       packageCount,
       packageWeight,
+
+      // ✅ seçtiğin inventory kutusunu create post içine gömüyoruz (API tek set istiyor)
       boxWidth,
       boxLength,
       boxHeight,
@@ -727,85 +896,202 @@ export default function CreateCargoPage() {
               </div>
             </div>
 
-            <div className="mt-4 space-y-3">
-              {boxes.map((bx, idx) => (
-                <div key={idx} className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_1fr_64px] items-center">
-                  {/* dimensions */}
-                  <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2">
-                    <div className="text-xs font-semibold text-neutral-500">Kutu Boyutları *</div>
-                    <div className="mt-2 grid grid-cols-7 items-center gap-2 text-sm">
-                      <input
-                        value={bx.l}
-                        onChange={(e) => updateBox(idx, { l: num(e.target.value) })}
-                        className="col-span-2 h-9 rounded-lg border border-neutral-200 px-2 outline-none focus:ring-2 focus:ring-indigo-200"
-                      />
-                      <div className="text-center text-neutral-400">x</div>
-                      <input
-                        value={bx.w}
-                        onChange={(e) => updateBox(idx, { w: num(e.target.value) })}
-                        className="col-span-2 h-9 rounded-lg border border-neutral-200 px-2 outline-none focus:ring-2 focus:ring-indigo-200"
-                      />
-                      <div className="text-center text-neutral-400">x</div>
-                      <input
-                        value={bx.h}
-                        onChange={(e) => updateBox(idx, { h: num(e.target.value) })}
-                        className="col-span-2 h-9 rounded-lg border border-neutral-200 px-2 outline-none focus:ring-2 focus:ring-indigo-200"
-                      />
-                      <div className="col-span-7 text-right text-xs text-neutral-400">cm</div>
-                    </div>
+            {/* Inventory header actions */}
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+              <div className="text-xs text-neutral-500">
+                Kutu listesi: <span className="font-mono">GET /oto/inventory/box</span> • Kutu ekle: <span className="font-mono">POST /oto/inventory/add-box</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => loadInventoryBoxes()}
+                  className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 disabled:opacity-60"
+                  disabled={invLoading}
+                >
+                  {invLoading ? "Yükleniyor…" : "Kutuları Yenile"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAddBoxOpen((p) => !p)}
+                  className="h-9 rounded-lg border border-indigo-200 bg-indigo-50 px-3 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
+                >
+                  + Kutu Ekle (Envanter)
+                </button>
+              </div>
+            </div>
+
+            {invErr ? (
+              <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {invErr}
+              </div>
+            ) : null}
+
+            {/* Add box panel */}
+            {addBoxOpen ? (
+              <div className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50 p-4">
+                <div className="text-sm font-semibold text-neutral-900">Yeni Kutu (Envantere ekle)</div>
+
+                <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-5">
+                  <div className="lg:col-span-2">
+                    <Label text="name *" />
+                    <input
+                      value={newBoxName}
+                      onChange={(e) => setNewBoxName(e.target.value)}
+                      placeholder="kargo"
+                      className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+                    />
                   </div>
 
-                  {/* weight */}
-                  <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-neutral-500">
-                      Ağırlık (kg) * <span className="text-neutral-400">ⓘ</span>
-                    </div>
-                    <div className="mt-2 flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => updateBox(idx, { weight: Math.max(0, (bx.weight || 0) - 1) })}
-                        className="h-9 w-9 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50"
-                      >
-                        −
-                      </button>
-                      <input
-                        value={bx.weight}
-                        onChange={(e) => updateBox(idx, { weight: num(e.target.value) })}
-                        className="h-9 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-                      />
-                      <div className="text-sm text-neutral-500">kg</div>
-                      <button
-                        type="button"
-                        onClick={() => updateBox(idx, { weight: (bx.weight || 0) + 1 })}
-                        className="h-9 w-9 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50"
-                      >
-                        +
-                      </button>
-                    </div>
+                  <div>
+                    <Label text="length *" />
+                    <input
+                      value={newBoxL}
+                      onChange={(e) => setNewBoxL(e.target.value === "" ? "" : num(e.target.value))}
+                      className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+                      inputMode="numeric"
+                    />
                   </div>
 
-                  {/* delete */}
+                  <div>
+                    <Label text="width *" />
+                    <input
+                      value={newBoxW}
+                      onChange={(e) => setNewBoxW(e.target.value === "" ? "" : num(e.target.value))}
+                      className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+                      inputMode="numeric"
+                    />
+                  </div>
+
+                  <div>
+                    <Label text="height *" />
+                    <input
+                      value={newBoxH}
+                      onChange={(e) => setNewBoxH(e.target.value === "" ? "" : num(e.target.value))}
+                      className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+                      inputMode="numeric"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center justify-end gap-2">
                   <button
                     type="button"
-                    onClick={() => setBoxes((b) => b.filter((_, i) => i !== idx))}
-                    className="h-10 w-10 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100"
-                    title="Sil"
+                    onClick={() => !addBoxSubmitting && setAddBoxOpen(false)}
+                    className="h-10 rounded-lg border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-800 hover:bg-neutral-50"
+                    disabled={addBoxSubmitting}
                   >
-                    🗑
+                    Kapat
+                  </button>
+                  <button
+                    type="button"
+                    onClick={addInventoryBox}
+                    className="h-10 rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                    disabled={addBoxSubmitting}
+                  >
+                    {addBoxSubmitting ? "Ekleniyor…" : "Envantere Ekle"}
                   </button>
                 </div>
-              ))}
+              </div>
+            ) : null}
+
+            <div className="mt-4 space-y-3">
+              {boxes.map((bx, idx) => {
+                const sel = bx.boxId ? invBoxes.find((b) => b.id === Number(bx.boxId)) : null;
+
+                return (
+                  <div key={idx} className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_1fr_64px] items-center">
+                    {/* dimensions (inventory selection) */}
+                    <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2">
+                      <div className="text-xs font-semibold text-neutral-500">Kutu Boyutları *</div>
+
+                      <div className="mt-2 grid grid-cols-1 gap-2 lg:grid-cols-2">
+                        <div>
+                          <div className="text-xs font-semibold text-neutral-500">Kutu Tipi</div>
+                          <select
+                            value={bx.boxId === "" ? "" : String(bx.boxId)}
+                            onChange={(e) => updateBox(idx, { boxId: e.target.value ? Number(e.target.value) : "" })}
+                            disabled={invLoading}
+                            className={cn(
+                              "mt-1 h-9 w-full rounded-lg border px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200",
+                              invLoading ? "border-neutral-200 bg-neutral-50 text-neutral-500" : "border-neutral-200 bg-white"
+                            )}
+                          >
+                            <option value="">
+                              {invLoading ? "Kutular yükleniyor..." : invBoxes.length ? "Kutu seçin" : "Kutu yok (ekleyin)"}
+                            </option>
+                            {invBoxes.map((b) => (
+                              <option key={b.id} value={String(b.id)}>
+                                {b.boxName} ({b.length}x{b.width}x{b.height})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <div className="text-xs font-semibold text-neutral-500">Seçili Ölçüler</div>
+                          <div className="mt-1 h-9 w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 flex items-center text-sm text-neutral-700">
+                            {sel ? `${sel.length} x ${sel.width} x ${sel.height} cm` : "—"}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-2 text-xs text-neutral-400">
+                        Not: API tek set boxWidth/boxLength/boxHeight alıyor. Şimdilik <span className="font-semibold">1. satırdaki</span> seçili kutuyu gönderiyoruz.
+                      </div>
+                    </div>
+
+                    {/* weight */}
+                    <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2">
+                      <div className="flex items-center gap-2 text-xs font-semibold text-neutral-500">
+                        Ağırlık (kg) * <span className="text-neutral-400">ⓘ</span>
+                      </div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => updateBox(idx, { weight: Math.max(0, (bx.weight || 0) - 1) })}
+                          className="h-9 w-9 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50"
+                        >
+                          −
+                        </button>
+                        <input
+                          value={bx.weight}
+                          onChange={(e) => updateBox(idx, { weight: num(e.target.value) })}
+                          className="h-9 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+                        />
+                        <div className="text-sm text-neutral-500">kg</div>
+                        <button
+                          type="button"
+                          onClick={() => updateBox(idx, { weight: (bx.weight || 0) + 1 })}
+                          className="h-9 w-9 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* delete */}
+                    <button
+                      type="button"
+                      onClick={() => setBoxes((b) => b.filter((_, i) => i !== idx))}
+                      className="h-10 w-10 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100"
+                      title="Sil"
+                    >
+                      🗑
+                    </button>
+                  </div>
+                );
+              })}
             </div>
 
             <button
               type="button"
-              onClick={() => setBoxes((b) => [...b, { l: 10, w: 10, h: 10, weight: 1 }])}
+              onClick={() => setBoxes((b) => [...b, { boxId: "", weight: 1 }])}
               className="mt-4 inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
             >
-              + Yeni Kutu Ekle
+              + Yeni Kutu (Paket) Ekle
             </button>
-
-            <div className="mt-2 text-xs text-neutral-500">API tek set boxWidth/boxLength/boxHeight alıyor. Şimdilik 1. kutunun ölçülerini gönderiyoruz.</div>
 
             <div className="mt-8 border-t border-neutral-200 pt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
               <div className="lg:col-span-1">
@@ -1058,6 +1344,16 @@ export default function CreateCargoPage() {
                   <input value={deliverySlotTo} onChange={(e) => setDeliverySlotTo(e.target.value)} className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200" />
                 </div>
               </div>
+
+              {/* ✅ Debug: seçili kutu */}
+              <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 text-xs text-neutral-700">
+                Seçili kutu (1. satır):{" "}
+                <span className="font-semibold">
+                  {selectedFirstBox ? `${selectedFirstBox.boxName} (${selectedFirstBox.length}x${selectedFirstBox.width}x${selectedFirstBox.height})` : "—"}
+                </span>
+                <span className="mx-2 text-neutral-300">|</span>
+                Payload: boxLength={boxLength}, boxWidth={boxWidth}, boxHeight={boxHeight}
+              </div>
             </div>
 
             <div className="mt-6 rounded-xl border border-neutral-200 bg-white overflow-hidden">
@@ -1110,7 +1406,6 @@ export default function CreateCargoPage() {
       <CreditTopUpModal open={creditOpen} onOpenChange={setCreditOpen} creditBalance={creditBalance} />
     </div>
   );
-
 }
 
 /* ================= UI bits ================= */
