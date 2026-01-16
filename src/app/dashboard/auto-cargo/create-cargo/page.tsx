@@ -80,8 +80,8 @@ type CreateOrderCustomer = {
   email: string;
   mobile: string;
   address: string;
-  district: string;
-  city: string;
+  district: string; // ilçe
+  city: string; // il
   country: string; // "TR"
   postcode: string;
   lat: string;
@@ -102,7 +102,7 @@ type CreateOrderItem = {
 type CreateOrderReq = {
   order_id: string;
   pickupLocationCode: string;
-  createShipment: string; // swagger örneğinde "true" string
+  createShipment: string;
   deliveryOptionId: number;
 
   payment_method: "paid" | "cod";
@@ -119,10 +119,10 @@ type CreateOrderReq = {
   boxLength: number;
   boxHeight: number;
 
-  orderDate: string; // "31/12/2022 15:45"
-  deliverySlotDate: string; // "31/12/2020"
-  deliverySlotTo: string; // "12pm"
-  deliverySlotFrom: string; // "2:30pm"
+  orderDate: string;
+  deliverySlotDate: string;
+  deliverySlotTo: string;
+  deliverySlotFrom: string;
 
   senderName: string;
 
@@ -140,17 +140,46 @@ type CreateOrderRes = {
   otoIds: any;
 };
 
-// Cities endpoint response (senin attığın format)
-type CitiesRes = {
-  success?: boolean;
+/* ===== Logistics Types (countries/states/cities) ===== */
+
+type LogisticsCountry = {
+  id: number;
+  name: string;
+  iso2?: string;
+  iso3?: string;
+  phonecode?: string;
+  latitude?: string | number | null;
+  longitude?: string | number | null;
+};
+
+type LogisticsState = {
+  id: number;
+  name: string;
+  country_id: number;
+  country_code?: string;
+  state_code?: string;
+  latitude?: string | number | null;
+  longitude?: string | number | null;
+};
+
+type LogisticsCity = {
+  id: number;
+  name: string;
+  state_id: number;
+  state_code?: string;
+  country_id: number;
+  country_code?: string;
+  latitude?: string | number | null;
+  longitude?: string | number | null;
+};
+
+type LogisticsRes<T> = {
+  success: boolean;
   message?: any;
-  otoErrorCode?: any;
-  otoErrorMessage?: any;
-  getCities?: {
-    totalCount?: number;
-    perPage?: number;
-    Cities?: Array<{ name: string }>;
-  };
+  data?: T[];
+  error?: any;
+  detail?: any;
+  title?: any;
 };
 
 /* ===== Inventory Box Types (Swagger ekranındaki) ===== */
@@ -185,12 +214,11 @@ export default function CreateCargoPage() {
   const [okMsg, setOkMsg] = React.useState<string | null>(null);
   const [lastRes, setLastRes] = React.useState<CreateOrderRes | null>(null);
 
-  // ========== CREDIT (UI: resim 1-2, endpoint: resim 3) ==========
-  // (Backend'te gerçek bakiye endpoint'i yoksa UI statik kalsın)
+  // ========== CREDIT ==========
   const [creditBalance] = React.useState<number>(0);
   const [creditOpen, setCreditOpen] = React.useState(false);
 
-  // ========== STEP 1 (Cargo UI) ==========
+  // ========== STEP 1 ==========
   const [pickupLocationCode, setPickupLocationCode] = React.useState("jdd_wh");
   const [useDifferentSender, setUseDifferentSender] = React.useState(false);
 
@@ -200,36 +228,40 @@ export default function CreateCargoPage() {
   const [receiverEmail, setReceiverEmail] = React.useState("");
 
   // Address
-  // ✅ ülke otomatik TR (kilitli)
-  const [country, setCountry] = React.useState("TR");
   const [fullAddress, setFullAddress] = React.useState("");
-  const [city, setCity] = React.useState("");
-  const [district, setDistrict] = React.useState("");
   const [zip, setZip] = React.useState("");
 
-  // ✅ şehir listesini endpoint'ten al
-  const [cityOptions, setCityOptions] = React.useState<string[]>([]);
-  const [cityLoading, setCityLoading] = React.useState(false);
-  const [cityLoadErr, setCityLoadErr] = React.useState<string | null>(null);
+  // Logistics selects (country/il/ilçe)
+  const [countries, setCountries] = React.useState<LogisticsCountry[]>([]);
+  const [states, setStates] = React.useState<LogisticsState[]>([]);
+  const [cities, setCities] = React.useState<LogisticsCity[]>([]);
 
-  // extra required fields
+  const [countryId, setCountryId] = React.useState<number | "">("");
+  const [stateId, setStateId] = React.useState<number | "">("");
+  const [cityId, setCityId] = React.useState<number | "">("");
+
+  // payload strings
+  const [countryCode, setCountryCode] = React.useState("TR"); // backend payload (customer.country)
+  const [cityName, setCityName] = React.useState(""); // il (customer.city)
+  const [districtName, setDistrictName] = React.useState(""); // ilçe (customer.district)
+
+  // lat/lon (AUTO, hidden)
   const [lat, setLat] = React.useState("");
   const [lon, setLon] = React.useState("");
-  const [refId, setRefId] = React.useState("");
+
+  // Debug: lat/lon kontrol alanı (sonra silebilirsin)
+  const [showLatLonDebug, setShowLatLonDebug] = React.useState(false);
 
   // ========== STEP 2 ==========
-  // ✅ Önceki boxes state'ini koruyoruz ama artık l/w/h'yi inventory box'tan seçeceğiz.
   const [boxes, setBoxes] = React.useState<Array<{ boxId: number | ""; weight: number }>>([
     { boxId: "", weight: 1 },
     { boxId: "", weight: 1 },
   ]);
 
-  // ✅ Inventory kutu listesi (GET /oto/inventory/box)
   const [invBoxes, setInvBoxes] = React.useState<InventoryBox[]>([]);
   const [invLoading, setInvLoading] = React.useState(false);
   const [invErr, setInvErr] = React.useState<string | null>(null);
 
-  // ✅ Inventory kutu ekleme UI (POST /oto/inventory/add-box)
   const [addBoxOpen, setAddBoxOpen] = React.useState(false);
   const [addBoxSubmitting, setAddBoxSubmitting] = React.useState(false);
   const [newBoxName, setNewBoxName] = React.useState("");
@@ -240,7 +272,6 @@ export default function CreateCargoPage() {
   const totalWeight = boxes.reduce((a, b) => a + (Number.isFinite(b.weight) ? b.weight : 0), 0);
   const packageCount = boxes.length;
 
-  // ✅ API tek set ölçü alıyor: 1. satırdaki seçili inventory kutuyu basacağız
   const selectedFirstBox = React.useMemo(() => {
     const firstId = boxes[0]?.boxId;
     if (!firstId) return null;
@@ -277,70 +308,194 @@ export default function CreateCargoPage() {
   const [deliverySlotFrom, setDeliverySlotFrom] = React.useState("2:30pm");
   const [deliverySlotTo, setDeliverySlotTo] = React.useState("12pm");
 
-  // ✅ ülkeyi zorla TR tut
-  React.useEffect(() => {
-    if (country !== "TR") setCountry("TR");
-  }, [country]);
+  /* ================= Logistics Loaders ================= */
 
-  // ✅ Şehirleri çek: /api/oto/logistics/cities?country=TR
-  React.useEffect(() => {
-    let alive = true;
+  const loadCountries = React.useCallback(async () => {
+    const bearer = getBearerToken();
+    if (!bearer) {
+      router.replace("/");
+      return;
+    }
 
-    async function loadCities() {
-      setCityLoadErr(null);
-      setCityLoading(true);
+    try {
+      const res = await fetch(`/yuksi/logistics/countries?limit=5000&offset=0`, {
+        method: "GET",
+        cache: "no-store",
+        headers: { Accept: "application/json", Authorization: `Bearer ${bearer}` },
+      });
 
+      const json = await readJson<LogisticsRes<LogisticsCountry>>(res);
+
+      if (res.status === 401 || res.status === 403) {
+        router.replace("/");
+        return;
+      }
+      if (!res.ok) throw new Error(pickMsg(json, `HTTP ${res.status}`));
+
+      const list = Array.isArray(json?.data) ? json.data : [];
+      setCountries(list);
+
+      // Default: TR varsa onu seç
+      const tr =
+        list.find((c) => String(c?.iso2 || "").toUpperCase() === "TR") ||
+        list.find((c) => String(c?.name || "").toLowerCase() === "turkey") ||
+        list[0];
+
+      if (tr?.id) {
+        setCountryId(tr.id);
+        setCountryCode(String(tr.iso2 || "TR").toUpperCase() || "TR");
+      }
+    } catch (e: any) {
+      setCountries([]);
+      setCountryId("");
+      setStates([]);
+      setStateId("");
+      setCities([]);
+      setCityId("");
+      setCityName("");
+      setDistrictName("");
+      setLat("");
+      setLon("");
+      setErrMsg(e?.message || "Ülke listesi alınamadı.");
+    }
+  }, [router]);
+
+  const loadStates = React.useCallback(
+    async (cid: number) => {
       const bearer = getBearerToken();
       if (!bearer) {
-        setCityLoading(false);
         router.replace("/");
         return;
       }
 
       try {
-        const res = await fetch(`/yuksi/oto/logistics/cities?country=${encodeURIComponent(country)}`, {
+        const res = await fetch(`/yuksi/logistics/states?country_id=${encodeURIComponent(String(cid))}&limit=5000&offset=0`, {
           method: "GET",
           cache: "no-store",
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${bearer}`,
-          },
+          headers: { Accept: "application/json", Authorization: `Bearer ${bearer}` },
         });
 
-        const json = await readJson<CitiesRes>(res);
+        const json = await readJson<LogisticsRes<LogisticsState>>(res);
 
         if (res.status === 401 || res.status === 403) {
           router.replace("/");
           return;
         }
-        if (!res.ok) {
-          throw new Error(pickMsg(json, `HTTP ${res.status}`));
-        }
+        if (!res.ok) throw new Error(pickMsg(json, `HTTP ${res.status}`));
 
-        const names = json?.getCities?.Cities?.map((x) => String(x?.name || "").trim()).filter(Boolean) || [];
+        const list = Array.isArray(json?.data) ? json.data : [];
+        setStates(list);
 
-        if (!alive) return;
-
-        setCityOptions(names);
-
-        if (city && !names.includes(city)) setCity("");
+        // reset dependent
+        setStateId("");
+        setCities([]);
+        setCityId("");
+        setCityName("");
+        setDistrictName("");
+        setLat("");
+        setLon("");
       } catch (e: any) {
-        if (!alive) return;
-        setCityOptions([]);
-        setCityLoadErr(e?.message || "Şehir listesi alınamadı.");
-      } finally {
-        if (!alive) return;
-        setCityLoading(false);
+        setStates([]);
+        setStateId("");
+        setCities([]);
+        setCityId("");
+        setCityName("");
+        setDistrictName("");
+        setLat("");
+        setLon("");
+        setErrMsg(e?.message || "İl listesi alınamadı.");
       }
+    },
+    [router]
+  );
+
+  const loadCities = React.useCallback(
+    async (cid: number, sid: number) => {
+      const bearer = getBearerToken();
+      if (!bearer) {
+        router.replace("/");
+        return;
+      }
+
+      try {
+        const res = await fetch(
+          `/yuksi/logistics/cities?country_id=${encodeURIComponent(String(cid))}&state_id=${encodeURIComponent(String(sid))}&limit=5000&offset=0`,
+          {
+            method: "GET",
+            cache: "no-store",
+            headers: { Accept: "application/json", Authorization: `Bearer ${bearer}` },
+          }
+        );
+
+        const json = await readJson<LogisticsRes<LogisticsCity>>(res);
+
+        if (res.status === 401 || res.status === 403) {
+          router.replace("/");
+          return;
+        }
+        if (!res.ok) throw new Error(pickMsg(json, `HTTP ${res.status}`));
+
+        const list = Array.isArray(json?.data) ? json.data : [];
+        setCities(list);
+
+        // reset district/city selection
+        setCityId("");
+        setDistrictName("");
+        setLat("");
+        setLon("");
+      } catch (e: any) {
+        setCities([]);
+        setCityId("");
+        setDistrictName("");
+        setLat("");
+        setLon("");
+        setErrMsg(e?.message || "İlçe listesi alınamadı.");
+      }
+    },
+    [router]
+  );
+
+  // initial: countries
+  React.useEffect(() => {
+    loadCountries();
+  }, [loadCountries]);
+
+  // when country changes: load states
+  React.useEffect(() => {
+    if (!countryId) return;
+    loadStates(Number(countryId));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [countryId]);
+
+  // when state changes: set cityName + load cities
+  React.useEffect(() => {
+    if (!countryId || !stateId) return;
+
+    const st = states.find((s) => s.id === Number(stateId));
+    setCityName(st ? String(st.name || "").trim() : "");
+
+    loadCities(Number(countryId), Number(stateId));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stateId]);
+
+  // when city (district) changes: set districtName + lat/lon
+  React.useEffect(() => {
+    if (!cityId) {
+      setDistrictName("");
+      setLat("");
+      setLon("");
+      return;
     }
 
-    loadCities();
+    const ct = cities.find((c) => c.id === Number(cityId));
+    const dName = ct ? String(ct.name || "").trim() : "";
+    setDistrictName(dName);
 
-    return () => {
-      alive = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [country]);
+    const la = ct?.latitude ?? "";
+    const lo = ct?.longitude ?? "";
+    setLat(la === null || la === undefined ? "" : String(la));
+    setLon(lo === null || lo === undefined ? "" : String(lo));
+  }, [cityId, cities]);
 
   /* ================= Inventory: GET /oto/inventory/box ================= */
 
@@ -376,7 +531,6 @@ export default function CreateCargoPage() {
       const list = Array.isArray(json?.boxes) ? json.boxes : [];
       setInvBoxes(list);
 
-      // Eğer seçili boxId artık yoksa temizle
       setBoxes((prev) =>
         prev.map((p) => {
           if (!p.boxId) return p;
@@ -392,7 +546,6 @@ export default function CreateCargoPage() {
     }
   }, [router]);
 
-  // Step 2’ye geldiğinde (ve ilk mount’ta) kutuları çek
   React.useEffect(() => {
     loadInventoryBoxes();
   }, [loadInventoryBoxes]);
@@ -445,10 +598,8 @@ export default function CreateCargoPage() {
 
       if (json?.success !== true) throw new Error(pickMsg(json, "Kutu eklenemedi."));
 
-      // Refresh list
       await loadInventoryBoxes();
 
-      // UI reset
       setAddBoxOpen(false);
       setNewBoxName("");
       setNewBoxL(10);
@@ -481,36 +632,29 @@ export default function CreateCargoPage() {
       if (!pickupLocationCode.trim()) return "Gönderici Konumu Adı zorunlu.";
       if (!receiverName.trim()) return "Alıcının Tam Adı zorunlu.";
       if (!receiverPhone.trim()) return "Alıcı Telefon Numarası zorunlu.";
-      if (!country.trim()) return "Ülke zorunlu.";
-      if (!fullAddress.trim()) return "Tam Açık Adres zorunlu.";
-      if (!city.trim()) return "Şehir zorunlu.";
-      if (!district.trim()) return "İlçe zorunlu.";
-
       if (!receiverEmail.trim()) return "Alıcı e-posta (customer.email) zorunlu.";
-      if (!zip.trim()) return "Posta kodu (customer.postcode) zorunlu.";
-      if (!lat.trim()) return "Lat (customer.lat) zorunlu.";
-      if (!lon.trim()) return "Lon (customer.lon) zorunlu.";
 
-      if (cityLoading) return "Şehir listesi yükleniyor, lütfen bekleyin.";
-      if (cityLoadErr) return `Şehir listesi hatası: ${cityLoadErr}`;
+      if (!countryId) return "Ülke seçimi zorunlu.";
+      if (!stateId) return "İl seçimi zorunlu.";
+      if (!cityId) return "İlçe seçimi zorunlu.";
+
+      if (!fullAddress.trim()) return "Tam Açık Adres zorunlu.";
+      if (!zip.trim()) return "Posta kodu (customer.postcode) zorunlu.";
+
+      // lat/lon görünmüyor ama payload için dolu olmalı
+      if (!lat.trim() || !lon.trim()) return "Lat/Lon otomatik dolmadı. İlçe seçimini kontrol et.";
     }
 
     if (s === 2) {
       if (boxes.length < 1) return "En az 1 kutu olmalı.";
-
-      // ✅ Inventory üzerinden kutu seçimi zorunlu (en az ilk satır)
       if (!boxes[0]?.boxId) return "En az 1 kutu tipi seçmelisin (ilk satır).";
-
-      // ✅ seçilen inventory kutu ölçüleri 0 olamaz
       if (!(boxWidth > 0 && boxLength > 0 && boxHeight > 0)) return "Seçili kutunun ölçüleri 0 olamaz.";
-
       if (!(packageWeight > 0)) return "Toplam ağırlık 0 olamaz.";
       if (!packageContent.trim()) return "Paket içeriği zorunlu.";
       if (packageValue === "" || !(Number(packageValue) > 0)) return "Paket değeri zorunlu.";
       if (cod) {
         if (codAmount === "" || !(Number(codAmount) > 0)) return "Kapıda ödeme tutarı zorunlu.";
       }
-
       if (invLoading) return "Kutu listesi yükleniyor, lütfen bekleyin.";
       if (invErr) return `Kutu listesi hatası: ${invErr}`;
     }
@@ -585,7 +729,6 @@ export default function CreateCargoPage() {
       packageCount,
       packageWeight,
 
-      // ✅ seçtiğin inventory kutusunu create post içine gömüyoruz (API tek set istiyor)
       boxWidth,
       boxLength,
       boxHeight,
@@ -602,10 +745,15 @@ export default function CreateCargoPage() {
         email: receiverEmail.trim(),
         mobile: receiverPhone.trim(),
         address: fullAddress.trim(),
-        district: district.trim(),
-        city: city.trim(),
-        country: country.trim(),
+
+        // ✅ il/ilçe endpointlerden geliyor
+        city: cityName.trim(), // il
+        district: districtName.trim(), // ilçe
+
+        country: countryCode.trim(), // "TR"
         postcode: zip.trim(),
+
+        // ✅ gizli ama payload dolu
         lat: lat.trim(),
         lon: lon.trim(),
       },
@@ -614,7 +762,6 @@ export default function CreateCargoPage() {
 
     setSubmitting(true);
     try {
-      // ✅ user_id kaldırıldı: backend token'dan alıyor
       const url = `/yuksi/oto/orders/create`;
 
       const res = await fetch(url, {
@@ -722,18 +869,10 @@ export default function CreateCargoPage() {
                 <button
                   type="button"
                   onClick={() => setUseDifferentSender((p) => !p)}
-                  className={cn(
-                    "h-5 w-9 rounded-full relative transition border",
-                    useDifferentSender ? "bg-indigo-600 border-indigo-600" : "bg-neutral-200 border-neutral-200"
-                  )}
+                  className={cn("h-5 w-9 rounded-full relative transition border", useDifferentSender ? "bg-indigo-600 border-indigo-600" : "bg-neutral-200 border-neutral-200")}
                   aria-label="Farklı adresten gönder"
                 >
-                  <div
-                    className={cn(
-                      "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition",
-                      useDifferentSender ? "left-4.5" : "left-0.5"
-                    )}
-                  />
+                  <div className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition", useDifferentSender ? "left-4.5" : "left-0.5")} />
                 </button>
                 Farklı bir adresten gönder
               </div>
@@ -785,12 +924,76 @@ export default function CreateCargoPage() {
               </div>
             </div>
 
-            {/* Ülke otomatik TR */}
-            <div className="mt-4">
-              <Label text="Ülke *" />
-              <input value={country} readOnly className="h-10 w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 text-sm text-neutral-700" />
-              <div className="mt-1 text-xs text-neutral-500">
-                Ülke otomatik <span className="font-mono">TR</span> olarak setlenir.
+            <div className="mt-8 border-t border-neutral-200 pt-6">
+              <SectionTitle title="Adres" />
+              <div className="mt-2 text-xs text-neutral-500">
+                Kaynaklar: <span className="font-mono">GET /logistics/countries</span>, <span className="font-mono">GET /logistics/states</span>, <span className="font-mono">GET /logistics/cities</span>
+              </div>
+            </div>
+
+            {/* Country */}
+            <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <div className="lg:col-span-1">
+                <Label text="Ülke *" />
+                <select
+                  value={countryId === "" ? "" : String(countryId)}
+                  onChange={(e) => {
+                    const v = e.target.value ? Number(e.target.value) : "";
+                    setCountryId(v);
+                    const c = countries.find((x) => x.id === Number(v));
+                    setCountryCode(String(c?.iso2 || "TR").toUpperCase() || "TR");
+                  }}
+                  className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+                >
+                  <option value="">{countries.length ? "Ülke seçin" : "Ülkeler yükleniyor..."}</option>
+                  {countries.map((c) => (
+                    <option key={c.id} value={String(c.id)}>
+                      {c.name} {c.iso2 ? `(${String(c.iso2).toUpperCase()})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* İl */}
+              <div className="lg:col-span-1">
+                <Label text="İl *" />
+                <select
+                  value={stateId === "" ? "" : String(stateId)}
+                  onChange={(e) => setStateId(e.target.value ? Number(e.target.value) : "")}
+                  disabled={!countryId}
+                  className={cn(
+                    "h-10 w-full rounded-lg border px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200",
+                    !countryId ? "border-neutral-200 bg-neutral-50 text-neutral-500" : "border-neutral-200 bg-white"
+                  )}
+                >
+                  <option value="">{!countryId ? "Önce ülke seçin" : states.length ? "İl seçin" : "İller yükleniyor..."}</option>
+                  {states.map((s) => (
+                    <option key={s.id} value={String(s.id)}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* İlçe */}
+              <div className="lg:col-span-1">
+                <Label text="İlçe *" />
+                <select
+                  value={cityId === "" ? "" : String(cityId)}
+                  onChange={(e) => setCityId(e.target.value ? Number(e.target.value) : "")}
+                  disabled={!countryId || !stateId}
+                  className={cn(
+                    "h-10 w-full rounded-lg border px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200",
+                    !countryId || !stateId ? "border-neutral-200 bg-neutral-50 text-neutral-500" : "border-neutral-200 bg-white"
+                  )}
+                >
+                  <option value="">{!countryId || !stateId ? "Önce ülke ve il seçin" : cities.length ? "İlçe seçin" : "İlçeler yükleniyor..."}</option>
+                  {cities.map((c) => (
+                    <option key={c.id} value={String(c.id)}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -799,44 +1002,9 @@ export default function CreateCargoPage() {
               <textarea
                 value={fullAddress}
                 onChange={(e) => setFullAddress(e.target.value)}
-                placeholder="Mahalle, Sokak, Bina no, İlçe, İl"
+                placeholder="Mahalle, Sokak, Bina no, Kapı no"
                 className="min-h-[90px] w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
               />
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-              {/* Şehir endpoint'e bağlı */}
-              <div>
-                <Label text="Şehir *" />
-                <select
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  disabled={cityLoading || !!cityLoadErr}
-                  className={cn(
-                    "h-10 w-full rounded-lg border px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200",
-                    cityLoading || cityLoadErr ? "border-neutral-200 bg-neutral-50 text-neutral-500" : "border-neutral-200 bg-white"
-                  )}
-                >
-                  <option value="">{cityLoading ? "Şehirler yükleniyor..." : "Şehir seçin"}</option>
-                  {cityOptions.map((nm) => (
-                    <option key={nm} value={nm}>
-                      {nm}
-                    </option>
-                  ))}
-                </select>
-
-                {cityLoadErr ? <div className="mt-2 text-xs text-rose-600">Şehirler alınamadı: {cityLoadErr}</div> : null}
-              </div>
-
-              <div>
-                <Label text="İlçe *" />
-                <input
-                  value={district}
-                  onChange={(e) => setDistrict(e.target.value)}
-                  placeholder="İlçe"
-                  className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-                />
-              </div>
             </div>
 
             <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -849,23 +1017,55 @@ export default function CreateCargoPage() {
                   className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
                 />
               </div>
-              <div>
-                <Label text="Lat *" />
-                <input
-                  value={lat}
-                  onChange={(e) => setLat(e.target.value)}
-                  placeholder="40.706333"
-                  className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-                />
-              </div>
-              <div>
-                <Label text="Lon *" />
-                <input
-                  value={lon}
-                  onChange={(e) => setLon(e.target.value)}
-                  placeholder="29.888211"
-                  className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-                />
+
+              {/* Debug toggle */}
+              <div className="lg:col-span-2">
+                <div className="flex items-center justify-between">
+                  <Label text="Lat/Lon (debug)" />
+                  <button
+                    type="button"
+                    onClick={() => setShowLatLonDebug((p) => !p)}
+                    className="text-sm font-semibold text-indigo-700 hover:text-indigo-800"
+                  >
+                    {showLatLonDebug ? "Gizle" : "Göster"}
+                  </button>
+                </div>
+
+                {showLatLonDebug ? (
+                  <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+                    <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+                      <div>
+                        <div className="mb-1 text-xs font-semibold text-neutral-600">Lat (AUTO)</div>
+                        <input value={lat} readOnly className="h-9 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm text-neutral-700" />
+                      </div>
+                      <div>
+                        <div className="mb-1 text-xs font-semibold text-neutral-600">Lon (AUTO)</div>
+                        <input value={lon} readOnly className="h-9 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm text-neutral-700" />
+                      </div>
+                      <div className="flex items-end justify-end">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLat("");
+                            setLon("");
+                          }}
+                          className="h-9 rounded-lg border border-rose-200 bg-rose-50 px-3 text-sm font-semibold text-rose-700 hover:bg-rose-100"
+                          title="Sadece debug amaçlı temizler"
+                        >
+                          Lat/Lon’u Temizle
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="mt-2 text-xs text-neutral-500">
+                      Not: Lat/Lon kullanıcıya görünmüyor. İlçe seçilince otomatik doluyor. Bu paneli sonra komple silebilirsin.
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-xs text-neutral-500">
+                    Lat/Lon otomatik dolduruluyor (payload’a gidiyor) ama kullanıcıya gösterilmiyor.
+                  </div>
+                )}
               </div>
             </div>
 
@@ -890,13 +1090,11 @@ export default function CreateCargoPage() {
             <div className="flex items-center justify-between">
               <SectionTitle title="Kutu Detayları" />
               <div className="text-sm text-neutral-500">
-                <span className="font-semibold">Toplam Paket Sayısı</span> {boxes.length}{" "}
-                <span className="mx-3 text-neutral-300">|</span>
+                <span className="font-semibold">Toplam Paket Sayısı</span> {boxes.length} <span className="mx-3 text-neutral-300">|</span>
                 <span className="font-semibold">Toplam Ağırlık</span> {packageWeight} KG
               </div>
             </div>
 
-            {/* Inventory header actions */}
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
               <div className="text-xs text-neutral-500">
                 Kutu listesi: <span className="font-mono">GET /oto/inventory/box</span> • Kutu ekle: <span className="font-mono">POST /oto/inventory/add-box</span>
@@ -922,13 +1120,8 @@ export default function CreateCargoPage() {
               </div>
             </div>
 
-            {invErr ? (
-              <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                {invErr}
-              </div>
-            ) : null}
+            {invErr ? <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{invErr}</div> : null}
 
-            {/* Add box panel */}
             {addBoxOpen ? (
               <div className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50 p-4">
                 <div className="text-sm font-semibold text-neutral-900">Yeni Kutu (Envantere ekle)</div>
@@ -1002,7 +1195,6 @@ export default function CreateCargoPage() {
 
                 return (
                   <div key={idx} className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_1fr_64px] items-center">
-                    {/* dimensions (inventory selection) */}
                     <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2">
                       <div className="text-xs font-semibold text-neutral-500">Kutu Boyutları *</div>
 
@@ -1018,9 +1210,7 @@ export default function CreateCargoPage() {
                               invLoading ? "border-neutral-200 bg-neutral-50 text-neutral-500" : "border-neutral-200 bg-white"
                             )}
                           >
-                            <option value="">
-                              {invLoading ? "Kutular yükleniyor..." : invBoxes.length ? "Kutu seçin" : "Kutu yok (ekleyin)"}
-                            </option>
+                            <option value="">{invLoading ? "Kutular yükleniyor..." : invBoxes.length ? "Kutu seçin" : "Kutu yok (ekleyin)"}</option>
                             {invBoxes.map((b) => (
                               <option key={b.id} value={String(b.id)}>
                                 {b.boxName} ({b.length}x{b.width}x{b.height})
@@ -1042,7 +1232,6 @@ export default function CreateCargoPage() {
                       </div>
                     </div>
 
-                    {/* weight */}
                     <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2">
                       <div className="flex items-center gap-2 text-xs font-semibold text-neutral-500">
                         Ağırlık (kg) * <span className="text-neutral-400">ⓘ</span>
@@ -1071,7 +1260,6 @@ export default function CreateCargoPage() {
                       </div>
                     </div>
 
-                    {/* delete */}
                     <button
                       type="button"
                       onClick={() => setBoxes((b) => b.filter((_, i) => i !== idx))}
@@ -1182,7 +1370,7 @@ export default function CreateCargoPage() {
                 </div>
                 <div>
                   <div className="text-xs text-neutral-500">Varış Noktası</div>
-                  <div className="font-semibold">{city || "-"}</div>
+                  <div className="font-semibold">{cityName ? `${cityName} / ${districtName || "-"}` : "-"}</div>
                 </div>
                 <div>
                   <div className="text-xs text-neutral-500">Ödeme Türü</div>
@@ -1345,7 +1533,12 @@ export default function CreateCargoPage() {
                 </div>
               </div>
 
-              {/* ✅ Debug: seçili kutu */}
+              <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 text-xs text-neutral-700">
+                Adres payload preview: country={countryCode || "-"}, city={cityName || "-"}, district={districtName || "-"}{" "}
+                <span className="mx-2 text-neutral-300">|</span>
+                Lat/Lon: {lat || "-"}, {lon || "-"} (hidden)
+              </div>
+
               <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 text-xs text-neutral-700">
                 Seçili kutu (1. satır):{" "}
                 <span className="font-semibold">
@@ -1403,6 +1596,15 @@ export default function CreateCargoPage() {
           </div>
         )}
       </div>
+
+      {/* Messages */}
+      {(errMsg || okMsg) && (
+        <div className="mt-4">
+          {errMsg ? <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{errMsg}</div> : null}
+          {okMsg ? <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{okMsg}</div> : null}
+        </div>
+      )}
+
       <CreditTopUpModal open={creditOpen} onOpenChange={setCreditOpen} creditBalance={creditBalance} />
     </div>
   );

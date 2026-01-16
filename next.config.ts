@@ -15,6 +15,10 @@ const nextConfig: NextConfig = {
         source: '/yuksi/geo/:path*',
         destination: 'https://www.yuksi.dev/geo/:path*',
       },
+       {
+          source: "/yuksi/logistics/:path*",
+          destination: "https://www.yuksi.dev/logistics/:path*",
+        },
 
       // 3) En sona GENEL kural
       {
