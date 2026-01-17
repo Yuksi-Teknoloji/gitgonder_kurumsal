@@ -61,7 +61,8 @@ type PickupLocationItem = {
   email: string;
   postcode: string;
   status: "active" | "passive" | "unknown";
-  locationCode: string; // UI’de görünen “Konum Kodu” (API’de yok, description’a mapliyoruz)
+  locationCode: string; // UI’de görünen “Konum Kodu” (API’de code’a mapliyoruz)
+  description: string; // UI’de görünen “Açıklama” (API’de description’a mapliyoruz)
 };
 
 function toStr(v: any) {
@@ -93,7 +94,10 @@ function normalizeOne(raw: PickupLocationRaw, idx: number): PickupLocationItem {
   const email = toStr(raw?.email).trim();
   const postcode = toStr(raw?.postcode ?? raw?.zip ?? raw?.postalCode).trim();
 
-  const locationCode = toStr(raw?.locationCode ?? raw?.code ?? raw?.description ?? "").trim();
+  // ✅ UI: Kod -> code (fallback: description)
+  const locationCode = toStr(raw?.code ?? raw?.locationCode ?? raw?.description ?? "").trim();
+  // ✅ UI: Açıklama -> description (fallback: boş)
+  const description = toStr(raw?.description ?? "").trim();
 
   const status = normalizeStatus(raw?.status ?? raw?.state ?? raw?.is_active);
 
@@ -109,6 +113,7 @@ function normalizeOne(raw: PickupLocationRaw, idx: number): PickupLocationItem {
     postcode,
     status,
     locationCode,
+    description,
   };
 }
 
@@ -262,7 +267,8 @@ export default function MyLocationPage() {
 
   // create form fields
   const [placeName, setPlaceName] = React.useState("");
-  const [locationCode, setLocationCode] = React.useState(""); // description'a map
+  const [locationCode, setLocationCode] = React.useState(""); // ✅ code'a map
+  const [description, setDescription] = React.useState(""); // ✅ description'a map
   const [contactName, setContactName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [mobile, setMobile] = React.useState("");
@@ -560,6 +566,7 @@ export default function MyLocationPage() {
     setFormErr(null);
     setPlaceName("");
     setLocationCode("");
+    setDescription("");
     setContactName("");
     setEmail("");
     setMobile("");
@@ -601,7 +608,12 @@ export default function MyLocationPage() {
     const cty = cityName.trim();
     const dist = districtName.trim();
 
+    // ✅ ayrı alanlar
+    const code = locationCode.trim(); // kullanıcıya "Konum Kısaltması"
+    const desc = description.trim(); // kullanıcıya "Açıklama"
+
     if (!bName) return setFormErr("Yer ismi zorunlu.");
+    if (!code) return setFormErr("Konum Kısaltması zorunlu."); // ✅ code required
     if (!cName) return setFormErr("Ad Soyad zorunlu.");
     if (!mail) return setFormErr("E-posta zorunlu.");
     if (!tel) return setFormErr("Telefon numarası zorunlu.");
@@ -638,7 +650,11 @@ export default function MyLocationPage() {
           email: mail,
           postcode: zip,
           contactName: cName,
-          description: locationCode.trim(), // Konum Kodu -> description
+
+          // ✅ Backend validation: code required
+          code,
+          // ✅ separate description (optional)
+          description: desc,
         }),
       });
 
@@ -651,6 +667,7 @@ export default function MyLocationPage() {
       if (!res.ok) throw new Error(pickMsg(json, `HTTP ${res.status}`));
       if (json?.success === false) throw new Error(pickMsg(json, "Kayıt başarısız."));
 
+      // ✅ UX: kapanmadan önce eski hata/fieldlar temizlensin
       setOpen(false);
       resetForm();
       await load(status);
@@ -660,6 +677,13 @@ export default function MyLocationPage() {
       setSaving(false);
     }
   }
+
+  // ✅ UX: corporate/il/ilçe vs. seçimin değişmesi gibi modal içi değişimlerde eski errorları temiz tut
+  React.useEffect(() => {
+    if (!open) return;
+    setFormErr(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   return (
     <div className="px-6 py-5">
@@ -815,6 +839,7 @@ export default function MyLocationPage() {
                   <div className="text-neutral-900 font-semibold truncate" title={r.placeName}>
                     {r.placeName || "—"}
                     {r.locationCode ? <div className="text-xs text-neutral-500 font-normal truncate">Kod: {r.locationCode}</div> : null}
+                    {r.description ? <div className="text-xs text-neutral-500 font-normal truncate">Açıklama: {r.description}</div> : null}
                   </div>
 
                   <div className="text-neutral-800 truncate" title={r.contactName}>
@@ -881,8 +906,20 @@ export default function MyLocationPage() {
                 </div>
 
                 <div>
-                  <Label text="Konum Kodu" />
-                  <Field value={locationCode} onChange={setLocationCode} placeholder="" />
+                  <Label text="Konum Kısaltması *" />
+                  <Field value={locationCode} onChange={setLocationCode} placeholder="Örn: PNLKNM" />
+                  <div className="mt-2 text-xs text-neutral-500">
+                    Not: Bu alan API&apos;de <span className="font-mono">code</span> olarak gönderilir.
+                  </div>
+                </div>
+              </div>
+
+              {/* ✅ Description */}
+              <div className="mt-4">
+                <Label text="Açıklama" />
+                <Field value={description} onChange={setDescription} placeholder="Örn: Panel Konum deposu" />
+                <div className="mt-2 text-xs text-neutral-500">
+                  Not: Bu alan API&apos;de <span className="font-mono">description</span> olarak gönderilir.
                 </div>
               </div>
 
@@ -982,7 +1019,9 @@ export default function MyLocationPage() {
                       !countryId || !stateId ? "border-neutral-200 bg-neutral-50 text-neutral-500" : "border-neutral-200 bg-white"
                     )}
                   >
-                    <option value="">{!countryId || !stateId ? "Önce ülke ve il seçin" : cities.length ? "İlçe seçin" : "İlçeler yükleniyor..."}</option>
+                    <option value="">
+                      {!countryId || !stateId ? "Önce ülke ve il seçin" : cities.length ? "İlçe seçin" : "İlçeler yükleniyor..."}
+                    </option>
                     {cities.map((c) => (
                       <option key={c.id} value={String(c.id)}>
                         {c.name}
