@@ -51,6 +51,21 @@ function fmtDateOnly(d: Date) {
   // "31/12/2020"
   return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
+function rand4() {
+  return Math.floor(Math.random() * 10000).toString().padStart(4, "0");
+}
+
+function makeOrderId() {
+  // örn: YUKSI-ORD-20260118-195501-4821
+  const d = new Date();
+  return `YUKSI-ORD-${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}-${pad2(d.getHours())}${pad2(d.getMinutes())}${pad2(d.getSeconds())}-${rand4()}`;
+}
+
+function makePickupCode() {
+  // örn: PUP-ANK-20260118-195501-7392
+  const d = new Date();
+  return `PUP-ANK-${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}-${pad2(d.getHours())}${pad2(d.getMinutes())}${pad2(d.getSeconds())}-${rand4()}`;
+}
 
 /* ================= Stepper ================= */
 
@@ -81,11 +96,36 @@ type CreateOrderCustomer = {
   mobile: string;
   address: string;
   district: string; // ilçe
+  state: string; // il
   city: string; // il
   country: string; // "TR"
   postcode: string;
-  lat: string;
-  lon: string;
+  lat: number;
+  lon: number;
+};
+
+type PickupLocationCreateReq = {
+  code: string; // ✅ required (backend validation)
+  brandName: string;
+  address: string;
+  mobile: string;
+  city: string;
+  district: string;
+  lat: number;
+  lon: number;
+  email: string;
+  postcode: string;
+  contactName: string;
+  description: string;
+};
+
+type PickupLocationCreateRes = {
+  success?: boolean;
+  message?: any;
+  otoErrorCode?: any;
+  otoErrorMessage?: any;
+  code?: string; // backend genelde code döndürür
+  data?: { code?: string } | any;
 };
 
 type CreateOrderItem = {
@@ -97,13 +137,15 @@ type CreateOrderItem = {
   quantity: number;
   sku: string;
   image?: string;
+  pickupLocation: PickupLocationLine[];
 };
+type PickupLocationLine = { pickupLocationCode: string; quantity: number };
 
 type CreateOrderReq = {
   order_id: string;
-  pickupLocationCode: string;
-  createShipment: string;
-  deliveryOptionId: number;
+  pickup_location_code: string;
+  create_shipment: boolean;
+  delivery_option_id: number;
 
   payment_method: "paid" | "cod";
   amount: number;
@@ -219,7 +261,26 @@ export default function CreateCargoPage() {
   const [creditOpen, setCreditOpen] = React.useState(false);
 
   // ========== STEP 1 ==========
-  const [pickupLocationCode, setPickupLocationCode] = React.useState("jdd_wh");
+  const [pickupLocationCode, setPickupLocationCode] = React.useState<string>("");
+
+  // Different sender address form (manual + now logistics-driven)
+  const [senderPickupCode, setSenderPickupCode] = React.useState<string>("");
+  const senderPickupCodeAutoRef = React.useRef(false);
+  const [senderBrandName, setSenderBrandName] = React.useState("");
+  const [senderContactName, setSenderContactName] = React.useState("");
+  const [senderEmail, setSenderEmail] = React.useState("");
+  const [senderMobile, setSenderMobile] = React.useState("");
+
+  const [senderAddress, setSenderAddress] = React.useState("");
+  const [senderCity, setSenderCity] = React.useState("");
+  const [senderDistrict, setSenderDistrict] = React.useState("");
+  const [senderPostcode, setSenderPostcode] = React.useState("");
+  const [senderLat, setSenderLat] = React.useState("");
+  const [senderLon, setSenderLon] = React.useState("");
+
+  const [pickupCreating, setPickupCreating] = React.useState(false);
+  const [pickupCreateErr, setPickupCreateErr] = React.useState<string | null>(null);
+  const [pickupCreateOk, setPickupCreateOk] = React.useState<string | null>(null);
   const [useDifferentSender, setUseDifferentSender] = React.useState(false);
 
   // Receiver
@@ -231,7 +292,7 @@ export default function CreateCargoPage() {
   const [fullAddress, setFullAddress] = React.useState("");
   const [zip, setZip] = React.useState("");
 
-  // Logistics selects (country/il/ilçe)
+  // Logistics selects (receiver: country/il/ilçe)
   const [countries, setCountries] = React.useState<LogisticsCountry[]>([]);
   const [states, setStates] = React.useState<LogisticsState[]>([]);
   const [cities, setCities] = React.useState<LogisticsCity[]>([]);
@@ -240,17 +301,25 @@ export default function CreateCargoPage() {
   const [stateId, setStateId] = React.useState<number | "">("");
   const [cityId, setCityId] = React.useState<number | "">("");
 
-  // payload strings
+  // payload strings (receiver)
   const [countryCode, setCountryCode] = React.useState("TR"); // backend payload (customer.country)
   const [cityName, setCityName] = React.useState(""); // il (customer.city)
   const [districtName, setDistrictName] = React.useState(""); // ilçe (customer.district)
 
-  // lat/lon (AUTO, hidden)
+  // lat/lon (receiver, AUTO, hidden)
   const [lat, setLat] = React.useState("");
   const [lon, setLon] = React.useState("");
 
   // Debug: lat/lon kontrol alanı (sonra silebilirsin)
   const [showLatLonDebug, setShowLatLonDebug] = React.useState(false);
+
+  // Sender logistics (pickup location create: country/il/ilçe from endpoints + auto lat/lon)
+  const [senderCountryId, setSenderCountryId] = React.useState<number | "">("");
+  const [senderStateId, setSenderStateId] = React.useState<number | "">("");
+  const [senderCityId, setSenderCityId] = React.useState<number | "">("");
+
+  const [senderStates, setSenderStates] = React.useState<LogisticsState[]>([]);
+  const [senderCities, setSenderCities] = React.useState<LogisticsCity[]>([]);
 
   // ========== STEP 2 ==========
   const [boxes, setBoxes] = React.useState<Array<{ boxId: number | ""; weight: number }>>([
@@ -292,23 +361,91 @@ export default function CreateCargoPage() {
   // ========== STEP 3 ==========
   const [selectedCarrierName, setSelectedCarrierName] = React.useState<string>("");
   const [selectedPrice, setSelectedPrice] = React.useState<number | "">("");
+  const [serviceType, setServiceType] = React.useState<
+    "express" | "sameDay" | "fastDelivery" | "coldDelivery" | "heavyAndBulky" | "electronicAndHeavy"
+  >("express");
+
+  const [deliveryType, setDeliveryType] = React.useState<
+    "toCustomerDoorstep" | "pickupByCustomer" | "toCustomerDoorstepOrPickupByCustomer"
+  >("toCustomerDoorstep");
+  // ========== STEP 3 (Oto fee / rates) ==========
+  type OtoFeeReq = {
+    originCity: string;
+    destinationCity: string;
+    weight: number;
+
+    originLat: number;
+    originLon: number;
+    destinationLat: number;
+    destinationLon: number;
+
+    forReverseShipment: boolean;
+    currency: string;
+
+    packageCount: number;
+    totalDue: number;
+
+    length: number;
+    width: number;
+    height: number;
+
+    serviceType: string;
+    deliveryType: string;
+    includeEstimatedDates: boolean;
+  };
+
+  type OtoFeeOption = {
+    deliveryOptionId?: number;
+    delivery_option_id?: number;
+
+    carrierName?: string;
+    carrier?: string;
+    companyName?: string;
+
+    price?: number;
+    amount?: number;
+    total?: number;
+
+    serviceType?: string;
+    deliveryType?: string;
+
+    estimatedFrom?: string;
+    estimatedTo?: string;
+
+    [k: string]: any;
+  };
+
+  type OtoFeeRes = {
+    success?: boolean;
+    message?: any;
+    otoErrorMessage?: any;
+    data?: OtoFeeOption[];
+    options?: OtoFeeOption[];
+    result?: OtoFeeOption[];
+    [k: string]: any;
+  };
+
+  const [feeLoading, setFeeLoading] = React.useState(false);
+  const [feeErr, setFeeErr] = React.useState<string | null>(null);
+  const [feeOptions, setFeeOptions] = React.useState<OtoFeeOption[]>([]);
+  const [selectedFeeIdx, setSelectedFeeIdx] = React.useState<number | null>(null);
 
   // ========== STEP 4 ==========
   const [senderName, setSenderName] = React.useState("Sender Company");
-  const [orderId, setOrderId] = React.useState("1234");
+  const [orderId] = React.useState<string>(() => makeOrderId());
   const [deliveryOptionId, setDeliveryOptionId] = React.useState<number | "">(564);
   const [createShipment, setCreateShipment] = React.useState(true);
 
-  const [currency, setCurrency] = React.useState("SAR");
+  const [currency, setCurrency] = React.useState("TRY");
   const [customsValue, setCustomsValue] = React.useState("12");
-  const [customsCurrency, setCustomsCurrency] = React.useState("USD");
+  const [customsCurrency, setCustomsCurrency] = React.useState("TRY");
 
   const [orderDate, setOrderDate] = React.useState<string>(() => fmtOrderDate(new Date()));
   const [deliverySlotDate, setDeliverySlotDate] = React.useState<string>(() => fmtDateOnly(new Date()));
   const [deliverySlotFrom, setDeliverySlotFrom] = React.useState("2:30pm");
   const [deliverySlotTo, setDeliverySlotTo] = React.useState("12pm");
 
-  /* ================= Logistics Loaders ================= */
+  /* ================= Logistics Loaders (receiver) ================= */
 
   const loadCountries = React.useCallback(async () => {
     const bearer = getBearerToken();
@@ -335,15 +472,19 @@ export default function CreateCargoPage() {
       const list = Array.isArray(json?.data) ? json.data : [];
       setCountries(list);
 
-      // Default: TR varsa onu seç
+      // Default: TR varsa onu seç (receiver + sender için de aynı default'u basalım)
       const tr =
         list.find((c) => String(c?.iso2 || "").toUpperCase() === "TR") ||
         list.find((c) => String(c?.name || "").toLowerCase() === "turkey") ||
         list[0];
 
       if (tr?.id) {
+        // receiver defaults
         setCountryId(tr.id);
         setCountryCode(String(tr.iso2 || "TR").toUpperCase() || "TR");
+
+        // sender defaults (pickup location)
+        setSenderCountryId(tr.id);
       }
     } catch (e: any) {
       setCountries([]);
@@ -356,6 +497,17 @@ export default function CreateCargoPage() {
       setDistrictName("");
       setLat("");
       setLon("");
+
+      setSenderCountryId("");
+      setSenderStates([]);
+      setSenderStateId("");
+      setSenderCities([]);
+      setSenderCityId("");
+      setSenderCity("");
+      setSenderDistrict("");
+      setSenderLat("");
+      setSenderLon("");
+
       setErrMsg(e?.message || "Ülke listesi alınamadı.");
     }
   }, [router]);
@@ -455,19 +607,116 @@ export default function CreateCargoPage() {
     [router]
   );
 
+  /* ================= Sender Logistics Loaders (pickup create) ================= */
+
+  const loadSenderStates = React.useCallback(
+    async (cid: number) => {
+      const bearer = getBearerToken();
+      if (!bearer) {
+        router.replace("/");
+        return;
+      }
+
+      try {
+        const res = await fetch(`/yuksi/logistics/states?country_id=${encodeURIComponent(String(cid))}&limit=5000&offset=0`, {
+          method: "GET",
+          cache: "no-store",
+          headers: { Accept: "application/json", Authorization: `Bearer ${bearer}` },
+        });
+
+        const json = await readJson<LogisticsRes<LogisticsState>>(res);
+
+        if (res.status === 401 || res.status === 403) {
+          router.replace("/");
+          return;
+        }
+        if (!res.ok) throw new Error(pickMsg(json, `HTTP ${res.status}`));
+
+        const list = Array.isArray(json?.data) ? json.data : [];
+        setSenderStates(list);
+
+        // reset dependent
+        setSenderStateId("");
+        setSenderCities([]);
+        setSenderCityId("");
+        setSenderCity("");
+        setSenderDistrict("");
+        setSenderLat("");
+        setSenderLon("");
+      } catch (e: any) {
+        setSenderStates([]);
+        setSenderStateId("");
+        setSenderCities([]);
+        setSenderCityId("");
+        setSenderCity("");
+        setSenderDistrict("");
+        setSenderLat("");
+        setSenderLon("");
+        setErrMsg(e?.message || "Gönderici il listesi alınamadı.");
+      }
+    },
+    [router]
+  );
+
+  const loadSenderCities = React.useCallback(
+    async (cid: number, sid: number) => {
+      const bearer = getBearerToken();
+      if (!bearer) {
+        router.replace("/");
+        return;
+      }
+
+      try {
+        const res = await fetch(
+          `/yuksi/logistics/cities?country_id=${encodeURIComponent(String(cid))}&state_id=${encodeURIComponent(String(sid))}&limit=5000&offset=0`,
+          {
+            method: "GET",
+            cache: "no-store",
+            headers: { Accept: "application/json", Authorization: `Bearer ${bearer}` },
+          }
+        );
+
+        const json = await readJson<LogisticsRes<LogisticsCity>>(res);
+
+        if (res.status === 401 || res.status === 403) {
+          router.replace("/");
+          return;
+        }
+        if (!res.ok) throw new Error(pickMsg(json, `HTTP ${res.status}`));
+
+        const list = Array.isArray(json?.data) ? json.data : [];
+        setSenderCities(list);
+
+        // reset district selection
+        setSenderCityId("");
+        setSenderDistrict("");
+        setSenderLat("");
+        setSenderLon("");
+      } catch (e: any) {
+        setSenderCities([]);
+        setSenderCityId("");
+        setSenderDistrict("");
+        setSenderLat("");
+        setSenderLon("");
+        setErrMsg(e?.message || "Gönderici ilçe listesi alınamadı.");
+      }
+    },
+    [router]
+  );
+
   // initial: countries
   React.useEffect(() => {
     loadCountries();
   }, [loadCountries]);
 
-  // when country changes: load states
+  // when receiver country changes: load receiver states
   React.useEffect(() => {
     if (!countryId) return;
     loadStates(Number(countryId));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [countryId]);
 
-  // when state changes: set cityName + load cities
+  // when receiver state changes: set cityName + load receiver cities
   React.useEffect(() => {
     if (!countryId || !stateId) return;
 
@@ -478,7 +727,7 @@ export default function CreateCargoPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stateId]);
 
-  // when city (district) changes: set districtName + lat/lon
+  // when receiver city (district) changes: set districtName + lat/lon
   React.useEffect(() => {
     if (!cityId) {
       setDistrictName("");
@@ -496,6 +745,54 @@ export default function CreateCargoPage() {
     setLat(la === null || la === undefined ? "" : String(la));
     setLon(lo === null || lo === undefined ? "" : String(lo));
   }, [cityId, cities]);
+
+  // when sender country changes: load sender states
+  React.useEffect(() => {
+    if (!senderCountryId) return;
+    loadSenderStates(Number(senderCountryId));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [senderCountryId]);
+
+  // when sender state changes: set senderCity + load sender cities
+  React.useEffect(() => {
+    if (!senderCountryId || !senderStateId) return;
+
+    const st = senderStates.find((s) => s.id === Number(senderStateId));
+    setSenderCity(st ? String(st.name || "").trim() : "");
+
+    loadSenderCities(Number(senderCountryId), Number(senderStateId));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [senderStateId]);
+
+  // when sender district changes: set senderDistrict + senderLat/Lon auto
+  React.useEffect(() => {
+    if (!senderCityId) {
+      setSenderDistrict("");
+      setSenderLat("");
+      setSenderLon("");
+      return;
+    }
+
+    const ct = senderCities.find((c) => c.id === Number(senderCityId));
+    const dName = ct ? String(ct.name || "").trim() : "";
+    setSenderDistrict(dName);
+
+    const la = ct?.latitude ?? "";
+    const lo = ct?.longitude ?? "";
+    setSenderLat(la === null || la === undefined ? "" : String(la));
+    setSenderLon(lo === null || lo === undefined ? "" : String(lo));
+  }, [senderCityId, senderCities]);
+
+  React.useEffect(() => {
+    if (!useDifferentSender) return;
+
+    // sadece ilk açılışta bir kere üret
+    if (!senderPickupCodeAutoRef.current) {
+      const code = makePickupCode();
+      setSenderPickupCode(code);
+      senderPickupCodeAutoRef.current = true;
+    }
+  }, [useDifferentSender]);
 
   /* ================= Inventory: GET /oto/inventory/box ================= */
 
@@ -627,9 +924,210 @@ export default function CreateCargoPage() {
     setStep((s) => (s > 1 ? ((s - 1) as StepKey) : s));
   }
 
+  async function createPickupLocationAndSetCode() {
+    setPickupCreateErr(null);
+    setPickupCreateOk(null);
+
+    const bearer = getBearerToken();
+    if (!bearer) {
+      router.replace("/");
+      return false;
+    }
+
+    // minimal validation
+    if (!senderPickupCode.trim()) return setPickupCreateErr("code zorunlu."), false; // ✅
+    if (!senderBrandName.trim()) return setPickupCreateErr("brandName zorunlu."), false;
+    if (!senderContactName.trim()) return setPickupCreateErr("contactName zorunlu."), false;
+    if (!senderMobile.trim()) return setPickupCreateErr("mobile zorunlu."), false;
+    if (!senderEmail.trim()) return setPickupCreateErr("email zorunlu."), false;
+
+    // ✅ sender location now from endpoints
+    if (!senderCountryId) return setPickupCreateErr("Ülke seçimi zorunlu."), false;
+    if (!senderStateId) return setPickupCreateErr("İl seçimi zorunlu."), false;
+    if (!senderCityId) return setPickupCreateErr("İlçe seçimi zorunlu."), false;
+
+    if (!senderCity.trim()) return setPickupCreateErr("city zorunlu."), false;
+    if (!senderDistrict.trim()) return setPickupCreateErr("district zorunlu."), false;
+
+    if (!senderAddress.trim()) return setPickupCreateErr("address zorunlu."), false;
+    if (!senderPostcode.trim()) return setPickupCreateErr("postcode zorunlu."), false;
+    if (!senderLat.trim() || !senderLon.trim()) return setPickupCreateErr("lat/lon otomatik dolmadı. İlçe seçimini kontrol et."), false;
+
+    setPickupCreating(true);
+    try {
+      const body: PickupLocationCreateReq = {
+        code: senderPickupCode.trim(), // ✅ REQUIRED
+        brandName: senderBrandName.trim(),
+        address: senderAddress.trim(),
+        mobile: senderMobile.trim(),
+        city: senderCity.trim(),
+        district: senderDistrict.trim(),
+        lat: Number(senderLat),
+        lon: Number(senderLon),
+        email: senderEmail.trim(),
+        postcode: senderPostcode.trim(),
+        contactName: senderContactName.trim(),
+        description: "AUTO",
+      };
+
+      const res = await fetch("/yuksi/oto/inventory/pickup-location/create", {
+        method: "POST",
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${bearer}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      const json = await readJson<PickupLocationCreateRes>(res);
+      if (!res.ok) throw new Error(pickMsg(json, `HTTP ${res.status}`));
+
+      const code = String(json?.code || json?.data?.code || body.code || "").trim();
+      if (!code) throw new Error(json?.otoErrorMessage || json?.message || "Pickup location code dönmedi.");
+
+      setPickupLocationCode(code);
+      setPickupCreateOk(`Pickup location oluşturuldu. code=${code}`);
+      return true;
+    } catch (e: any) {
+      setPickupCreateErr(e?.message || "Pickup location oluşturulamadı.");
+      return false;
+    } finally {
+      setPickupCreating(false);
+    }
+  }
+  const DEFAULT_ORIGIN = {
+    city: "Ankara",         // depo ili
+    lat: 39.92077,          // depo lat
+    lon: 32.85411,          // depo lon
+  };
+
+  function first<T>(...vals: Array<T | undefined | null>): T | undefined {
+    for (const v of vals) if (v !== undefined && v !== null) return v;
+    return undefined;
+  }
+
+  function optionIdOf(o: OtoFeeOption): number | null {
+    const id = first(o.deliveryOptionId, o.delivery_option_id);
+    const n = Number(id);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+
+  function carrierOf(o: OtoFeeOption) {
+    return String(first(
+      (o as any).deliveryOptionName,
+      (o as any).deliveryCompanyName,
+      o.carrierName,
+      o.companyName,
+      o.carrier,
+      "—"
+    ));
+  }
+
+  function priceOf(o: OtoFeeOption) {
+    const p = Number(first(o.price, o.amount, o.total, 0));
+    return Number.isFinite(p) ? p : 0;
+  }
+
+  async function fetchOtoFee() {
+    setFeeErr(null);
+    setFeeOptions([]);
+    setSelectedFeeIdx(null);
+
+    const bearer = getBearerToken();
+    if (!bearer) {
+      router.replace("/");
+      return;
+    }
+
+    // destination = receiver
+    const destinationCity = String(cityName || "").trim(); // il
+    const destinationLat = num(lat);
+    const destinationLon = num(lon);
+
+    if (!destinationCity) return setFeeErr("destinationCity (il) boş."), void 0;
+    if (!destinationLat || !destinationLon) return setFeeErr("destinationLat/Lon boş."), void 0;
+
+    // origin = sender (different sender varsa oradan), yoksa DEFAULT
+    const originCity = useDifferentSender ? String(senderCity || "").trim() : DEFAULT_ORIGIN.city;
+    const originLat = useDifferentSender ? num(senderLat) : DEFAULT_ORIGIN.lat;
+    const originLon = useDifferentSender ? num(senderLon) : DEFAULT_ORIGIN.lon;
+
+    if (!originCity) return setFeeErr("originCity (gönderici il) boş."), void 0;
+    if (!originLat || !originLon) return setFeeErr("originLat/Lon boş."), void 0;
+
+    // weight + dimensions Step2
+    const weight = Math.max(1, Number(packageWeight || 1));
+    const length = Math.max(0, Number(boxLength || 0));
+    const width = Math.max(0, Number(boxWidth || 0));
+    const height = Math.max(0, Number(boxHeight || 0));
+
+    // burada serviceType/deliveryType API’ye göre sabit veya UI’dan seçmeli.
+    // şimdilik "string" göndermeyelim; backend kabul edeceği bir default verelim:
+    const body: OtoFeeReq = {
+      originCity,
+      destinationCity,
+      weight,
+
+      originLat,
+      originLon,
+      destinationLat,
+      destinationLon,
+
+      forReverseShipment: false,
+      currency: currency.trim() || "TRY",
+
+      packageCount: Math.max(1, Number(packageCount || 1)),
+      totalDue: 0,
+
+      length,
+      width,
+      height,
+
+      serviceType,
+      deliveryType,
+      includeEstimatedDates: true,
+    };
+
+    setFeeLoading(true);
+    try {
+      const res = await fetch("/yuksi/oto/logistics/oto-fee", {
+        method: "POST",
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${bearer}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      const json = await readJson<OtoFeeRes>(res);
+      if (!res.ok) throw new Error(pickMsg(json, `HTTP ${res.status}`));
+
+      const list =
+        (Array.isArray((json as any)?.deliveryCompany) && (json as any).deliveryCompany) ||
+        (Array.isArray(json?.data) && json.data) ||
+        (Array.isArray((json as any)?.options) && (json as any).options) ||
+        (Array.isArray((json as any)?.result) && (json as any).result) ||
+        [];
+
+      if (!list.length) throw new Error(pickMsg(json, "Kargo fiyatları boş döndü."));
+
+      setFeeOptions(list);
+    } catch (e: any) {
+      setFeeErr(e?.message || "Fiyat listesi alınamadı.");
+    } finally {
+      setFeeLoading(false);
+    }
+  }
+
   function validateStep(s: StepKey): string | null {
     if (s === 1) {
-      if (!pickupLocationCode.trim()) return "Gönderici Konumu Adı zorunlu.";
+      if (useDifferentSender) {
+        if (!pickupLocationCode.trim()) return "Pickup Location oluşturmadın. Lütfen Step 1'de pickup oluştur ve code oluştuğunu doğrula.";
+      }
       if (!receiverName.trim()) return "Alıcının Tam Adı zorunlu.";
       if (!receiverPhone.trim()) return "Alıcı Telefon Numarası zorunlu.";
       if (!receiverEmail.trim()) return "Alıcı e-posta (customer.email) zorunlu.";
@@ -690,6 +1188,11 @@ export default function CreateCargoPage() {
         return;
       }
     }
+    if (useDifferentSender && !pickupLocationCode.trim()) {
+      setErrMsg("Pickup Location code yok. Step 1'e dönüp pickup oluşturmalısın.");
+      setStep(1);
+      return;
+    }
 
     const bearer = getBearerToken();
     if (!bearer) {
@@ -709,23 +1212,47 @@ export default function CreateCargoPage() {
         price: Math.max(0, Number(packageValue || 0)),
         quantity: 1,
         sku: `pkg-${orderId.trim() || "order"}`,
+        pickupLocation: [{ pickupLocationCode: pickupLocationCode.trim(), quantity: 1 }],
       },
     ];
 
     const body: CreateOrderReq = {
       order_id: orderId.trim(),
-      pickupLocationCode: pickupLocationCode.trim(),
-      createShipment: createShipment ? "true" : "false",
-      deliveryOptionId: Number(deliveryOptionId),
-
       payment_method,
       amount,
       amount_due,
       currency: currency.trim(),
 
-      customsValue: customsValue.trim(),
-      customsCurrency: customsCurrency.trim(),
+      customer: {
+        name: receiverName.trim(),
+        email: receiverEmail.trim(),
+        mobile: receiverPhone.trim(),
+        address: fullAddress.trim(),
+        district: districtName.trim(),
+        city: cityName.trim(),
+        state: cityName.trim(),
+        country: countryCode.trim(),
+        postcode: zip.trim(),
+        lat: Number(lat),
+        lon: Number(lon),
+      },
 
+      items: [
+        {
+          productId: 0,
+          name: packageContent.trim(),
+          price: Math.max(0, Number(packageValue || 0)),
+          quantity: 1,
+          sku: `pkg-${orderId.trim() || "order"}`,
+          pickupLocation: [{ pickupLocationCode: pickupLocationCode.trim(), quantity: 1 }],
+        },
+      ],
+
+      pickup_location_code: pickupLocationCode.trim(),
+      create_shipment: Boolean(createShipment),
+      delivery_option_id: Number(deliveryOptionId),
+
+      senderName: senderName.trim(),
       packageCount,
       packageWeight,
 
@@ -738,26 +1265,8 @@ export default function CreateCargoPage() {
       deliverySlotTo: deliverySlotTo.trim(),
       deliverySlotFrom: deliverySlotFrom.trim(),
 
-      senderName: senderName.trim(),
-
-      customer: {
-        name: receiverName.trim(),
-        email: receiverEmail.trim(),
-        mobile: receiverPhone.trim(),
-        address: fullAddress.trim(),
-
-        // ✅ il/ilçe endpointlerden geliyor
-        city: cityName.trim(), // il
-        district: districtName.trim(), // ilçe
-
-        country: countryCode.trim(), // "TR"
-        postcode: zip.trim(),
-
-        // ✅ gizli ama payload dolu
-        lat: lat.trim(),
-        lon: lon.trim(),
-      },
-      items,
+      customsValue: customsValue.trim(),
+      customsCurrency: customsCurrency.trim(),
     };
 
     setSubmitting(true);
@@ -848,21 +1357,9 @@ export default function CreateCargoPage() {
             <SectionTitle title="Gönderim Yeri" />
 
             <div className="mt-4">
-              <Label text="Gönderici Konumu Adı *" />
-              <div className="relative">
-                <input
-                  value={pickupLocationCode}
-                  onChange={(e) => setPickupLocationCode(e.target.value)}
-                  className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-                />
-                <button
-                  type="button"
-                  onClick={() => setPickupLocationCode("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
-                  title="Temizle"
-                >
-                  ×
-                </button>
+              <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
+                Gönderici konumu:{" "}
+                {pickupLocationCode ? <span className="font-semibold">{pickupLocationCode}</span> : <span className="text-neutral-500">Seçilmedi</span>}
               </div>
 
               <div className="mt-3 flex items-center gap-3 text-sm text-neutral-600">
@@ -872,11 +1369,163 @@ export default function CreateCargoPage() {
                   className={cn("h-5 w-9 rounded-full relative transition border", useDifferentSender ? "bg-indigo-600 border-indigo-600" : "bg-neutral-200 border-neutral-200")}
                   aria-label="Farklı adresten gönder"
                 >
-                  <div className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition", useDifferentSender ? "left-4.5" : "left-0.5")} />
+                  <div className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition", useDifferentSender ? "left-5" : "left-0.5")} />
                 </button>
                 Farklı bir adresten gönder
               </div>
             </div>
+
+            {useDifferentSender ? (
+              <div className="mt-4 rounded-xl border border-neutral-200 bg-white p-4">
+                <div className="text-sm font-semibold text-neutral-900">Gönderici Adresi (Pickup Location Oluştur)</div>
+
+                {pickupCreateErr ? (
+                  <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{pickupCreateErr}</div>
+                ) : null}
+                {pickupCreateOk ? (
+                  <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{pickupCreateOk}</div>
+                ) : null}
+
+                <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <div>
+                    <Label text="Konum Kodu *" />
+                    <input
+                      value={senderPickupCode}
+                      readOnly
+                      className="h-10 w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 text-sm font-mono"
+                    />
+                    <div className="mt-1 text-xs text-neutral-500">
+                      Konum kodu otomatik üretilir (unique). Kullanıcı değiştiremez.
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label text="Konum Kısaltması *" />
+                    <input value={senderBrandName} onChange={(e) => setSenderBrandName(e.target.value)} className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm" />
+                  </div>
+
+                  <div>
+                    <Label text="İsim *" />
+                    <input value={senderContactName} onChange={(e) => setSenderContactName(e.target.value)} className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm" />
+                  </div>
+                  <div>
+                    <Label text="email *" />
+                    <input value={senderEmail} onChange={(e) => setSenderEmail(e.target.value)} className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm" />
+                  </div>
+
+                  <div>
+                    <Label text="Telefon *" />
+                    <input value={senderMobile} onChange={(e) => setSenderMobile(e.target.value)} className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm" />
+                  </div>
+                  <div>
+                    <Label text="Posta Kodu *" />
+                    <input value={senderPostcode} onChange={(e) => setSenderPostcode(e.target.value)} className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm" />
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <div className="text-xs text-neutral-500">
+                    Kaynaklar (sender): <span className="font-mono">GET /logistics/countries</span>, <span className="font-mono">GET /logistics/states</span>,{" "}
+                    <span className="font-mono">GET /logistics/cities</span> (lat/lon ilçe seçimi ile auto dolar)
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+                  <div className="lg:col-span-1">
+                    <Label text="Ülke *" />
+                    <select
+                      value={senderCountryId === "" ? "" : String(senderCountryId)}
+                      onChange={(e) => {
+                        const v = e.target.value ? Number(e.target.value) : "";
+                        setSenderCountryId(v);
+                      }}
+                      className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+                    >
+                      <option value="">{countries.length ? "Ülke seçin" : "Ülkeler yükleniyor..."}</option>
+                      {countries.map((c) => (
+                        <option key={c.id} value={String(c.id)}>
+                          {c.name} {c.iso2 ? `(${String(c.iso2).toUpperCase()})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="lg:col-span-1">
+                    <Label text="İl *" />
+                    <select
+                      value={senderStateId === "" ? "" : String(senderStateId)}
+                      onChange={(e) => setSenderStateId(e.target.value ? Number(e.target.value) : "")}
+                      disabled={!senderCountryId}
+                      className={cn(
+                        "h-10 w-full rounded-lg border px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200",
+                        !senderCountryId ? "border-neutral-200 bg-neutral-50 text-neutral-500" : "border-neutral-200 bg-white"
+                      )}
+                    >
+                      <option value="">{!senderCountryId ? "Önce ülke seçin" : senderStates.length ? "İl seçin" : "İller yükleniyor..."}</option>
+                      {senderStates.map((s) => (
+                        <option key={s.id} value={String(s.id)}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="lg:col-span-1">
+                    <Label text="İlçe *" />
+                    <select
+                      value={senderCityId === "" ? "" : String(senderCityId)}
+                      onChange={(e) => setSenderCityId(e.target.value ? Number(e.target.value) : "")}
+                      disabled={!senderCountryId || !senderStateId}
+                      className={cn(
+                        "h-10 w-full rounded-lg border px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200",
+                        !senderCountryId || !senderStateId ? "border-neutral-200 bg-neutral-50 text-neutral-500" : "border-neutral-200 bg-white"
+                      )}
+                    >
+                      <option value="">
+                        {!senderCountryId || !senderStateId ? "Önce ülke ve il seçin" : senderCities.length ? "İlçe seçin" : "İlçeler yükleniyor..."}
+                      </option>
+                      {senderCities.map((c) => (
+                        <option key={c.id} value={String(c.id)}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <Label text="address *" />
+                  <textarea value={senderAddress} onChange={(e) => setSenderAddress(e.target.value)} className="min-h-[80px] w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm" />
+                </div>
+
+                {/* lat/lon auto (hidden but show small preview) */}
+                <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-700">
+                  Sender city/district: <span className="font-semibold">{senderCity || "-"}</span> / <span className="font-semibold">{senderDistrict || "-"}</span>
+                  <span className="mx-2 text-neutral-300">|</span>
+                  Lat/Lon (AUTO): <span className="font-mono">{senderLat || "-"}</span>, <span className="font-mono">{senderLon || "-"}</span>
+                </div>
+
+                <div className="mt-4 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    disabled={pickupCreating}
+                    onClick={async () => {
+                      const ok = await createPickupLocationAndSetCode();
+                      if (ok) {
+                        // optionally auto-next
+                      }
+                    }}
+                    className="h-10 rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                  >
+                    {pickupCreating ? "Oluşturuluyor…" : "Pickup Location Oluştur"}
+                  </button>
+                </div>
+
+                <div className="mt-3 text-xs text-neutral-500">
+                  Oluşan pickup code: <span className="font-mono">{pickupLocationCode || "-"}</span>
+                </div>
+              </div>
+            ) : null}
 
             <div className="mt-8 border-t border-neutral-200 pt-6">
               <SectionTitle title="Alıcı" />
@@ -927,7 +1576,8 @@ export default function CreateCargoPage() {
             <div className="mt-8 border-t border-neutral-200 pt-6">
               <SectionTitle title="Adres" />
               <div className="mt-2 text-xs text-neutral-500">
-                Kaynaklar: <span className="font-mono">GET /logistics/countries</span>, <span className="font-mono">GET /logistics/states</span>, <span className="font-mono">GET /logistics/cities</span>
+                Kaynaklar: <span className="font-mono">GET /logistics/countries</span>, <span className="font-mono">GET /logistics/states</span>,{" "}
+                <span className="font-mono">GET /logistics/cities</span>
               </div>
             </div>
 
@@ -1062,9 +1712,7 @@ export default function CreateCargoPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="text-xs text-neutral-500">
-                    Lat/Lon otomatik dolduruluyor (payload’a gidiyor) ama kullanıcıya gösterilmiyor.
-                  </div>
+                  <div className="text-xs text-neutral-500">Lat/Lon otomatik dolduruluyor (payload’a gidiyor) ama kullanıcıya gösterilmiyor.</div>
                 )}
               </div>
             </div>
@@ -1302,9 +1950,8 @@ export default function CreateCargoPage() {
                     className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
                   />
                   <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm">
-                    <option value="SAR">SAR</option>
-                    <option value="USD">USD</option>
                     <option value="TRY">TRY</option>
+                    <option value="USD">USD</option>
                   </select>
                 </div>
               </div>
@@ -1346,10 +1993,11 @@ export default function CreateCargoPage() {
                 ← Önceki
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   const v = validateStep(2);
                   if (v) return setErrMsg(v);
                   next();
+                  await fetchOtoFee();
                 }}
                 className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
               >
@@ -1362,85 +2010,123 @@ export default function CreateCargoPage() {
         {/* STEP 3 */}
         {step === 3 && (
           <div className="p-6">
-            <div className="rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-700">
-              <div className="flex flex-wrap items-center gap-6">
-                <div>
-                  <div className="text-xs text-neutral-500">Sipariş Numarası</div>
-                  <div className="font-semibold">{orderId || "-"}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-neutral-500">Varış Noktası</div>
-                  <div className="font-semibold">{cityName ? `${cityName} / ${districtName || "-"}` : "-"}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-neutral-500">Ödeme Türü</div>
-                  <div className="font-semibold">{cod ? "Kapıda Ödeme" : "Ödendi"}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-neutral-500">Ücrete Esas Ağırlık</div>
-                  <div className="font-semibold">{Math.max(1, packageWeight)} kg</div>
-                </div>
+            <SectionTitle title="Gönderim Ücretleri" />
+
+            {feeErr ? (
+              <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{feeErr}</div>
+            ) : null}
+            <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+              <div>
+                <Label text="serviceType" />
+                <select
+                  value={serviceType}
+                  onChange={(e) => setServiceType(e.target.value as any)}
+                  className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+                >
+                  <option value="express">express</option>
+                  <option value="sameDay">sameDay</option>
+                  <option value="fastDelivery">fastDelivery</option>
+                  <option value="coldDelivery">coldDelivery</option>
+                  <option value="heavyAndBulky">heavyAndBulky</option>
+                  <option value="electronicAndHeavy">electronicAndHeavy</option>
+                </select>
+              </div>
+
+              <div>
+                <Label text="deliveryType" />
+                <select
+                  value={deliveryType}
+                  onChange={(e) => setDeliveryType(e.target.value as any)}
+                  className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+                >
+                  <option value="toCustomerDoorstep">toCustomerDoorstep</option>
+                  <option value="pickupByCustomer">pickupByCustomer</option>
+                  <option value="toCustomerDoorstepOrPickupByCustomer">toCustomerDoorstepOrPickupByCustomer</option>
+                </select>
               </div>
             </div>
 
-            <div className="mt-4 rounded-xl border border-neutral-200 bg-white overflow-hidden">
-              <div className="border-b border-neutral-200 bg-neutral-50 px-4 py-3">
-                <div className="grid grid-cols-[180px_100px_120px_160px_200px_120px_40px] gap-3 text-xs font-semibold text-neutral-600">
-                  <div>Kargo Şirketi ⓘ</div>
-                  <div>Hizmet Türü ⓘ</div>
-                  <div>Teslimat Süresi ⓘ</div>
-                  <div>Teslim Alma / Teslim Etme Koşulları ⓘ</div>
-                  <div>Teslimat Türü ⓘ</div>
-                  <div>Fiyat ⓘ</div>
-                  <div />
-                </div>
+            <div className="mt-3 flex items-center justify-between">
+              <div className="text-xs text-neutral-500">
+                Endpoint: <span className="font-mono">POST /oto/logistics/oto-fee</span>
+              </div>
+              <button
+                type="button"
+                onClick={fetchOtoFee}
+                disabled={feeLoading}
+                className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-semibold hover:bg-neutral-50 disabled:opacity-60"
+              >
+                {feeLoading ? "Yükleniyor…" : "Yenile"}
+              </button>
+            </div>
 
-                <div className="mt-3 grid grid-cols-[180px_100px_120px_160px_200px_120px_40px] gap-3">
-                  <select className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm">
-                    <option>Seç</option>
-                  </select>
-                  <select className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm">
-                    <option>Seç</option>
-                  </select>
-                  <select className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm">
-                    <option>Seç</option>
-                  </select>
-                  <select className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm">
-                    <option>Seç</option>
-                  </select>
-                  <select className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm">
-                    <option>Seç</option>
-                  </select>
-                  <div className="flex gap-2">
-                    <input className="h-9 w-full rounded-lg border border-neutral-200 px-3 text-sm" placeholder="En az" />
-                    <input className="h-9 w-full rounded-lg border border-neutral-200 px-3 text-sm" placeholder="En fazla" />
-                  </div>
-                  <div />
-                </div>
+            <div className="mt-4 rounded-xl border border-neutral-200 overflow-hidden">
+              <div className="bg-neutral-50 px-4 py-3 text-xs font-semibold text-neutral-600 grid grid-cols-[400px_140px_140px_160px_120px_80px] gap-3">
+                <div>Kargo Şirketi</div>
+                <div>Servis</div>
+                <div>Teslimat</div>
+                <div>ETA</div>
+                <div>Fiyat</div>
+                <div />
               </div>
 
-              <div className="p-6 text-sm text-neutral-600">
-                Şu an bu ekrana fiyat listesi bağlanmadı (mock kaldırıldı). Eğer “rate/quote” endpoint’i varsa ver, Step 3’te gerçek kargo şirketlerini ve fiyatlarını buraya çekeriz.
-                <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
-                  <div>
-                    <Label text="Seçili Kargo Şirketi (opsiyonel)" />
-                    <input
-                      value={selectedCarrierName}
-                      onChange={(e) => setSelectedCarrierName(e.target.value)}
-                      placeholder="Sürat Kargo"
-                      className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-                    />
-                  </div>
-                  <div>
-                    <Label text="Seçili Fiyat (opsiyonel)" />
-                    <input
-                      value={selectedPrice}
-                      onChange={(e) => setSelectedPrice(e.target.value === "" ? "" : num(e.target.value))}
-                      placeholder="153"
-                      className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-                    />
-                  </div>
-                </div>
+              <div className="divide-y divide-neutral-200">
+                {feeLoading ? (
+                  <div className="p-4 text-sm text-neutral-600">Fiyatlar alınıyor…</div>
+                ) : feeOptions.length ? (
+                  feeOptions.map((o, idx) => {
+                    const id = optionIdOf(o);
+                    const chosen = selectedFeeIdx === idx;
+                    return (
+                      <div key={idx} className="px-4 py-3 grid grid-cols-[400px_140px_140px_160px_120px_80px] gap-3 items-center">
+                        <div className="flex items-center gap-3">
+                          {(o as any).logo ? (
+                            <img
+                              src={(o as any).logo}
+                              alt={carrierOf(o)}
+                              className="h-20 w-20 rounded-md border border-neutral-200 bg-white object-contain p-1"
+                              loading="lazy"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <div className="h-8 w-8 rounded-md border border-neutral-200 bg-neutral-50" />
+                          )}
+
+                          <div className="text-sm font-semibold text-neutral-900">{carrierOf(o)}</div>
+                        </div>
+                        <div className="text-sm text-neutral-700">{String(o.serviceType ?? "—")}</div>
+                        <div className="text-sm text-neutral-700">{String(o.deliveryType ?? "—")}</div>
+                        <div className="text-xs text-neutral-600">
+                          {(o as any).estimatedPickupDate ? `PU: ${(o as any).estimatedPickupDate}` : "—"}
+                          {(o as any).estimatedDeliveryDate ? ` / DL: ${(o as any).estimatedDeliveryDate}` : ""}
+                        </div>
+                        <div className="text-sm font-semibold text-neutral-900">
+                          {priceOf(o)} {(o as any).currency || currency}
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled={!id}
+                          onClick={() => {
+                            setSelectedFeeIdx(idx);
+                            setSelectedCarrierName(carrierOf(o));
+                            setSelectedPrice(priceOf(o));
+                            if (id) setDeliveryOptionId(id); // ✅ Step4/create order için hazır
+                          }}
+                          className={cn(
+                            "h-9 rounded-lg px-3 text-sm font-semibold border",
+                            chosen ? "bg-indigo-600 text-white border-indigo-600" : "bg-white text-neutral-800 border-neutral-200 hover:bg-neutral-50",
+                            !id && "opacity-50 cursor-not-allowed"
+                          )}
+                        >
+                          {chosen ? "Seçildi" : "Seç"}
+                        </button>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="p-4 text-sm text-neutral-600">Liste boş.</div>
+                )}
               </div>
             </div>
 
@@ -1448,8 +2134,12 @@ export default function CreateCargoPage() {
               <button onClick={prev} className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-700 hover:text-neutral-900">
                 ← Önceki
               </button>
-              <button onClick={() => next()} className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
-                Devam <span className="opacity-90">›</span>
+              <button
+                onClick={() => next()}
+                disabled={deliveryOptionId === ""}   // ✅ seçmeden geçmesin
+                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+              >
+                Devam ›
               </button>
             </div>
           </div>
@@ -1487,7 +2177,11 @@ export default function CreateCargoPage() {
                 </div>
                 <div>
                   <Label text="order_id *" />
-                  <input value={orderId} onChange={(e) => setOrderId(e.target.value)} className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200" />
+                  <input
+                    value={orderId}
+                    readOnly
+                    className="h-10 w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 text-sm font-mono outline-none"
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
