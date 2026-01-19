@@ -309,6 +309,8 @@ export default function MyLocationPage() {
     return Array.from(s).sort((a, b) => a.localeCompare(b, "tr"));
   }, [rows]);
 
+  const GRID = "grid-cols-[180px_160px_140px_130px_1fr_110px]";
+
   /* ================= Pickup Locations List ================= */
 
   const load = React.useCallback(
@@ -744,28 +746,24 @@ export default function MyLocationPage() {
       <div className="mt-4 rounded-xl border border-neutral-200 bg-white overflow-hidden">
         {/* Filters row */}
         <div className="border-b border-neutral-200 bg-neutral-50 px-4 py-3">
-          <div className="grid grid-cols-[40px_180px_160px_140px_130px_1fr_110px_44px] gap-2 text-xs font-semibold text-neutral-600">
-            <div />
+          {/* Header */}
+          <div className={cn("grid gap-2 text-xs font-semibold text-neutral-600", GRID)}>
             <div>Yer ismi</div>
             <div>Ad Soyad</div>
-            <div>Telefon Numarası</div>
+            <div>Telefon</div>
             <div>Şehir</div>
             <div>Adres</div>
             <div>Durum</div>
-            <div />
           </div>
 
-          <div className="mt-3 grid grid-cols-[48px_220px_200px_180px_180px_1fr_140px_56px] gap-3 items-center">
-            <div className="flex justify-center">
-              <input type="checkbox" className="h-4 w-4" />
-            </div>
-
+          {/* Filters (sadece gerekli olanlar) */}
+          <div className={cn("mt-2 grid gap-2 items-center", GRID)}>
             <select
               value={fPlace}
               onChange={(e) => setFPlace(e.target.value)}
-              className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+              className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
             >
-              <option value="">Seç</option>
+              <option value="">Tümü</option>
               {placeOptions.map((x) => (
                 <option key={x} value={x}>
                   {x}
@@ -776,23 +774,23 @@ export default function MyLocationPage() {
             <input
               value={fName}
               onChange={(e) => setFName(e.target.value)}
-              className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-              placeholder=""
+              className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+              placeholder="İsim ara"
             />
 
             <input
               value={fPhone}
               onChange={(e) => setFPhone(e.target.value)}
-              className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-              placeholder=""
+              className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+              placeholder="Telefon"
             />
 
             <select
               value={fCity}
               onChange={(e) => setFCity(e.target.value)}
-              className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+              className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
             >
-              <option value="">Seç</option>
+              <option value="">Tümü</option>
               {cityOptions.map((x) => (
                 <option key={x} value={x}>
                   {x}
@@ -803,21 +801,19 @@ export default function MyLocationPage() {
             <input
               value={fAddr}
               onChange={(e) => setFAddr(e.target.value)}
-              className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-              placeholder=""
+              className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+              placeholder="Adres"
             />
 
             <select
               value={fStatus}
               onChange={(e) => setFStatus(e.target.value as any)}
-              className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+              className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
             >
-              <option value="">Seç</option>
+              <option value="">Tümü</option>
               <option value="active">Aktif</option>
               <option value="passive">Pasif</option>
             </select>
-
-            <div className="flex justify-end text-neutral-400">⋯</div>
           </div>
         </div>
 
@@ -829,12 +825,8 @@ export default function MyLocationPage() {
             <div className="p-6 text-sm text-neutral-600">Kayıt bulunamadı.</div>
           ) : (
             filtered.map((r) => (
-              <div key={r.id} className="px-4 py-4">
-                <div className="grid grid-cols-[40px_180px_160px_140px_130px_1fr_110px_44px] gap-2 text-xs font-semibold text-neutral-600">
-                  <div className="flex justify-center">
-                    <input type="checkbox" className="h-4 w-4" />
-                  </div>
-
+              <div key={r.id} className="px-3 py-2">
+                <div className={cn("grid gap-2 items-center text-[13px]", GRID)}>
                   <div className="text-neutral-900 font-semibold truncate" title={r.placeName}>
                     {r.placeName || "—"}
                     {r.locationCode ? <div className="text-xs text-neutral-500 font-normal truncate">Kod: {r.locationCode}</div> : null}
@@ -860,14 +852,6 @@ export default function MyLocationPage() {
                   <div>
                     <StatusPill v={r.status} />
                   </div>
-
-                  <button
-                    type="button"
-                    className="h-9 w-9 rounded-lg border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50"
-                    title="Aksiyonlar (şimdilik yok)"
-                  >
-                    ⋯
-                  </button>
                 </div>
               </div>
             ))
