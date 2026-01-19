@@ -55,6 +55,62 @@ function extractCityName(s: string) {
   return (parts[parts.length - 1] || t).trim();
 }
 
+function safeStr(x: any) {
+  return x === null || x === undefined ? "" : String(x);
+}
+
+function asNumberOrNull(x: any): number | null {
+  const n = Number(x);
+  return Number.isFinite(n) ? n : null;
+}
+
+function getOrderField(o: any, keys: string[]) {
+  for (const k of keys) {
+    if (o && o[k] !== undefined && o[k] !== null && String(o[k]).trim() !== "") return o[k];
+  }
+  return null;
+}
+
+function getOrderOriginCity(o: any): string {
+  const v =
+    getOrderField(o, ["originCity", "origin_city", "origin_city_name", "originCityName", "pickupCity", "pickup_city"]) ??
+    "";
+  return String(v || "").trim();
+}
+
+function getOrderDestinationCity(o: any): string {
+  const v =
+    getOrderField(o, [
+      "destinationCity",
+      "destination_city",
+      "destination_city_name",
+      "destinationCityName",
+      "deliverCity",
+      "deliveryCity",
+      "delivery_city",
+      "customerCity",
+      "customer_city",
+      "city",
+    ]) ?? "";
+  return String(v || "").trim();
+}
+
+function getOrderWeight(o: any): number | null {
+  const v = getOrderField(o, ["totalWeight", "total_weight", "weight", "cargoWeight", "desiWeight"]);
+  return asNumberOrNull(v);
+}
+
+function getOrderDims(o: any): { l?: number; w?: number; h?: number } {
+  const l = asNumberOrNull(getOrderField(o, ["length", "cargoLength", "boxLength", "packageLength"]));
+  const w = asNumberOrNull(getOrderField(o, ["width", "cargoWidth", "boxWidth", "packageWidth"]));
+  const h = asNumberOrNull(getOrderField(o, ["height", "cargoHeight", "boxHeight", "packageHeight"]));
+  const out: any = {};
+  if (l !== null) out.l = l;
+  if (w !== null) out.w = w;
+  if (h !== null) out.h = h;
+  return out;
+}
+
 /* ================= API Types ================= */
 
 type BoxRow = { l: number; w: number; h: number; weight: number };
@@ -137,11 +193,69 @@ type OtoFeeRes = {
   deliveryCompany?: DeliveryCompany[];
 };
 
+/** /api/oto/orders/list */
+type OtoOrder = {
+  id: string; // swagger response'da string gibi duruyor
+  orderId?: string;
+  status?: string;
+  customerName?: string;
+  customerPhone?: string;
+  customerEmail?: string;
+  originCity?: string;
+  destinationCity?: string;
+  totalWeight?: number;
+  length?: number;
+  width?: number;
+  height?: number;
+  shipmentNumber?: string;
+  customerAddress?: string;
+  trackingUrl?: string;
+  reverseShipment?: string;
+  // başka alanlar gelebilir; sıkıntı değil
+  [k: string]: any;
+};
+
+type OrdersListReq = {
+  page: number;
+  perPage: number;
+  search: string;
+  status: string;
+};
+
+type OrdersListRes = {
+  success?: boolean;
+  message?: any;
+  warnings?: any;
+  otoErrorCode?: any;
+  otoErrorMessage?: any;
+  perPage?: number;
+  totalPage?: number;
+  currentPage?: number;
+  totalCount?: number;
+  orders?: OtoOrder[];
+};
+
+type CreateShipmentReq = {
+  order_id: string;
+  delivery_option_id: number;
+};
+
 /* ================= Page ================= */
 
 export default function CargoPricesPage() {
-  // Top form
+  // Orders
   const [orderSearch, setOrderSearch] = React.useState("");
+  const [orderStatus, setOrderStatus] = React.useState<string>(""); // swagger'da var
+  const [orders, setOrders] = React.useState<OtoOrder[]>([]);
+  const [ordersLoading, setOrdersLoading] = React.useState(false);
+  const [ordersErr, setOrdersErr] = React.useState<string | null>(null);
+  const [selectedOrderId, setSelectedOrderId] = React.useState<string>("");
+
+  const selectedOrder = React.useMemo(() => {
+    return orders.find((x) => String(x.id) === String(selectedOrderId)) || null;
+  }, [orders, selectedOrderId]);
+
+  // Locations (fallback input)
   const [origin, setOrigin] = React.useState("Beşiktaş, İstanbul");
   const [destination, setDestination] = React.useState("Çankaya, Ankara");
 
@@ -166,6 +280,14 @@ export default function CargoPricesPage() {
   const [pricesLoading, setPricesLoading] = React.useState(false);
   const [pricesErr, setPricesErr] = React.useState<string | null>(null);
   const [rows, setRows] = React.useState<DeliveryCompany[]>([]);
+
+  // Selected delivery option for shipment creation
+  const [selectedDeliveryOptionId, setSelectedDeliveryOptionId] = React.useState<number | null>(null);
+  const [selectedDeliveryLabel, setSelectedDeliveryLabel] = React.useState<string>("");
+
+  // Create shipment
+  const [shipLoading, setShipLoading] = React.useState(false);
+  const [shipMsg, setShipMsg] = React.useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   // Table filters
   const [minPrice, setMinPrice] = React.useState("");
@@ -214,6 +336,10 @@ export default function CargoPricesPage() {
 
       const list = Array.isArray(json?.boxes) ? json.boxes : [];
       setInventoryBoxes(list);
+      if (list.length > 0) {
+        const exists = list.some((x) => String(x.boxName) === String(boxPreset));
+        if (!exists) setBoxPreset(String(list[0].boxName));
+      }
 
       // input ile eşleşen varsa auto-apply
       const match = list.find((x) => String(x.boxName).toLowerCase() === String(boxPreset).toLowerCase());
@@ -268,7 +394,6 @@ export default function CargoPricesPage() {
       const json = await readJson<AddBoxRes>(res);
       if (!res.ok || json?.success === false) throw new Error(pickMsg(json, `HTTP ${res.status}`));
 
-      // refresh list
       await loadInventoryBoxes();
     } catch (e: any) {
       setBoxesErr(e?.message || "Kutu eklenemedi.");
@@ -277,8 +402,91 @@ export default function CargoPricesPage() {
     }
   }
 
+  async function loadOrders() {
+    setOrdersErr(null);
+    setOrdersLoading(true);
+
+    const bearer = getBearerToken();
+    if (!bearer) {
+      setOrdersLoading(false);
+      setOrdersErr("Token yok.");
+      return;
+    }
+
+    try {
+      const body: OrdersListReq = {
+        page: 1,
+        perPage: 50,
+        search: String(orderSearch || ""),
+        status: String(orderStatus || ""),
+      };
+
+      const res = await fetch("/yuksi/oto/orders/list", {
+        method: "POST",
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${bearer}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      const json = await readJson<OrdersListRes>(res);
+      if (!res.ok || json?.success === false) throw new Error(pickMsg(json, `HTTP ${res.status}`));
+
+      const list = Array.isArray(json?.orders) ? json.orders : [];
+      setOrders(list);
+
+      // seçili order yoksa ilkini seç
+      if (!selectedOrderId && list[0]?.id) setSelectedOrderId(String(list[0].id));
+      // seçili order artık listede yoksa temizle
+      if (selectedOrderId && !list.some((x) => String(x.id) === String(selectedOrderId))) {
+        setSelectedOrderId(list[0]?.id ? String(list[0].id) : "");
+      }
+    } catch (e: any) {
+      setOrders([]);
+      setOrdersErr(e?.message || "Siparişler alınamadı.");
+    } finally {
+      setOrdersLoading(false);
+    }
+  }
+
+  // order seçilince: origin/destination/weight/dims mümkünse auto bas
+  React.useEffect(() => {
+    if (!selectedOrder) return;
+
+    const oCity = getOrderOriginCity(selectedOrder);
+    const dCity = getOrderDestinationCity(selectedOrder);
+
+    if (oCity) setOrigin(oCity);
+    if (dCity) setDestination(dCity);
+
+    const w = getOrderWeight(selectedOrder);
+    const dims = getOrderDims(selectedOrder);
+
+    setBoxes((prev) => {
+      const first = prev[0] || { l: 1, w: 1, h: 1, weight: 1 };
+      const nextFirst: BoxRow = {
+        l: dims.l ?? first.l,
+        w: dims.w ?? first.w,
+        h: dims.h ?? first.h,
+        weight: w ?? first.weight,
+      };
+      return [nextFirst, ...prev.slice(1)];
+    });
+
+    // order değişince seçili kargo opsiyonu sıfırla (yanlışlıkla başka order’a shipment basılmasın)
+    setSelectedDeliveryOptionId(null);
+    setSelectedDeliveryLabel("");
+    setShipMsg(null);
+  }, [selectedOrder]);
+
   function resetAll() {
     setOrderSearch("");
+    setOrderStatus("");
+    setOrders([]);
+    setSelectedOrderId("");
     setOrigin("Beşiktaş, İstanbul");
     setDestination("Çankaya, Ankara");
     setBoxPreset("ambalaj");
@@ -290,11 +498,15 @@ export default function CargoPricesPage() {
     setSelectedCompany("");
     setPricesErr(null);
     setRows([]);
+    setSelectedDeliveryOptionId(null);
+    setSelectedDeliveryLabel("");
+    setShipMsg(null);
   }
 
   async function fetchPrices() {
     setPricesErr(null);
     setPricesLoading(true);
+    setShipMsg(null);
 
     const bearer = getBearerToken();
     if (!bearer) {
@@ -304,18 +516,32 @@ export default function CargoPricesPage() {
     }
 
     try {
-      const originCity = extractCityName(origin);
-      const destinationCity = extractCityName(destination);
-
       const first = boxes[0] || { l: 0, w: 0, h: 0, weight: 0 };
 
+      // Order’dan mümkün olanları al, yoksa ekrandaki inputlardan fallback
+      const originCityFromOrder = selectedOrder ? getOrderOriginCity(selectedOrder) : "";
+      const destCityFromOrder = selectedOrder ? getOrderDestinationCity(selectedOrder) : "";
+      const weightFromOrder = selectedOrder ? getOrderWeight(selectedOrder) : null;
+      const dimsFromOrder = selectedOrder ? getOrderDims(selectedOrder) : {};
+      // ✅ Seçili kutuyu inventory’den bul (state yarışını bypass etmek için)
+      const invMatch =
+        inventoryBoxes.find((x) => String(x.boxName) === String(boxPreset)) || null;
+
+      // ✅ Etkin ölçüler: order dims varsa onları kullan, yoksa inventory kutusu, yoksa first row
+      const lengthEff = Number(dimsFromOrder.l ?? invMatch?.length ?? first.l ?? 0);
+      const widthEff = Number(dimsFromOrder.w ?? invMatch?.width ?? first.w ?? 0);
+      const heightEff = Number(dimsFromOrder.h ?? invMatch?.height ?? first.h ?? 0);
+
+      const originCity = (originCityFromOrder || extractCityName(origin) || "").trim();
+      const destinationCity = (destCityFromOrder || extractCityName(destination) || "").trim();
+
       const payload: OtoFeeReq = {
-        weight: Math.max(0, Number(totalWeight || first.weight || 0)),
+        weight: Math.max(0, Number(weightFromOrder ?? totalWeight ?? first.weight ?? 0)),
         originCity,
         destinationCity,
-        height: Math.max(0, Number(first.h || 0)),
-        width: Math.max(0, Number(first.w || 0)),
-        length: Math.max(0, Number(first.l || 0)),
+        height: Math.max(0, heightEff),
+        width: Math.max(0, widthEff),
+        length: Math.max(0, lengthEff),
         includeEstimatedDate: true,
       };
 
@@ -340,11 +566,73 @@ export default function CargoPricesPage() {
       if (selectedCompany && !list.some((x) => (x.deliveryOptionName || x.deliveryCompanyName || "") === selectedCompany)) {
         setSelectedCompany("");
       }
+
+      // seçili delivery option artık yoksa sıfırla
+      if (selectedDeliveryOptionId !== null && !list.some((x) => x.deliveryOptionId === selectedDeliveryOptionId)) {
+        setSelectedDeliveryOptionId(null);
+        setSelectedDeliveryLabel("");
+      }
     } catch (e: any) {
       setRows([]);
       setPricesErr(e?.message || "Fiyatlar alınamadı.");
     } finally {
       setPricesLoading(false);
+    }
+  }
+
+  async function createShipment() {
+    setShipMsg(null);
+
+    const bearer = getBearerToken();
+    if (!bearer) {
+      setShipMsg({ type: "err", text: "Token yok." });
+      return;
+    }
+
+    if (!selectedOrder) {
+      setShipMsg({ type: "err", text: "Sipariş seçmedin." });
+      return;
+    }
+
+    if (selectedDeliveryOptionId === null) {
+      setShipMsg({ type: "err", text: "Kargo seçmedin (tablodan bir satır seç)." });
+      return;
+    }
+
+    setShipLoading(true);
+    try {
+      const orderIdForShipment = String(selectedOrder.orderId || selectedOrder.id || "").trim();
+
+      if (!orderIdForShipment) {
+        setShipMsg({ type: "err", text: "OrderId bulunamadı (selectedOrder.orderId boş)." });
+        setShipLoading(false);
+        return;
+      }
+
+      const body: CreateShipmentReq = {
+        order_id: orderIdForShipment, // ✅ artık YUKSI-ORD-... gidiyor
+        delivery_option_id: Number(selectedDeliveryOptionId),
+      };
+
+      const res = await fetch("/yuksi/oto/shipments/create", {
+        method: "POST",
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${bearer}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      const json = await readJson<any>(res);
+      if (!res.ok) throw new Error(pickMsg(json, `HTTP ${res.status}`));
+
+      setShipMsg({ type: "ok", text: "Kargo oluşturma isteği başarıyla gönderildi." });
+    } catch (e: any) {
+      setShipMsg({ type: "err", text: e?.message || "Kargo oluşturulamadı." });
+    } finally {
+      setShipLoading(false);
     }
   }
 
@@ -362,7 +650,6 @@ export default function CargoPricesPage() {
         if (min !== null && numeric < min) return false;
         if (max !== null && numeric > max) return false;
       } else {
-        // fiyat yoksa filtrelerden etkilenmesin
         if (min !== null || max !== null) return false;
       }
 
@@ -370,11 +657,34 @@ export default function CargoPricesPage() {
     });
   }, [rows, minPrice, maxPrice, selectedCompany]);
 
+  // initial loads
   React.useEffect(() => {
-    // sayfa açılır açılmaz kutuları çek
     loadInventoryBoxes().catch(() => void 0);
+    loadOrders().catch(() => void 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // search/status değişince siparişleri yenile (küçük debounce)
+  React.useEffect(() => {
+    const t = setTimeout(() => {
+      loadOrders().catch(() => void 0);
+    }, 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderSearch, orderStatus]);
+
+  const refreshCreditRef = React.useRef<null | (() => void)>(null);
+
+  const selectedOrderLabel = React.useMemo(() => {
+    if (!selectedOrder) return "";
+    const oid = safeStr(selectedOrder.orderId || selectedOrder.id);
+    const name = safeStr(selectedOrder.customerName);
+    const st = safeStr(selectedOrder.status);
+    const oc = safeStr(getOrderOriginCity(selectedOrder));
+    const dc = safeStr(getOrderDestinationCity(selectedOrder));
+    const parts = [oid, name && `• ${name}`, st && `• ${st}`, oc && `• ${oc}`, dc && `→ ${dc}`].filter(Boolean);
+    return parts.join(" ");
+  }, [selectedOrder]);
 
   return (
     <div className="px-6 py-5">
@@ -387,7 +697,12 @@ export default function CargoPricesPage() {
         </div>
 
         <div className="shrink-0">
-          <CreditChip creditBalance={creditBalance} onTopUp={() => setCreditOpen(true)} />
+          <CreditChip
+            onTopUp={({ refreshCredit } = {}) => {
+              refreshCreditRef.current = refreshCredit || null;
+              setCreditOpen(true);
+            }}
+          />
         </div>
       </div>
 
@@ -395,6 +710,12 @@ export default function CargoPricesPage() {
       <div className="mt-4 rounded-xl border border-neutral-200 bg-white">
         <div className="p-6">
           {/* errors */}
+          {ordersErr ? (
+            <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {ordersErr}
+            </div>
+          ) : null}
+
           {boxesErr ? (
             <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
               {boxesErr}
@@ -407,19 +728,91 @@ export default function CargoPricesPage() {
             </div>
           ) : null}
 
+          {shipMsg ? (
+            <div
+              className={cn(
+                "mb-4 rounded-lg px-4 py-3 text-sm border",
+                shipMsg.type === "ok"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                  : "border-rose-200 bg-rose-50 text-rose-700"
+              )}
+            >
+              {shipMsg.text}
+            </div>
+          ) : null}
+
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            {/* LEFT */}
             <div>
-              <Label text="Sipariş Seçin" />
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">🔎</span>
-                <input
-                  value={orderSearch}
-                  onChange={(e) => setOrderSearch(e.target.value)}
-                  placeholder="Order ID veya alıcı adıyla arayın"
-                  className="h-10 w-full rounded-lg border border-neutral-200 px-10 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-                />
+              <div className="flex items-center justify-between">
+                <Label text="Sipariş Seçin" required />
+                <button
+                  type="button"
+                  onClick={loadOrders}
+                  disabled={ordersLoading}
+                  className="text-xs font-semibold rounded-lg px-2 py-1 border border-neutral-200 hover:bg-neutral-50 disabled:opacity-60"
+                >
+                  {ordersLoading ? "Yükleniyor…" : "Yenile"}
+                </button>
               </div>
 
+              {/* Search + status */}
+              <div className="grid grid-cols-1 gap-2">
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">🔎</span>
+                  <input
+                    value={orderSearch}
+                    onChange={(e) => setOrderSearch(e.target.value)}
+                    placeholder="Order ID / müşteri adı / tel ara"
+                    className="h-10 w-full rounded-lg border border-neutral-200 px-10 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+                  />
+                </div>
+
+                <select
+                  value={orderStatus}
+                  onChange={(e) => setOrderStatus(e.target.value)}
+                  className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm"
+                >
+                  <option value="">Tüm durumlar</option>
+                  <option value="new">new</option>
+                  <option value="processing">processing</option>
+                  <option value="shipped">shipped</option>
+                  <option value="delivered">delivered</option>
+                  <option value="cancelled">cancelled</option>
+                </select>
+
+                <select
+                  value={selectedOrderId}
+                  onChange={(e) => setSelectedOrderId(e.target.value)}
+                  className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm"
+                  disabled={orders.length === 0}
+                >
+                  {orders.length === 0 ? <option value="">Sipariş yok</option> : null}
+                  {orders.map((o) => {
+                    const oid = safeStr(o.orderId || o.id);
+                    const name = safeStr(o.customerName);
+                    const st = safeStr(o.status);
+                    const oc = safeStr(getOrderOriginCity(o));
+                    const dc = safeStr(getOrderDestinationCity(o));
+                    const label = [oid, name && `• ${name}`, st && `• ${st}`, oc && `• ${oc}`, dc && `→ ${dc}`]
+                      .filter(Boolean)
+                      .join(" ");
+                    return (
+                      <option key={String(o.id)} value={String(o.id)}>
+                        {label}
+                      </option>
+                    );
+                  })}
+                </select>
+
+                {selectedOrder ? (
+                  <div className="text-xs text-neutral-600">
+                    Seçili: <span className="font-semibold text-neutral-800">{selectedOrderLabel}</span>
+                  </div>
+                ) : null}
+              </div>
+
+              {/* Kutu Seçin (datalist yerine select) */}
               <div className="mt-4">
                 <div className="flex items-center justify-between">
                   <Label text="Kutu Seçin" />
@@ -433,38 +826,30 @@ export default function CargoPricesPage() {
                   </button>
                 </div>
 
-                {/* Kutu adı input + datalist */}
-                <div className="relative">
-                  <input
-                    value={boxPreset}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setBoxPreset(v);
-
-                      const match = inventoryBoxes.find(
-                        (x) => String(x.boxName).toLowerCase() === String(v).toLowerCase()
-                      );
-                      if (match) applyInventoryBoxToFirstRow(match);
-                    }}
-                    className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 pr-10 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-                    list="box-presets"
-                    placeholder="Kutu adı (envanterden seç ya da yeni isim yaz)"
-                  />
-                  <datalist id="box-presets">
-                    {inventoryBoxes.map((b) => (
-                      <option key={b.id} value={b.boxName} />
-                    ))}
-                  </datalist>
-
-                  <button
-                    type="button"
-                    onClick={() => setBoxPreset("")}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-md text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600"
-                    aria-label="Temizle"
-                  >
-                    ×
-                  </button>
-                </div>
+                <select
+                  value={boxPreset}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setBoxPreset(v);
+                    const match = inventoryBoxes.find((x) => String(x.boxName) === String(v));
+                    if (match) applyInventoryBoxToFirstRow(match);
+                  }}
+                  className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+                  disabled={inventoryBoxes.length === 0}
+                >
+                  {inventoryBoxes.length === 0 ? (
+                    <option value="">Kutu yok</option>
+                  ) : (
+                    <>
+                      <option value="">Kutu seç</option>
+                      {inventoryBoxes.map((b) => (
+                        <option key={b.id} value={b.boxName}>
+                          {b.boxName} ({b.length}×{b.width}×{b.height})
+                        </option>
+                      ))}
+                    </>
+                  )}
+                </select>
 
                 <div className="mt-2 flex items-center justify-end gap-2">
                   <button
@@ -488,6 +873,7 @@ export default function CargoPricesPage() {
               </div>
             </div>
 
+            {/* MID */}
             <div>
               <Label text="Çıkış Noktası" required />
               <input
@@ -535,6 +921,7 @@ export default function CargoPricesPage() {
               </div>
             </div>
 
+            {/* RIGHT */}
             <div>
               <Label text="Varış Noktası" required />
               <input
@@ -619,6 +1006,41 @@ export default function CargoPricesPage() {
                 </div>
               </div>
             ) : null}
+          </div>
+
+          {/* Selected summary + Create Shipment */}
+          <div className="mt-6 border-t border-neutral-200 pt-6">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+              <div className="lg:col-span-2">
+                <div className="text-sm font-semibold text-neutral-800">Seçimler</div>
+                <div className="mt-2 text-sm text-neutral-700 space-y-1">
+                  <div>
+                    <span className="text-neutral-500">Sipariş:</span>{" "}
+                    <span className="font-semibold text-neutral-900">{selectedOrderLabel || "—"}</span>
+                  </div>
+                  <div>
+                    <span className="text-neutral-500">Kargo:</span>{" "}
+                    <span className="font-semibold text-neutral-900">
+                      {selectedDeliveryOptionId !== null
+                        ? `${selectedDeliveryLabel} (deliveryOptionId=${selectedDeliveryOptionId})`
+                        : "—"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:col-span-1 flex items-end justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={createShipment}
+                  disabled={!selectedOrder || selectedDeliveryOptionId === null || shipLoading}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                  title="Seçili order + seçili deliveryOptionId ile kargo oluşturur"
+                >
+                  {shipLoading ? "Oluşturuluyor…" : "📦 Kargo Oluştur"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -714,8 +1136,8 @@ export default function CargoPricesPage() {
               r.price === null || r.price === undefined
                 ? "-"
                 : currency
-                ? `${Number(r.price).toLocaleString("tr-TR")} ${currency}`
-                : `${Number(r.price).toLocaleString("tr-TR")}`;
+                  ? `${Number(r.price).toLocaleString("tr-TR")} ${currency}`
+                  : `${Number(r.price).toLocaleString("tr-TR")}`;
 
             const eta =
               (r.estimatedDeliveryDate && String(r.estimatedDeliveryDate)) ||
@@ -726,15 +1148,15 @@ export default function CargoPricesPage() {
               r.pickupDropoff === "freePickup"
                 ? "🚚 Ücretsiz adresten alım"
                 : r.pickupDropoff
-                ? String(r.pickupDropoff)
-                : "—";
+                  ? String(r.pickupDropoff)
+                  : "—";
 
             const deliveryReadable =
               r.deliveryType === "toCustomerDoorstepOrPickupByCustomer"
                 ? "📍 Adrese teslim / müşteri teslim alabilir"
                 : r.deliveryType
-                ? `📍 ${r.deliveryType}`
-                : "—";
+                  ? `📍 ${r.deliveryType}`
+                  : "—";
 
             return (
               <div key={`${companyName}-${idx}`} className="px-4 py-4">
@@ -772,14 +1194,29 @@ export default function CargoPricesPage() {
                   <div className="flex justify-end">
                     <button
                       type="button"
-                      className="h-10 w-28 rounded-lg bg-indigo-600 text-sm font-semibold text-white hover:bg-indigo-700"
+                      className={cn(
+                        "h-10 w-28 rounded-lg text-sm font-semibold text-white",
+                        r.deliveryOptionId === selectedDeliveryOptionId ? "bg-emerald-600 hover:bg-emerald-700" : "bg-indigo-600 hover:bg-indigo-700",
+                        !r.deliveryOptionId ? "opacity-50 cursor-not-allowed" : ""
+                      )}
+                      disabled={!r.deliveryOptionId}
                       onClick={() => {
-                        alert(
-                          `Seçildi → ${companyName}\nprice=${priceStr}\ndeliveryOptionId=${r.deliveryOptionId ?? "-"}`
-                        );
+                        const id = Number(r.deliveryOptionId);
+                        setSelectedDeliveryOptionId(Number.isFinite(id) ? id : null);
+
+                        const name = (r.deliveryOptionName || r.deliveryCompanyName || "Seçili kargo").trim();
+                        const priceLabel =
+                          r.price === null || r.price === undefined
+                            ? ""
+                            : r.currency
+                              ? ` • ${Number(r.price).toLocaleString("tr-TR")} ${r.currency}`
+                              : ` • ${Number(r.price).toLocaleString("tr-TR")}`;
+
+                        setSelectedDeliveryLabel(`${name}${priceLabel}`);
+                        setShipMsg(null);
                       }}
                     >
-                      Seç
+                      {r.deliveryOptionId === selectedDeliveryOptionId ? "Seçildi" : "Seç"}
                     </button>
                   </div>
                 </div>

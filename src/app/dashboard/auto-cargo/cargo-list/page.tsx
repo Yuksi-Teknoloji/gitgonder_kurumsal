@@ -24,21 +24,45 @@ async function readJson<T = any>(res: Response): Promise<T> {
 const pickMsg = (d: any, fb: string) =>
   d?.error?.message || d?.otoErrorMessage || d?.message || d?.detail || d?.title || fb;
 
+function normStatus(s?: string) {
+  return String(s ?? "").trim();
+}
+function normStatusLower(s?: string) {
+  return String(s ?? "").toLowerCase().trim();
+}
+function parseOrderDate(s?: string) {
+  // "2026-01-19 14:48:35" gibi geliyor
+  const x = String(s ?? "").trim();
+  if (!x) return 0;
+  const iso = x.includes(" ") ? x.replace(" ", "T") : x;
+  const t = Date.parse(iso);
+  return Number.isFinite(t) ? t : 0;
+}
+
 /* ========= Types ========= */
+
 type RowStatusTr =
-  | "İptal edildi"
-  | "Teslim edildi"
-  | "İade edildi"
   | "Kargo Oluşturulmayı Bekleyenler"
   | "Kargoya Teslim Bekleyenler"
+  | "Kuryeye Verildi / Sürücü Aranıyor"
   | "Kargoya Teslim Edilmiş/Yolda"
-  | "Askıda"
-  | "Tüm Siparişler";
+  | "Teslim edildi"
+  | "İade edildi"
+  | "İptal edildi"
+  | "Askıda";
+
+type PaymentTr = "Kapıda Ödeme" | "Ödendi" | "Ödenmedi";
 
 type Row = {
   id: string; // orderId (OID gibi)
   orderDate: string;
-  status: RowStatusTr;
+
+  // ✅ raw status (backend)
+  apiStatus: string;
+
+  // ✅ mapped label (UI)
+  statusTr: RowStatusTr;
+
   senderAddress: string;
   customerName: string;
 
@@ -47,7 +71,7 @@ type Row = {
   destinationCity?: string;
 
   invoiceAmount: string;
-  paymentType: "Kapıda Ödeme" | "Ödendi" | "Ödenmedi";
+  paymentType: PaymentTr;
 
   shipmentNumber?: string;
   trackingNumber?: string;
@@ -69,7 +93,7 @@ type ApiOrder = {
   grandTotal?: number;
   currency?: string;
 
-  paymentMethod?: string; // "paid" gibi
+  paymentMethod?: string; // "paid" | "cod" ...
   shipmentNumber?: string;
   trackingURL?: string;
 };
@@ -115,31 +139,41 @@ type OrderDetailsResponse = {
   }>;
 };
 
-/* ========= Mappers ========= */
-// API status -> TR label (best-effort)
+/* ========= Status mapping (senin dump’a göre) =========
+  new                -> Kargo Oluşturulmayı Bekleyenler
+  assignedToWarehouse-> Kargoya Teslim Bekleyenler
+  searchingDriver    -> Kuryeye Verildi / Sürücü Aranıyor
+
+  Diğer olasılar:
+  delivered          -> Teslim edildi
+  returned           -> İade edildi
+  canceled/cancelled -> İptal edildi
+  unknown            -> Askıda
+*/
 function apiStatusToTr(s?: string): RowStatusTr {
-  const x = String(s ?? "").toLowerCase().trim();
+  const x = normStatusLower(s);
 
-  if (!x) return "Tüm Siparişler";
+  if (!x) return "Askıda";
 
-  // örnek: backend "new" döndürüyor
   if (x === "new") return "Kargo Oluşturulmayı Bekleyenler";
 
-  if (x.includes("waiting_create")) return "Kargo Oluşturulmayı Bekleyenler";
-  if (x.includes("waiting_delivery")) return "Kargoya Teslim Bekleyenler";
+  if (x === "assignedtowarehouse") return "Kargoya Teslim Bekleyenler";
+
+  if (x === "searchingdriver") return "Kuryeye Verildi / Sürücü Aranıyor";
+
   if (x.includes("in_transit") || x.includes("onway") || x.includes("on_way") || x.includes("shipped"))
     return "Kargoya Teslim Edilmiş/Yolda";
-  if (x.includes("pending") || x.includes("hold")) return "Askıda";
+
   if (x.includes("delivered")) return "Teslim edildi";
   if (x.includes("returned")) return "İade edildi";
   if (x.includes("cancel") || x.includes("canceled") || x.includes("cancelled")) return "İptal edildi";
 
-  // tanımsız durumlar için "Tüm Siparişler" demek yerine daha mantıklı: Askıda
-  // ama UI’da kafa karıştırmasın diye "Tüm Siparişler"e düşürelim.
-  return "Tüm Siparişler";
+  if (x.includes("pending") || x.includes("hold") || x.includes("suspend")) return "Askıda";
+
+  return "Askıda";
 }
 
-function paymentToTr(p?: string): Row["paymentType"] {
+function paymentToTr(p?: string): PaymentTr {
   const x = String(p ?? "").toLowerCase();
   if (x === "paid") return "Ödendi";
   if (x === "cod" || x.includes("cash") || x.includes("door")) return "Kapıda Ödeme";
@@ -157,14 +191,38 @@ function formatMoney(amount?: number, currency?: string) {
   return `${cur} ${fixed}`;
 }
 
+function statusBadgeClass(tr: RowStatusTr) {
+  switch (tr) {
+    case "Kargo Oluşturulmayı Bekleyenler":
+      return "border-amber-200 bg-amber-50 text-amber-800";
+    case "Kargoya Teslim Bekleyenler":
+      return "border-sky-200 bg-sky-50 text-sky-800";
+    case "Kuryeye Verildi / Sürücü Aranıyor":
+      return "border-indigo-200 bg-indigo-50 text-indigo-800";
+    case "Kargoya Teslim Edilmiş/Yolda":
+      return "border-blue-200 bg-blue-50 text-blue-800";
+    case "Teslim edildi":
+      return "border-emerald-200 bg-emerald-50 text-emerald-800";
+    case "İade edildi":
+      return "border-orange-200 bg-orange-50 text-orange-800";
+    case "İptal edildi":
+      return "border-rose-200 bg-rose-50 text-rose-800";
+    case "Askıda":
+    default:
+      return "border-neutral-200 bg-neutral-50 text-neutral-700";
+  }
+}
+
 function toRow(o: ApiOrder): Row {
   const id = o.orderId || o.id || "-";
-  const statusTr = apiStatusToTr(o.status);
+  const apiStatus = normStatus(o.status);
+  const statusTr = apiStatusToTr(apiStatus);
 
   return {
     id,
     orderDate: o.orderDate || "-",
-    status: statusTr,
+    apiStatus: apiStatus || "-", // ✅ tablo/filtre için raw
+    statusTr,
     senderAddress: o.originCity || "-",
     brandName: "", // backend yoksa boş
     customerName: o.customerName || "-",
@@ -233,7 +291,10 @@ function OrderDetailsModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={onClose}>
-      <div className="w-full max-w-3xl overflow-hidden rounded-xl bg-white shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
+      <div
+        className="w-full max-w-3xl overflow-hidden rounded-xl bg-white shadow-lg"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-4">
           <div className="min-w-0">
@@ -253,7 +314,9 @@ function OrderDetailsModal({
         {/* Body */}
         <div className="max-h-[75vh] overflow-auto px-5 py-4">
           {loading ? (
-            <div className="rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-600">Yükleniyor…</div>
+            <div className="rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-600">
+              Yükleniyor…
+            </div>
           ) : err ? (
             <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{err}</div>
           ) : data ? (
@@ -261,7 +324,7 @@ function OrderDetailsModal({
               {/* Top info */}
               <div className="grid gap-3 md:grid-cols-3">
                 <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
-                  <div className="text-xs font-semibold text-neutral-600">Durum</div>
+                  <div className="text-xs font-semibold text-neutral-600">Durum (raw)</div>
                   <div className="mt-2 text-sm font-semibold text-neutral-900">{data.status}</div>
                 </div>
 
@@ -321,7 +384,7 @@ function OrderDetailsModal({
               <div>
                 <div className="text-sm font-semibold text-neutral-900">Durum Geçmişi</div>
                 <div className="mt-2 overflow-hidden rounded-lg border border-neutral-200">
-                  <div className="grid grid-cols-[1fr_0.6fr_2fr] gap-2 bg-neutral-50 px-3 py-2 text-xs font-semibold text-neutral-600">
+                  <div className="grid grid-cols-[1fr_0.9fr_2fr] gap-2 bg-neutral-50 px-3 py-2 text-xs font-semibold text-neutral-600">
                     <div>Tarih</div>
                     <div>Status</div>
                     <div>Açıklama</div>
@@ -329,7 +392,7 @@ function OrderDetailsModal({
 
                   <div className="divide-y divide-neutral-100">
                     {(data.statusHistory ?? []).map((h) => (
-                      <div key={h.id} className="grid grid-cols-[1fr_0.6fr_2fr] gap-2 px-3 py-2 text-sm">
+                      <div key={h.id} className="grid grid-cols-[1fr_0.9fr_2fr] gap-2 px-3 py-2 text-sm">
                         <div className="text-neutral-700">{h.date}</div>
                         <div className="font-semibold text-neutral-800">{h.status}</div>
                         <div className="text-neutral-700">{h.description}</div>
@@ -368,21 +431,60 @@ export default function CargoListPage() {
 
   const [detailsOpen, setDetailsOpen] = React.useState(false);
   const [detailsOrderId, setDetailsOrderId] = React.useState<string | null>(null);
+  const [canceling, setCanceling] = React.useState<Record<string, boolean>>({});
 
   function openDetails(orderId: string) {
     setDetailsOrderId(orderId);
     setDetailsOpen(true);
   }
+  async function cancelShipment(orderId: string, shipmentId?: string) {
+    if (!shipmentId) {
+      alert("Bu sipariş için shipmentNumber yok, iptal edemiyorum.");
+      return;
+    }
+
+    const ok = confirm(`Kargoyu iptal etmek istediğine emin misin?\nOrder: ${orderId}\nShipment: ${shipmentId}`);
+    if (!ok) return;
+
+    setCanceling((s) => ({ ...s, [orderId]: true }));
+    try {
+      const res = await fetch("/api/oto/shipments/cancel", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          order_id: orderId,
+          shipment_id: shipmentId,
+        }),
+      });
+
+      const j = await readJson<any>(res);
+
+      if (!res.ok) {
+        throw new Error(pickMsg(j, `İptal başarısız (HTTP ${res.status})`));
+      }
+
+      // 200 response bazen "string" dönebiliyor (swagger)
+      // başarılı sayıp listeyi yenileyelim
+      await fetchOrders();
+    } catch (e: any) {
+      alert(String(e?.message || e || "İptal sırasında hata"));
+    } finally {
+      setCanceling((s) => ({ ...s, [orderId]: false }));
+    }
+  }
 
   // toolbar
   const [bulkMenu] = React.useState("Kargo Oluştur");
-  const [orderListUploadOpen, setOrderListUploadOpen] = React.useState(false);
 
   // filters
   const [filters, setFilters] = React.useState({
     orderNo: "",
     orderDate: "",
-    status: "",
+    apiStatus: "", // ✅ backend status filtresi (new, assignedToWarehouse, searchingDriver, ...)
     senderAddress: "",
     brandName: "",
     customerName: "",
@@ -411,15 +513,16 @@ export default function CargoListPage() {
 
   // ✅ Table layout
   const GRID =
-    "grid-cols-[4px_minmax(120px,1.1fr)_minmax(120px,1fr)_minmax(80px,1.6fr)_minmax(100px,1.1fr)_minmax(100px,1fr)_minmax(100px,1.1fr)_minmax(100px,1.4fr)_minmax(80px,0.9fr)_minmax(100px,1fr)_minmax(80px,1fr)]";
+    "grid-cols-[4px_minmax(160px,1.2fr)_minmax(160px,1fr)_minmax(220px,1.2fr)_minmax(140px,0.9fr)_minmax(140px,0.9fr)_minmax(160px,0.9fr)]";
   const MINW = "min-w-0";
 
-  // Fetch orders (sadece tüm siparişler)
+  // Fetch orders
   const fetchOrders = React.useCallback(async () => {
     setLoading(true);
     setErr("");
 
     try {
+      // ✅ Backend filtreyi burada da kullan: status
       const res = await fetch("/yuksi/oto/orders/list", {
         method: "POST",
         headers: {
@@ -430,7 +533,7 @@ export default function CargoListPage() {
         body: JSON.stringify({
           page,
           perPage: pageSize,
-          status: "", // ✅ ALL
+          status: filters.apiStatus || "", // ✅ selected raw status
         }),
       });
 
@@ -441,7 +544,7 @@ export default function CargoListPage() {
       }
 
       const mapped = Array.isArray(data.orders) ? data.orders.map(toRow) : [];
-
+      mapped.sort((a, b) => parseOrderDate(b.orderDate) - parseOrderDate(a.orderDate));
       setRows(mapped);
       setApiTotal(Number(data.totalCount ?? mapped.length) || 0);
       setApiTotalPages(Math.max(1, Number(data.totalPage ?? 1) || 1));
@@ -456,13 +559,13 @@ export default function CargoListPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, token]);
+  }, [page, pageSize, token, filters.apiStatus]);
 
   React.useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
 
-  // Reset page when pageSize/filters change
+  // Reset page when pageSize/filters change (client-side olanlar)
   React.useEffect(() => {
     setPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -470,8 +573,6 @@ export default function CargoListPage() {
     pageSize,
     filters.orderNo,
     filters.customerName,
-    filters.status,
-    filters.paymentType,
     filters.senderAddress,
     filters.brandName,
     filters.receiverAddress,
@@ -479,6 +580,8 @@ export default function CargoListPage() {
     filters.orderDate,
     filters.invoiceMin,
     filters.invoiceMax,
+    filters.paymentType,
+    filters.apiStatus,
   ]);
 
   // Client-side filter (fetched page items)
@@ -496,7 +599,10 @@ export default function CargoListPage() {
       r = r.filter((x) => (x.receiverAddress ?? "").toLowerCase().includes(filters.receiverAddress.trim().toLowerCase()));
     if (filters.destinationCity.trim())
       r = r.filter((x) => (x.destinationCity ?? "").toLowerCase().includes(filters.destinationCity.trim().toLowerCase()));
-    if (filters.status) r = r.filter((x) => x.status === (filters.status as any));
+
+    // ✅ status zaten backend’den filtreleniyor, ama yine de UI tarafında güvenlik:
+    if (filters.apiStatus) r = r.filter((x) => normStatusLower(x.apiStatus) === normStatusLower(filters.apiStatus));
+
     if (filters.paymentType) r = r.filter((x) => x.paymentType === (filters.paymentType as any));
 
     return r;
@@ -525,7 +631,7 @@ export default function CargoListPage() {
     setFilters({
       orderNo: "",
       orderDate: "",
-      status: "",
+      apiStatus: "",
       senderAddress: "",
       brandName: "",
       customerName: "",
@@ -536,8 +642,22 @@ export default function CargoListPage() {
       paymentType: "",
     });
   }
+
+  // ✅ status select options: dump’taki gerçek değerler + olasılar
+  const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
+    { value: "", label: "Tümü" },
+    { value: "new", label: "new (Kargo oluşturulmayı bekleyen)" },
+    { value: "assignedToWarehouse", label: "assignedToWarehouse (Kargoya teslim bekleyen)" },
+    { value: "searchingDriver", label: "searchingDriver (Sürücü aranıyor)" },
+    { value: "in_transit", label: "in_transit (Yolda)" },
+    { value: "delivered", label: "delivered (Teslim edildi)" },
+    { value: "returned", label: "returned (İade)" },
+    { value: "canceled", label: "canceled (İptal)" },
+  ];
+
   const router = useRouter();
   const pageSafe = Math.min(page, apiTotalPages);
+  const refreshCreditRef = React.useRef<null | (() => void)>(null);
 
   return (
     <div className="px-6 py-5">
@@ -559,7 +679,12 @@ export default function CargoListPage() {
           </button>
 
           <div className="order-2 shrink-0 self-start">
-            <CreditChip creditBalance={creditBalance} onTopUp={() => setCreditOpen(true)} />
+            <CreditChip
+              onTopUp={({ refreshCredit } = {}) => {
+                refreshCreditRef.current = refreshCredit || null;
+                setCreditOpen(true);
+              }}
+            />
           </div>
         </div>
       </div>
@@ -571,9 +696,7 @@ export default function CargoListPage() {
             <button
               type="button"
               className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-              onClick={() => {
-                alert(`Mock: ${bulkMenu} (${Object.values(selected).filter(Boolean).length} seçili)`);
-              }}
+              onClick={() => router.push("/dashboard/auto-cargo/create-cargo")}
             >
               📦 {bulkMenu}
               <span className="opacity-90">▾</span>
@@ -627,16 +750,13 @@ export default function CargoListPage() {
               <div className="flex items-center justify-center">
                 <input type="checkbox" checked={allChecked} onChange={toggleAll} onClick={(e) => e.stopPropagation()} />
               </div>
+
               <div className="min-w-0 truncate whitespace-nowrap">Sipariş Numarası</div>
               <div className="min-w-0 truncate whitespace-nowrap">Sipariş Tarihi</div>
               <div className="min-w-0 truncate whitespace-nowrap">Durum</div>
-              <div className="min-w-0 truncate whitespace-nowrap">Gönderici Adresi</div>
-              <div className="min-w-0 truncate whitespace-nowrap">Marka Adı</div>
-              <div className="min-w-0 truncate whitespace-nowrap">Müşteri Adı</div>
-              <div className="min-w-0 truncate whitespace-nowrap">Alıcı Adresi</div>
-              <div className="min-w-0 truncate whitespace-nowrap">Varış Şehri</div>
               <div className="min-w-0 truncate whitespace-nowrap">Sipariş Tutarı</div>
               <div className="min-w-0 truncate whitespace-nowrap">Ödeme Türü</div>
+              <div className="min-w-0 truncate whitespace-nowrap text-right">İşlem</div>
             </div>
 
             {/* Filter row */}
@@ -647,76 +767,29 @@ export default function CargoListPage() {
                 value={filters.orderNo}
                 onChange={(e) => setFilters((f) => ({ ...f, orderNo: e.target.value }))}
                 className="h-9 w-full min-w-0 rounded-lg border border-neutral-200 px-3 text-sm"
-                placeholder=""
+                placeholder="Sipariş no"
               />
 
               <input
                 value={filters.orderDate}
                 onChange={(e) => setFilters((f) => ({ ...f, orderDate: e.target.value }))}
                 className="h-9 w-full min-w-0 rounded-lg border border-neutral-200 px-3 text-sm"
-                placeholder=""
+                placeholder="Tarih"
               />
 
               <select
-                value={filters.status}
-                onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
+                value={filters.apiStatus}
+                onChange={(e) => setFilters((f) => ({ ...f, apiStatus: e.target.value }))}
                 className="h-9 w-full min-w-0 rounded-lg border border-neutral-200 bg-white px-3 text-sm"
               >
-                <option value="">Seç</option>
-                <option value="İptal edildi">İptal edildi</option>
-                <option value="Teslim edildi">Teslim edildi</option>
-                <option value="İade edildi">İade edildi</option>
-                <option value="Kargo Oluşturulmayı Bekleyenler">Kargo Oluşturulmayı Bekleyenler</option>
-                <option value="Kargoya Teslim Bekleyenler">Kargoya Teslim Bekleyenler</option>
-                <option value="Kargoya Teslim Edilmiş/Yolda">Kargoya Teslim Edilmiş/Yolda</option>
-                <option value="Askıda">Askıda</option>
-                <option value="Tüm Siparişler">Tüm Siparişler</option>
+                {STATUS_OPTIONS.map((o) => (
+                  <option key={o.value || "all"} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
               </select>
 
-              <input
-                value={filters.senderAddress}
-                onChange={(e) => setFilters((f) => ({ ...f, senderAddress: e.target.value }))}
-                className="h-9 w-full min-w-0 rounded-lg border border-neutral-200 px-3 text-sm"
-              />
-
-              <input
-                value={filters.brandName}
-                onChange={(e) => setFilters((f) => ({ ...f, brandName: e.target.value }))}
-                className="h-9 w-full min-w-0 rounded-lg border border-neutral-200 px-3 text-sm"
-              />
-
-              <input
-                value={filters.customerName}
-                onChange={(e) => setFilters((f) => ({ ...f, customerName: e.target.value }))}
-                className="h-9 w-full min-w-0 rounded-lg border border-neutral-200 px-3 text-sm"
-              />
-
-              <input
-                value={filters.receiverAddress}
-                onChange={(e) => setFilters((f) => ({ ...f, receiverAddress: e.target.value }))}
-                className="h-9 w-full min-w-0 rounded-lg border border-neutral-200 px-3 text-sm"
-              />
-
-              <input
-                value={filters.destinationCity}
-                onChange={(e) => setFilters((f) => ({ ...f, destinationCity: e.target.value }))}
-                className="h-9 w-full min-w-0 rounded-lg border border-neutral-200 px-3 text-sm"
-              />
-
-              <div className="flex min-w-0 gap-2">
-                <input
-                  value={filters.invoiceMin}
-                  onChange={(e) => setFilters((f) => ({ ...f, invoiceMin: e.target.value }))}
-                  className="h-9 w-full min-w-0 rounded-lg border border-neutral-200 px-3 text-sm"
-                  placeholder="En az"
-                />
-                <input
-                  value={filters.invoiceMax}
-                  onChange={(e) => setFilters((f) => ({ ...f, invoiceMax: e.target.value }))}
-                  className="h-9 w-full min-w-0 rounded-lg border border-neutral-200 px-3 text-sm"
-                  placeholder="En fazla"
-                />
-              </div>
+              <div />
 
               <select
                 value={filters.paymentType}
@@ -728,6 +801,8 @@ export default function CargoListPage() {
                 <option value="Ödendi">Ödendi</option>
                 <option value="Ödenmedi">Ödenmedi</option>
               </select>
+
+              <div />
             </div>
           </div>
 
@@ -755,16 +830,44 @@ export default function CargoListPage() {
                   </div>
 
                   <div className="min-w-0 truncate font-semibold text-indigo-700">{r.id}</div>
+
                   <div className="min-w-0 truncate text-neutral-700">{r.orderDate}</div>
-                  <div className="min-w-0 truncate text-neutral-700">{r.status}</div>
-                  <div className="min-w-0 truncate text-neutral-700">{r.senderAddress}</div>
-                  <div className="min-w-0 truncate text-neutral-700">{r.brandName ?? ""}</div>
-                  <div className="min-w-0 truncate text-neutral-700">{r.customerName}</div>
-                  <div className="min-w-0 truncate text-neutral-700">{r.receiverAddress ?? ""}</div>
-                  <div className="min-w-0 truncate text-neutral-700">{r.destinationCity ?? ""}</div>
+
+                  <div className="min-w-0 truncate">
+                    <span
+                      title={`raw: ${r.apiStatus}`}
+                      className={cn(
+                        "inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold",
+                        statusBadgeClass(r.statusTr)
+                      )}
+                    >
+                      {r.statusTr}
+                    </span>
+                  </div>
+
                   <div className="min-w-0 truncate text-neutral-700">{r.invoiceAmount}</div>
+
                   <div className="min-w-0 truncate text-neutral-700">{r.paymentType}</div>
+
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      className={cn(
+                        "h-9 rounded-lg border px-3 text-sm font-semibold",
+                        "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100",
+                        canceling[r.id] ? "opacity-60 pointer-events-none" : ""
+                      )}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        cancelShipment(r.id, r.shipmentNumber);
+                      }}
+                      title="Kargoyu iptal et"
+                    >
+                      {canceling[r.id] ? "İptal ediliyor…" : "Kargoyu İptal Et"}
+                    </button>
+                  </div>
                 </div>
+
               </div>
             ))}
 

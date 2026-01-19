@@ -57,8 +57,9 @@ export default function CreditTopUpModal(props: {
 
   // ileride gerçek endpoint gelince parent’tan set edebilirsin
   creditBalance?: number;
+  onAfterSuccess?: () => void;
 }) {
-  const { open, onOpenChange, creditBalance = 0 } = props;
+  const { open, onOpenChange, creditBalance = 0, onAfterSuccess } = props;
   const router = useRouter();
 
   const [creditStep, setCreditStep] = React.useState<CreditStep>(1);

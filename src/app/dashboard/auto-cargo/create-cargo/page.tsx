@@ -151,8 +151,9 @@ type CreateOrderReq = {
   amount: number;
   amount_due: number;
   currency: string;
-
   customsValue: string;
+
+
   customsCurrency: string;
 
   packageCount: number;
@@ -162,9 +163,6 @@ type CreateOrderReq = {
   boxHeight: number;
 
   orderDate: string;
-  deliverySlotDate: string;
-  deliverySlotTo: string;
-  deliverySlotFrom: string;
 
   senderName: string;
 
@@ -242,6 +240,30 @@ type GetBoxesRes = {
   otoErrorMessage: any;
   boxes?: InventoryBox[];
 };
+type PickupWarehouse = {
+  id?: number;
+  code: string;
+  name: string;
+  address?: string;
+  city?: string;
+  district?: string;
+  lat?: number;
+  lon?: number;
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  status?: string;
+};
+
+type PickupListRes = {
+  success?: boolean;
+  message?: any;
+  warnings?: any;
+  otoErrorCode?: any;
+  otoErrorMessage?: any;
+  warehouses?: PickupWarehouse[];
+  branches?: any[];
+};
 
 /* ================= Page ================= */
 
@@ -283,6 +305,17 @@ export default function CreateCargoPage() {
   const [pickupCreateOk, setPickupCreateOk] = React.useState<string | null>(null);
   const [useDifferentSender, setUseDifferentSender] = React.useState(false);
 
+  // pickup locations list (existing sender locations)
+  const [pickupList, setPickupList] = React.useState<PickupWarehouse[]>([]);
+  const [pickupListLoading, setPickupListLoading] = React.useState(false);
+  const [pickupListErr, setPickupListErr] = React.useState<string | null>(null);
+  const [selectedPickupCode, setSelectedPickupCode] = React.useState<string>("");
+  const selectedPickup = React.useMemo(() => {
+    const code = selectedPickupCode || pickupLocationCode;
+    if (!code) return null;
+    return pickupList.find((w) => String(w.code).trim() === String(code).trim()) || null;
+  }, [pickupList, selectedPickupCode, pickupLocationCode]);
+
   // Receiver
   const [receiverName, setReceiverName] = React.useState("");
   const [receiverPhone, setReceiverPhone] = React.useState("");
@@ -309,9 +342,6 @@ export default function CreateCargoPage() {
   // lat/lon (receiver, AUTO, hidden)
   const [lat, setLat] = React.useState("");
   const [lon, setLon] = React.useState("");
-
-  // Debug: lat/lon kontrol alanı (sonra silebilirsin)
-  const [showLatLonDebug, setShowLatLonDebug] = React.useState(false);
 
   // Sender logistics (pickup location create: country/il/ilçe from endpoints + auto lat/lon)
   const [senderCountryId, setSenderCountryId] = React.useState<number | "">("");
@@ -431,7 +461,8 @@ export default function CreateCargoPage() {
   const [selectedFeeIdx, setSelectedFeeIdx] = React.useState<number | null>(null);
 
   // ========== STEP 4 ==========
-  const [senderName, setSenderName] = React.useState("Sender Company");
+  const SENDER_COMPANY = "Yüksi Lojistik";
+  const [senderName] = React.useState<string>(SENDER_COMPANY);
   const [orderId] = React.useState<string>(() => makeOrderId());
   const [deliveryOptionId, setDeliveryOptionId] = React.useState<number | "">(564);
   const [createShipment, setCreateShipment] = React.useState(true);
@@ -441,9 +472,6 @@ export default function CreateCargoPage() {
   const [customsCurrency, setCustomsCurrency] = React.useState("TRY");
 
   const [orderDate, setOrderDate] = React.useState<string>(() => fmtOrderDate(new Date()));
-  const [deliverySlotDate, setDeliverySlotDate] = React.useState<string>(() => fmtDateOnly(new Date()));
-  const [deliverySlotFrom, setDeliverySlotFrom] = React.useState("2:30pm");
-  const [deliverySlotTo, setDeliverySlotTo] = React.useState("12pm");
 
   /* ================= Logistics Loaders (receiver) ================= */
 
@@ -794,6 +822,62 @@ export default function CreateCargoPage() {
     }
   }, [useDifferentSender]);
 
+  const loadPickupLocations = React.useCallback(async () => {
+    setPickupListErr(null);
+    setPickupListLoading(true);
+
+    const bearer = getBearerToken();
+    if (!bearer) {
+      setPickupListLoading(false);
+      router.replace("/");
+      return;
+    }
+
+    try {
+      const res = await fetch(`/yuksi/oto/inventory/pickup-location/list?status=active`, {
+        method: "GET",
+        cache: "no-store",
+        headers: { Accept: "application/json", Authorization: `Bearer ${bearer}` },
+      });
+
+      const json = await readJson<PickupListRes>(res);
+
+      if (res.status === 401 || res.status === 403) {
+        router.replace("/");
+        return;
+      }
+      if (!res.ok) throw new Error(pickMsg(json, `HTTP ${res.status}`));
+
+      const list = Array.isArray(json?.warehouses) ? json.warehouses : [];
+      setPickupList(list);
+
+      // eğer toggle kapalı ve daha önce seçilmemişse: ilk kaydı default seç
+      if (!useDifferentSender) {
+        const first = list[0];
+        if (first?.code && !pickupLocationCode) {
+          setSelectedPickupCode(String(first.code));
+          setPickupLocationCode(String(first.code));
+        }
+      }
+    } catch (e: any) {
+      setPickupList([]);
+      setPickupListErr(e?.message || "Pickup location listesi alınamadı.");
+    } finally {
+      setPickupListLoading(false);
+    }
+  }, [router, useDifferentSender, pickupLocationCode]);
+
+  React.useEffect(() => {
+    if (useDifferentSender) return; // toggle açıkken liste şart değil
+    loadPickupLocations();
+  }, [useDifferentSender, loadPickupLocations]);
+  React.useEffect(() => {
+  if (useDifferentSender) {
+    setSelectedPickupCode("");
+    setPickupLocationCode(""); // toggle açınca user create flow ile doldurulacak
+  }
+}, [useDifferentSender]);
+
   /* ================= Inventory: GET /oto/inventory/box ================= */
 
   const loadInventoryBoxes = React.useCallback(async () => {
@@ -1127,6 +1211,9 @@ export default function CreateCargoPage() {
     if (s === 1) {
       if (useDifferentSender) {
         if (!pickupLocationCode.trim()) return "Pickup Location oluşturmadın. Lütfen Step 1'de pickup oluştur ve code oluştuğunu doğrula.";
+      } else {
+        if (!pickupLocationCode.trim())
+          return "Gönderici konumu seçmelisin (Pickup Location).";
       }
       if (!receiverName.trim()) return "Alıcının Tam Adı zorunlu.";
       if (!receiverPhone.trim()) return "Alıcı Telefon Numarası zorunlu.";
@@ -1164,12 +1251,9 @@ export default function CreateCargoPage() {
       if (!orderId.trim()) return "order_id zorunlu.";
       if (deliveryOptionId === "" || !(Number(deliveryOptionId) > 0)) return "deliveryOptionId zorunlu.";
       if (!currency.trim()) return "currency zorunlu.";
-      if (!customsValue.trim()) return "customsValue zorunlu.";
+
       if (!customsCurrency.trim()) return "customsCurrency zorunlu.";
       if (!orderDate.trim()) return "orderDate zorunlu.";
-      if (!deliverySlotDate.trim()) return "deliverySlotDate zorunlu.";
-      if (!deliverySlotFrom.trim()) return "deliverySlotFrom zorunlu.";
-      if (!deliverySlotTo.trim()) return "deliverySlotTo zorunlu.";
     }
 
     return null;
@@ -1207,14 +1291,14 @@ export default function CreateCargoPage() {
     const amount_due = payment_method === "cod" ? Math.max(0, Number(codAmount || 0)) : 0;
 
     const items: CreateOrderItem[] = [
-      {
-        name: packageContent.trim(),
-        price: Math.max(0, Number(packageValue || 0)),
-        quantity: 1,
-        sku: `pkg-${orderId.trim() || "order"}`,
-        pickupLocation: [{ pickupLocationCode: pickupLocationCode.trim(), quantity: 1 }],
-      },
-    ];
+  {
+    name: packageContent.trim(),
+    price: Math.max(0, Number(packageValue || 0)),
+    quantity: 1,
+    sku: `pkg-${orderId.trim() || "order"}`,
+    pickupLocation: [{ pickupLocationCode: pickupLocationCode.trim(), quantity: 1 }],
+  },
+];
 
     const body: CreateOrderReq = {
       order_id: orderId.trim(),
@@ -1237,16 +1321,7 @@ export default function CreateCargoPage() {
         lon: Number(lon),
       },
 
-      items: [
-        {
-          productId: 0,
-          name: packageContent.trim(),
-          price: Math.max(0, Number(packageValue || 0)),
-          quantity: 1,
-          sku: `pkg-${orderId.trim() || "order"}`,
-          pickupLocation: [{ pickupLocationCode: pickupLocationCode.trim(), quantity: 1 }],
-        },
-      ],
+      items,
 
       pickup_location_code: pickupLocationCode.trim(),
       create_shipment: Boolean(createShipment),
@@ -1261,12 +1336,8 @@ export default function CreateCargoPage() {
       boxHeight,
 
       orderDate: orderDate.trim(),
-      deliverySlotDate: deliverySlotDate.trim(),
-      deliverySlotTo: deliverySlotTo.trim(),
-      deliverySlotFrom: deliverySlotFrom.trim(),
-
-      customsValue: customsValue.trim(),
       customsCurrency: customsCurrency.trim(),
+        customsValue: customsValue.trim(),
     };
 
     setSubmitting(true);
@@ -1309,6 +1380,7 @@ export default function CreateCargoPage() {
       setSubmitting(false);
     }
   }
+  const refreshCreditRef = React.useRef<null | (() => void)>(null);
 
   return (
     <div className="px-6 py-5">
@@ -1322,7 +1394,12 @@ export default function CreateCargoPage() {
           <span className="text-neutral-400">ⓘ</span>
         </div>
 
-        <CreditChip creditBalance={creditBalance} onTopUp={() => setCreditOpen(true)} />
+        <CreditChip
+          onTopUp={({ refreshCredit } = {}) => {
+            refreshCreditRef.current = refreshCredit || null;
+            setCreditOpen(true);
+          }}
+        />
       </div>
 
       {/* Stepper */}
@@ -1361,7 +1438,59 @@ export default function CreateCargoPage() {
                 Gönderici konumu:{" "}
                 {pickupLocationCode ? <span className="font-semibold">{pickupLocationCode}</span> : <span className="text-neutral-500">Seçilmedi</span>}
               </div>
+              {!useDifferentSender ? (
+                <div className="mt-4 rounded-xl border border-neutral-200 bg-white p-4">
+                  <div className="text-sm font-semibold text-neutral-900">Gönderici Konumu Seç</div>
+                  {pickupListErr ? (
+                    <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                      {pickupListErr}
+                    </div>
+                  ) : null}
 
+                  <div className="mt-3">
+                    <Label text="Pickup Location *" />
+                    <select
+                      value={selectedPickupCode || pickupLocationCode || ""}
+                      onChange={(e) => {
+                        const code = String(e.target.value || "");
+                        setSelectedPickupCode(code);
+                        setPickupLocationCode(code); // ✅ payload’a gidecek ana alan
+                      }}
+                      disabled={pickupListLoading}
+                      className={cn(
+                        "h-10 w-full rounded-lg border px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200",
+                        pickupListLoading ? "border-neutral-200 bg-neutral-50 text-neutral-500" : "border-neutral-200 bg-white"
+                      )}
+                    >
+                      <option value="">
+                        {pickupListLoading ? "Yükleniyor..." : pickupList.length ? "Konum seçin" : "Konum bulunamadı"}
+                      </option>
+
+                      {pickupList.map((w) => (
+                        <option key={String(w.code)} value={String(w.code)}>
+                          {w.name}
+                        </option>
+                      ))}
+                    </select>
+
+                    {/* seçilince ufak preview, kullanıcıya sadece name şarttı ama debug/preview iyi */}
+                    <div className="mt-2 text-xs text-neutral-500">
+                      Seçili: <span className="font-semibold">{selectedPickup?.name || "—"}</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-end">
+                    <button
+                      type="button"
+                      onClick={loadPickupLocations}
+                      disabled={pickupListLoading}
+                      className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-semibold hover:bg-neutral-50 disabled:opacity-60"
+                    >
+                      {pickupListLoading ? "Yenileniyor…" : "Listeyi Yenile"}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
               <div className="mt-3 flex items-center gap-3 text-sm text-neutral-600">
                 <button
                   type="button"
@@ -1395,7 +1524,7 @@ export default function CreateCargoPage() {
                       className="h-10 w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 text-sm font-mono"
                     />
                     <div className="mt-1 text-xs text-neutral-500">
-                      Konum kodu otomatik üretilir (unique). Kullanıcı değiştiremez.
+                      Konum kodu otomatik üretilir.
                     </div>
                   </div>
 
@@ -1420,13 +1549,6 @@ export default function CreateCargoPage() {
                   <div>
                     <Label text="Posta Kodu *" />
                     <input value={senderPostcode} onChange={(e) => setSenderPostcode(e.target.value)} className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm" />
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <div className="text-xs text-neutral-500">
-                    Kaynaklar (sender): <span className="font-mono">GET /logistics/countries</span>, <span className="font-mono">GET /logistics/states</span>,{" "}
-                    <span className="font-mono">GET /logistics/cities</span> (lat/lon ilçe seçimi ile auto dolar)
                   </div>
                 </div>
 
@@ -1497,14 +1619,6 @@ export default function CreateCargoPage() {
                   <Label text="address *" />
                   <textarea value={senderAddress} onChange={(e) => setSenderAddress(e.target.value)} className="min-h-[80px] w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm" />
                 </div>
-
-                {/* lat/lon auto (hidden but show small preview) */}
-                <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-700">
-                  Sender city/district: <span className="font-semibold">{senderCity || "-"}</span> / <span className="font-semibold">{senderDistrict || "-"}</span>
-                  <span className="mx-2 text-neutral-300">|</span>
-                  Lat/Lon (AUTO): <span className="font-mono">{senderLat || "-"}</span>, <span className="font-mono">{senderLon || "-"}</span>
-                </div>
-
                 <div className="mt-4 flex items-center justify-end gap-2">
                   <button
                     type="button"
@@ -1572,15 +1686,6 @@ export default function CreateCargoPage() {
                 />
               </div>
             </div>
-
-            <div className="mt-8 border-t border-neutral-200 pt-6">
-              <SectionTitle title="Adres" />
-              <div className="mt-2 text-xs text-neutral-500">
-                Kaynaklar: <span className="font-mono">GET /logistics/countries</span>, <span className="font-mono">GET /logistics/states</span>,{" "}
-                <span className="font-mono">GET /logistics/cities</span>
-              </div>
-            </div>
-
             {/* Country */}
             <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
               <div className="lg:col-span-1">
@@ -1666,54 +1771,6 @@ export default function CreateCargoPage() {
                   placeholder="06000"
                   className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
                 />
-              </div>
-
-              {/* Debug toggle */}
-              <div className="lg:col-span-2">
-                <div className="flex items-center justify-between">
-                  <Label text="Lat/Lon (debug)" />
-                  <button
-                    type="button"
-                    onClick={() => setShowLatLonDebug((p) => !p)}
-                    className="text-sm font-semibold text-indigo-700 hover:text-indigo-800"
-                  >
-                    {showLatLonDebug ? "Gizle" : "Göster"}
-                  </button>
-                </div>
-
-                {showLatLonDebug ? (
-                  <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
-                    <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-                      <div>
-                        <div className="mb-1 text-xs font-semibold text-neutral-600">Lat (AUTO)</div>
-                        <input value={lat} readOnly className="h-9 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm text-neutral-700" />
-                      </div>
-                      <div>
-                        <div className="mb-1 text-xs font-semibold text-neutral-600">Lon (AUTO)</div>
-                        <input value={lon} readOnly className="h-9 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm text-neutral-700" />
-                      </div>
-                      <div className="flex items-end justify-end">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setLat("");
-                            setLon("");
-                          }}
-                          className="h-9 rounded-lg border border-rose-200 bg-rose-50 px-3 text-sm font-semibold text-rose-700 hover:bg-rose-100"
-                          title="Sadece debug amaçlı temizler"
-                        >
-                          Lat/Lon’u Temizle
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="mt-2 text-xs text-neutral-500">
-                      Not: Lat/Lon kullanıcıya görünmüyor. İlçe seçilince otomatik doluyor. Bu paneli sonra komple silebilirsin.
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-xs text-neutral-500">Lat/Lon otomatik dolduruluyor (payload’a gidiyor) ama kullanıcıya gösterilmiyor.</div>
-                )}
               </div>
             </div>
 
@@ -2173,7 +2230,10 @@ export default function CreateCargoPage() {
               <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <div>
                   <Label text="senderName *" />
-                  <input value={senderName} onChange={(e) => setSenderName(e.target.value)} className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200" />
+                  <input value={senderName}
+                    readOnly
+                    className="h-10 w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 text-sm font-mono outline-none"
+                  />
                 </div>
                 <div>
                   <Label text="order_id *" />
@@ -2189,41 +2249,25 @@ export default function CreateCargoPage() {
                     <Label text="deliveryOptionId *" />
                     <input
                       value={deliveryOptionId}
-                      onChange={(e) => setDeliveryOptionId(e.target.value === "" ? "" : num(e.target.value))}
+                      readOnly
                       className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
                     />
                   </div>
                   <label className="flex items-center gap-2 text-sm text-neutral-700 mt-8">
-                    <input checked={createShipment} onChange={(e) => setCreateShipment(e.target.checked)} type="checkbox" />
-                    createShipment
+                    <input checked={createShipment} type="checkbox" disabled />
+                    Gönderim oluşturulsun
                   </label>
                 </div>
 
-                <div>
-                  <Label text="customsValue *" />
-                  <input value={customsValue} onChange={(e) => setCustomsValue(e.target.value)} className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200" />
-                </div>
+
                 <div>
                   <Label text="customsCurrency *" />
-                  <input value={customsCurrency} onChange={(e) => setCustomsCurrency(e.target.value)} className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200" />
+                  <input value={customsCurrency} readOnly className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200" />
                 </div>
 
                 <div>
                   <Label text="orderDate * (dd/mm/yyyy HH:MM)" />
-                  <input value={orderDate} onChange={(e) => setOrderDate(e.target.value)} className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200" />
-                </div>
-                <div>
-                  <Label text="deliverySlotDate * (dd/mm/yyyy)" />
-                  <input value={deliverySlotDate} onChange={(e) => setDeliverySlotDate(e.target.value)} className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200" />
-                </div>
-
-                <div>
-                  <Label text="deliverySlotFrom *" />
-                  <input value={deliverySlotFrom} onChange={(e) => setDeliverySlotFrom(e.target.value)} className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200" />
-                </div>
-                <div>
-                  <Label text="deliverySlotTo *" />
-                  <input value={deliverySlotTo} onChange={(e) => setDeliverySlotTo(e.target.value)} className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200" />
+                  <input value={orderDate} readOnly className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200" />
                 </div>
               </div>
 
@@ -2299,7 +2343,11 @@ export default function CreateCargoPage() {
         </div>
       )}
 
-      <CreditTopUpModal open={creditOpen} onOpenChange={setCreditOpen} creditBalance={creditBalance} />
+      <CreditTopUpModal
+        open={creditOpen}
+        onOpenChange={setCreditOpen}
+        onAfterSuccess={() => refreshCreditRef.current?.()}
+      />
     </div>
   );
 }

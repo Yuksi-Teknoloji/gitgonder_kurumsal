@@ -63,6 +63,7 @@ export default function AutoCargoHomePage() {
 
   const [creditBalance] = React.useState<number>(0);
   const [creditOpen, setCreditOpen] = React.useState(false);
+  const refreshCreditRef = React.useRef<null | (() => void)>(null);
 
   return (
     <div className="px-6 py-5 shadow-sm soft-card p-4 border border-neutral-200 rounded-2xl bg-white ">
@@ -76,7 +77,12 @@ export default function AutoCargoHomePage() {
         </div>
 
         <div className="flex shrink-0 items-start">
-          <CreditChip creditBalance={creditBalance} onTopUp={() => setCreditOpen(true)} />
+          <CreditChip
+            onTopUp={({ refreshCredit } = {}) => {
+              refreshCreditRef.current = refreshCredit || null;
+              setCreditOpen(true);
+            }}
+          />
         </div>
       </div>
       {/* 3 big cards */}

@@ -85,18 +85,22 @@ function normalizeOne(raw: PickupLocationRaw, idx: number): PickupLocationItem {
     toStr(raw?.branch_id) ||
     `row-${idx}`;
 
-  const placeName = toStr(raw?.brandName ?? raw?.placeName ?? raw?.name ?? raw?.title).trim();
-  const contactName = toStr(raw?.contactName ?? raw?.fullName ?? raw?.contact ?? raw?.personName).trim();
-  const mobile = toStr(raw?.mobile ?? raw?.phone ?? raw?.telephone ?? raw?.tel).trim();
+  // ✅ API: warehouses -> name, code, contactPerson, contactPhone, contactEmail
+  const placeName = toStr(raw?.name ?? raw?.brandName ?? raw?.placeName ?? raw?.title).trim();
+  const contactName = toStr(raw?.contactPerson ?? raw?.contactName ?? raw?.fullName ?? raw?.contact ?? raw?.personName).trim();
+  const mobile = toStr(raw?.contactPhone ?? raw?.mobile ?? raw?.phone ?? raw?.telephone ?? raw?.tel).trim();
+  const email = toStr(raw?.contactEmail ?? raw?.email).trim();
+
   const city = toStr(raw?.city ?? raw?.province ?? raw?.state).trim();
   const district = toStr(raw?.district ?? raw?.town ?? raw?.ilce).trim();
   const address = toStr(raw?.address ?? raw?.fullAddress ?? raw?.addr).trim();
-  const email = toStr(raw?.email).trim();
+
   const postcode = toStr(raw?.postcode ?? raw?.zip ?? raw?.postalCode).trim();
 
-  // ✅ UI: Kod -> code (fallback: description)
-  const locationCode = toStr(raw?.code ?? raw?.locationCode ?? raw?.description ?? "").trim();
-  // ✅ UI: Açıklama -> description (fallback: boş)
+  // ✅ UI: Konum Kodu -> code
+  const locationCode = toStr(raw?.code ?? raw?.locationCode ?? "").trim();
+
+  // ✅ UI: Açıklama -> API’de yok, varsa kullan
   const description = toStr(raw?.description ?? "").trim();
 
   const status = normalizeStatus(raw?.status ?? raw?.state ?? raw?.is_active);
@@ -191,8 +195,8 @@ function StatusPill({ v }: { v: PickupLocationItem["status"] }) {
         v === "active"
           ? "border-emerald-200 bg-emerald-50 text-emerald-700"
           : v === "passive"
-          ? "border-neutral-200 bg-neutral-50 text-neutral-600"
-          : "border-neutral-200 bg-white text-neutral-500"
+            ? "border-neutral-200 bg-neutral-50 text-neutral-600"
+            : "border-neutral-200 bg-white text-neutral-500"
       )}
     >
       <span
@@ -731,11 +735,6 @@ export default function MyLocationPage() {
               {loading ? "Yükleniyor…" : "Yenile"}
             </button>
           </div>
-
-          <div className="text-xs text-neutral-500">
-            GET: <span className="font-mono">/oto/inventory/pickup-location/list</span> • POST:{" "}
-            <span className="font-mono">/oto/inventory/pickup-location/create</span>
-          </div>
         </div>
 
         {err ? <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{err}</div> : null}
@@ -745,7 +744,7 @@ export default function MyLocationPage() {
       <div className="mt-4 rounded-xl border border-neutral-200 bg-white overflow-hidden">
         {/* Filters row */}
         <div className="border-b border-neutral-200 bg-neutral-50 px-4 py-3">
-          <div className="grid grid-cols-[48px_220px_200px_180px_180px_1fr_140px_56px] gap-3 text-xs font-semibold text-neutral-600">
+          <div className="grid grid-cols-[40px_180px_160px_140px_130px_1fr_110px_44px] gap-2 text-xs font-semibold text-neutral-600">
             <div />
             <div>Yer ismi</div>
             <div>Ad Soyad</div>
@@ -831,7 +830,7 @@ export default function MyLocationPage() {
           ) : (
             filtered.map((r) => (
               <div key={r.id} className="px-4 py-4">
-                <div className="grid grid-cols-[48px_220px_200px_180px_180px_1fr_140px_56px] gap-3 items-center text-sm">
+                <div className="grid grid-cols-[40px_180px_160px_140px_130px_1fr_110px_44px] gap-2 text-xs font-semibold text-neutral-600">
                   <div className="flex justify-center">
                     <input type="checkbox" className="h-4 w-4" />
                   </div>
