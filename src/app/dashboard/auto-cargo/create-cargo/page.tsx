@@ -272,6 +272,11 @@ export default function CreateCargoPage() {
 
   const [step, setStep] = React.useState<StepKey>(1);
 
+  // ===== AWB (Print label) =====
+  const [awbLoading, setAwbLoading] = React.useState(false);
+  const [awbErr, setAwbErr] = React.useState<string | null>(null);
+  const [awbUrl, setAwbUrl] = React.useState<string | null>(null);
+
   // api state
   const [submitting, setSubmitting] = React.useState(false);
   const [errMsg, setErrMsg] = React.useState<string | null>(null);
@@ -279,7 +284,7 @@ export default function CreateCargoPage() {
   const [lastRes, setLastRes] = React.useState<CreateOrderRes | null>(null);
 
   // ========== CREDIT ==========
-  const [creditBalance] = React.useState<number>(0);
+  const [creditBalance, setCreditBalance] = React.useState<number>(0);
   const [creditOpen, setCreditOpen] = React.useState(false);
 
   // ========== STEP 1 ==========
@@ -472,6 +477,9 @@ export default function CreateCargoPage() {
   const [customsCurrency, setCustomsCurrency] = React.useState("TRY");
 
   const [orderDate, setOrderDate] = React.useState<string>(() => fmtOrderDate(new Date()));
+
+  const shippingFee = selectedPrice !== "" ? Number(selectedPrice) : 0; // ✅ kargo ücreti
+  const insufficientBalanceForShipment = createShipment && !cod && shippingFee > creditBalance;
 
   /* ================= Logistics Loaders (receiver) ================= */
 
@@ -872,11 +880,11 @@ export default function CreateCargoPage() {
     loadPickupLocations();
   }, [useDifferentSender, loadPickupLocations]);
   React.useEffect(() => {
-  if (useDifferentSender) {
-    setSelectedPickupCode("");
-    setPickupLocationCode(""); // toggle açınca user create flow ile doldurulacak
-  }
-}, [useDifferentSender]);
+    if (useDifferentSender) {
+      setSelectedPickupCode("");
+      setPickupLocationCode(""); // toggle açınca user create flow ile doldurulacak
+    }
+  }, [useDifferentSender]);
 
   /* ================= Inventory: GET /oto/inventory/box ================= */
 
@@ -1258,6 +1266,67 @@ export default function CreateCargoPage() {
 
     return null;
   }
+  async function fetchAwbUrl(order_id: string) {
+    setAwbErr(null);
+
+    const bearer = getBearerToken();
+    if (!bearer) {
+      router.replace("/");
+      return null;
+    }
+
+    const clean = String(order_id || "").trim();
+    if (!clean) {
+      setAwbErr("order_id boş.");
+      return null;
+    }
+
+    setAwbLoading(true);
+    try {
+      const res = await fetch(`/yuksi/api/oto/shipments/awb/${encodeURIComponent(clean)}`, {
+        method: "GET",
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${bearer}`,
+        },
+      });
+
+      const json: any = await readJson(res);
+
+      if (res.status === 401 || res.status === 403) {
+        router.replace("/");
+        return null;
+      }
+
+      if (!res.ok) throw new Error(pickMsg(json, `HTTP ${res.status}`));
+
+      const url = String(json?.printAWBURL || "").trim();
+      if (!url) throw new Error("printAWBURL boş geldi.");
+
+      setAwbUrl(url);
+      return url;
+    } catch (e: any) {
+      setAwbUrl(null);
+      setAwbErr(e?.message || "AWB alınamadı.");
+      return null;
+    } finally {
+      setAwbLoading(false);
+    }
+  }
+
+  async function openAwbInNewTab() {
+    // url daha önce alındıysa direkt aç
+    const url = awbUrl || (await fetchAwbUrl(orderId));
+    if (!url) return;
+
+    const win = window.open(url, "_blank", "noopener,noreferrer");
+    if (!win) {
+      setAwbErr("Pop-up engellendi. Tarayıcıdan bu site için pop-up izni verip tekrar dene.");
+      return;
+    }
+    win.focus?.();
+  }
 
   async function submit() {
     setErrMsg(null);
@@ -1291,14 +1360,14 @@ export default function CreateCargoPage() {
     const amount_due = payment_method === "cod" ? Math.max(0, Number(codAmount || 0)) : 0;
 
     const items: CreateOrderItem[] = [
-  {
-    name: packageContent.trim(),
-    price: Math.max(0, Number(packageValue || 0)),
-    quantity: 1,
-    sku: `pkg-${orderId.trim() || "order"}`,
-    pickupLocation: [{ pickupLocationCode: pickupLocationCode.trim(), quantity: 1 }],
-  },
-];
+      {
+        name: packageContent.trim(),
+        price: Math.max(0, Number(packageValue || 0)),
+        quantity: 1,
+        sku: `pkg-${orderId.trim() || "order"}`,
+        pickupLocation: [{ pickupLocationCode: pickupLocationCode.trim(), quantity: 1 }],
+      },
+    ];
 
     const body: CreateOrderReq = {
       order_id: orderId.trim(),
@@ -1337,7 +1406,7 @@ export default function CreateCargoPage() {
 
       orderDate: orderDate.trim(),
       customsCurrency: customsCurrency.trim(),
-        customsValue: customsValue.trim(),
+      customsValue: customsValue.trim(),
     };
 
     setSubmitting(true);
@@ -1371,6 +1440,10 @@ export default function CreateCargoPage() {
       if (json?.success) {
         const msg = json?.otoId ? `Order created. otoId=${json.otoId}` : "Order created.";
         setOkMsg(msg);
+
+        // AWB state reset (yeni order için)
+        setAwbErr(null);
+        setAwbUrl(null);
       } else {
         setErrMsg(json?.otoErrorMessage || json?.message || "Order create başarısız.");
       }
@@ -1395,6 +1468,7 @@ export default function CreateCargoPage() {
         </div>
 
         <CreditChip
+          onBalanceChange={setCreditBalance}
           onTopUp={({ refreshCredit } = {}) => {
             refreshCreditRef.current = refreshCredit || null;
             setCreditOpen(true);
@@ -2226,17 +2300,17 @@ export default function CreateCargoPage() {
             </div>
 
             <div className="mt-6 rounded-xl border border-neutral-200 bg-white p-4">
-              <div className="text-sm font-semibold text-neutral-900">Sipariş Parametreleri (API)</div>
+              <div className="text-sm font-semibold text-neutral-900">Sipariş Parametreleri</div>
               <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <div>
-                  <Label text="senderName *" />
+                  <Label text="Gönderici Şirket *" />
                   <input value={senderName}
                     readOnly
                     className="h-10 w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 text-sm font-mono outline-none"
                   />
                 </div>
                 <div>
-                  <Label text="order_id *" />
+                  <Label text="Sipariş Id *" />
                   <input
                     value={orderId}
                     readOnly
@@ -2246,7 +2320,7 @@ export default function CreateCargoPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label text="deliveryOptionId *" />
+                    <Label text="Teslimat Id *" />
                     <input
                       value={deliveryOptionId}
                       readOnly
@@ -2261,29 +2335,14 @@ export default function CreateCargoPage() {
 
 
                 <div>
-                  <Label text="customsCurrency *" />
+                  <Label text="Para Birimi *" />
                   <input value={customsCurrency} readOnly className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200" />
                 </div>
 
                 <div>
-                  <Label text="orderDate * (dd/mm/yyyy HH:MM)" />
+                  <Label text="Sipariş Tarihi * (dd/mm/yyyy HH:MM)" />
                   <input value={orderDate} readOnly className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200" />
                 </div>
-              </div>
-
-              <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 text-xs text-neutral-700">
-                Adres payload preview: country={countryCode || "-"}, city={cityName || "-"}, district={districtName || "-"}{" "}
-                <span className="mx-2 text-neutral-300">|</span>
-                Lat/Lon: {lat || "-"}, {lon || "-"} (hidden)
-              </div>
-
-              <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 text-xs text-neutral-700">
-                Seçili kutu (1. satır):{" "}
-                <span className="font-semibold">
-                  {selectedFirstBox ? `${selectedFirstBox.boxName} (${selectedFirstBox.length}x${selectedFirstBox.width}x${selectedFirstBox.height})` : "—"}
-                </span>
-                <span className="mx-2 text-neutral-300">|</span>
-                Payload: boxLength={boxLength}, boxWidth={boxWidth}, boxHeight={boxHeight}
               </div>
             </div>
 
@@ -2300,19 +2359,40 @@ export default function CreateCargoPage() {
                 <span>Toplam</span>
                 <span>{selectedPrice !== "" ? `${selectedPrice} ${currency}` : `${packageValue || 0} ${currency}`}</span>
               </div>
-              <div className="border-t border-neutral-200 px-5 py-3 text-sm text-neutral-600">
-                <Link href="__PATH_PAYMENT_METHODS__" className="text-indigo-600 hover:text-indigo-700 font-semibold">
-                  Ödeme Yöntemini Göster
-                </Link>
+              <div
+                className={cn(
+                  "border-t px-5 py-4 text-sm",
+                  insufficientBalanceForShipment ? "border-rose-200 bg-rose-50 text-rose-800" : "border-amber-200 bg-amber-50 text-amber-800"
+                )}
+              >
+                <div className="flex items-center gap-2 font-semibold">
+                  <span className="text-lg">{insufficientBalanceForShipment ? "🚫" : "⚠️"}</span>
+                  <span>{insufficientBalanceForShipment ? "BAKİYE YETERSİZ" : "ÖNEMLİ BİLGİ"}</span>
+                </div>
+
+                <div className="mt-1">
+                  Kargo ücreti: <strong>{shippingFee} {currency}</strong> • Cüzdan: <strong>{creditBalance} TRY</strong>
+                  <br />
+                  {insufficientBalanceForShipment ? (
+                    <>
+                      Cüzdan bakiyesi yetersiz olduğu için <strong>sipariş oluşur</strong> ancak <strong>kargo oluşturulamaz</strong>.
+                      Bu durumda <strong>etiket yazdırılamaz</strong>.
+                    </>
+                  ) : (
+                    <>
+                      Bakiyeniz yeterliyse sipariş ile birlikte kargo da oluşturulur ve etiket yazdırabilirsiniz.
+                    </>
+                  )}
+                </div>
               </div>
             </div>
-
-            {lastRes ? (
-              <div className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50 p-4">
-                <div className="text-sm font-semibold text-neutral-900">API Response</div>
-                <pre className="mt-2 overflow-auto rounded-lg bg-white p-3 text-xs text-neutral-800 border border-neutral-200">{JSON.stringify(lastRes, null, 2)}</pre>
-              </div>
-            ) : null}
+            <button
+              type="button"
+              onClick={() => setCreditOpen(true)}
+              className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+            >
+              Bakiye Yükle
+            </button>
 
             <div className="mt-6 flex items-center justify-between">
               <button onClick={prev} className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-700 hover:text-neutral-900">
@@ -2327,10 +2407,6 @@ export default function CreateCargoPage() {
                 {submitting ? "Gönderiliyor…" : "✓ Gönderiyi Onayla"}
               </button>
             </div>
-
-            <div className="mt-3 text-xs text-neutral-500">
-              Endpoint: <span className="font-mono">/oto/orders/create</span>
-            </div>
           </div>
         )}
       </div>
@@ -2342,10 +2418,64 @@ export default function CreateCargoPage() {
           {okMsg ? <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{okMsg}</div> : null}
         </div>
       )}
+      {/* Print AWB button (Order create sonrası) */}
+      {lastRes?.success ? (
+        <div className="mt-4 rounded-xl border border-neutral-200 bg-white p-4">
+          <div className="text-sm font-semibold text-neutral-900">Kargo Etiketi</div>
+
+          {insufficientBalanceForShipment ? (
+            <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+              <div className="font-semibold">🚫 Yetersiz bakiye</div>
+              <div className="mt-1">
+                Bu siparişte sadece <strong>sipariş</strong> oluşturulmuş olabilir. Kargo oluşmadıysa <strong>etiket alınamaz</strong>.
+                Lütfen bakiye yükleyip tekrar deneyin.
+              </div>
+            </div>
+          ) : null}
+
+          <div className="mt-1 text-sm text-neutral-600">
+            Sipariş oluşturuldu. Kargo etiketini yazdırmak için aşağıdaki butona tıkla.
+          </div>
+
+          {awbErr ? (
+            <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {awbErr}
+            </div>
+          ) : null}
+
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={openAwbInNewTab}
+              disabled={awbLoading || insufficientBalanceForShipment}
+              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+            >
+              {awbLoading ? "Etiket hazırlanıyor…" : "🖨️ Kargo Etiketini Yazdır"}
+            </button>
+            {insufficientBalanceForShipment ? (
+              <div className="mt-2 text-xs text-rose-700">
+                Etiket için önce bakiye yeterli olmalı (kargo oluşturulmalı).
+              </div>
+            ) : null}
+
+            {awbUrl ? (
+              <a
+                href={awbUrl}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+              >
+                Linki görüntüle
+              </a>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       <CreditTopUpModal
         open={creditOpen}
         onOpenChange={setCreditOpen}
+        creditBalance={creditBalance}
         onAfterSuccess={() => refreshCreditRef.current?.()}
       />
     </div>

@@ -5,6 +5,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getAuthToken } from "@/src/utils/auth";
+import { on } from "events";
 
 function cn(...x: Array<string | false | null | undefined>) {
   return x.filter(Boolean).join(" ");
@@ -46,9 +47,11 @@ type AccountInfoRes = {
 export default function CreditChip({
   onTopUp,
   movementsHref,
+  onBalanceChange,
 }: {
   onTopUp: (opts?: { refreshCredit?: () => void }) => void; // ✅ refresh callback geçeceğiz
   movementsHref?: string;
+  onBalanceChange?: (balance: number) => void; // ✅ bakiye değişim callback
 }) {
   const router = useRouter();
 
@@ -86,10 +89,14 @@ export default function CreditChip({
       if (!res.ok) throw new Error(pickMsg(json, `HTTP ${res.status}`));
 
       const rc = Number(json?.remainingCredit ?? 0);
+      const bal = Number.isFinite(rc) ? rc : 0;
       setCreditBalance(Number.isFinite(rc) ? rc : 0);
+      setCreditBalance(bal);
+      onBalanceChange?.(bal);
     } catch (e: any) {
       setErr(e?.message || "Kredi bilgisi alınamadı.");
       setCreditBalance(0);
+      onBalanceChange?.(0);
     } finally {
       setLoading(false);
     }
