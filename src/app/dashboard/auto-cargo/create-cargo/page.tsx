@@ -403,6 +403,9 @@ export default function CreateCargoPage() {
   const [deliveryType, setDeliveryType] = React.useState<
     "toCustomerDoorstep" | "pickupByCustomer" | "toCustomerDoorstepOrPickupByCustomer"
   >("toCustomerDoorstep");
+  const [pickupDropoff, setPickupDropoff] = React.useState<
+    "freePickup" | "dropoffOnly" | "freePickupDropoff"
+  >();
   // ========== STEP 3 (Oto fee / rates) ==========
   type OtoFeeReq = {
     originCity: string;
@@ -426,6 +429,7 @@ export default function CreateCargoPage() {
 
     serviceType: string;
     deliveryType: string;
+    pickupDropoff: string | undefined;
     includeEstimatedDates: boolean;
   };
 
@@ -444,6 +448,7 @@ export default function CreateCargoPage() {
     serviceType?: string;
     deliveryType?: string;
 
+
     estimatedFrom?: string;
     estimatedTo?: string;
 
@@ -459,11 +464,68 @@ export default function CreateCargoPage() {
     result?: OtoFeeOption[];
     [k: string]: any;
   };
+  const SERVICE_TYPE_TR: Record<string, string> = {
+    express: "Hızlı",
+    sameDay: "Aynı Gün",
+    fastDelivery: "Hızlı Teslimat",
+    coldDelivery: "Soğuk Teslimat",
+    heavyAndBulky: "Ağır ve Hacimli",
+    electronicAndHeavy: "Elektronik ve Ağır",
+  };
+
+  const DELIVERY_TYPE_TR: Record<string, string> = {
+    toCustomerDoorstep: "Müşteri Adresine Teslim",
+    pickupByCustomer: "Müşteri Şubeden Teslim",
+    toCustomerDoorstepOrPickupByCustomer: "Adres veya Şubeden Teslim",
+  };
+
+  function trServiceType(x: any) {
+    const key = String(x ?? "").trim();
+    return SERVICE_TYPE_TR[key] || key || "—";
+  }
+
+  function trDeliveryType(x: any) {
+    const key = String(x ?? "").trim();
+    return DELIVERY_TYPE_TR[key] || key || "—";
+  }
+  const PICKUP_DROPOFF_TR: Record<string, string> = {
+    freePickup: "Adresten alım",
+    dropoffOnly: "Şubeye teslim",
+    freePickupDropoff: "Adresten alım + şubeye teslim",
+  };
+
+  function trPickupDropoff(x: any) {
+    const key = String(x ?? "").trim();
+    return PICKUP_DROPOFF_TR[key] || key || "—";
+  }
 
   const [feeLoading, setFeeLoading] = React.useState(false);
   const [feeErr, setFeeErr] = React.useState<string | null>(null);
-  const [feeOptions, setFeeOptions] = React.useState<OtoFeeOption[]>([]);
+  const [feeOptionsRaw, setFeeOptionsRaw] = React.useState<OtoFeeOption[]>([]);
+  const feeOptions = React.useMemo(() => {
+    const st = String(serviceType || "").trim();
+    const dt = String(deliveryType || "").trim();
+    const pd = String(pickupDropoff || "").trim();
+
+    return (feeOptionsRaw || []).filter((o) => {
+      const oSt = String(o?.serviceType ?? "").trim();
+      const oDt = String(o?.deliveryType ?? "").trim();
+      const oPd = String((o as any)?.pickupDropoff ?? "").trim();
+
+      // boşsa filtre uygulama mantığı (UI hep dolu ama güvenli olsun)
+      if (st && oSt && oSt !== st) return false;
+      if (dt && oDt && oDt !== dt) return false;
+      if (pd && oPd && oPd !== pd) return false;
+
+      return true;
+    });
+  }, [feeOptionsRaw, serviceType, deliveryType, pickupDropoff]);
   const [selectedFeeIdx, setSelectedFeeIdx] = React.useState<number | null>(null);
+  const [selectedDeliveryOptionId, setSelectedDeliveryOptionId] = React.useState<number | null>(null);
+  const selectedFee = React.useMemo(() => {
+    if (!selectedDeliveryOptionId) return null;
+    return feeOptions.find((o) => optionIdOf(o) === selectedDeliveryOptionId) || null;
+  }, [feeOptions, selectedDeliveryOptionId]);
 
   // ========== STEP 4 ==========
   const SENDER_COMPANY = "Yüksi Lojistik";
@@ -1124,7 +1186,7 @@ export default function CreateCargoPage() {
 
   async function fetchOtoFee() {
     setFeeErr(null);
-    setFeeOptions([]);
+    setFeeOptionsRaw([]);
     setSelectedFeeIdx(null);
 
     const bearer = getBearerToken();
@@ -1179,6 +1241,7 @@ export default function CreateCargoPage() {
 
       serviceType,
       deliveryType,
+      pickupDropoff,
       includeEstimatedDates: true,
     };
 
@@ -1207,7 +1270,7 @@ export default function CreateCargoPage() {
 
       if (!list.length) throw new Error(pickMsg(json, "Kargo fiyatları boş döndü."));
 
-      setFeeOptions(list);
+      setFeeOptionsRaw(list);
     } catch (e: any) {
       setFeeErr(e?.message || "Fiyat listesi alınamadı.");
     } finally {
@@ -1283,7 +1346,7 @@ export default function CreateCargoPage() {
 
     setAwbLoading(true);
     try {
-      const res = await fetch(`/yuksi/api/oto/shipments/awb/${encodeURIComponent(clean)}`, {
+      const res = await fetch(`/yuksi/oto/shipments/awb/${encodeURIComponent(clean)}`, {
         method: "GET",
         cache: "no-store",
         headers: {
@@ -1875,10 +1938,6 @@ export default function CreateCargoPage() {
             </div>
 
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-              <div className="text-xs text-neutral-500">
-                Kutu listesi: <span className="font-mono">GET /oto/inventory/box</span> • Kutu ekle: <span className="font-mono">POST /oto/inventory/add-box</span>
-              </div>
-
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -2004,10 +2063,6 @@ export default function CreateCargoPage() {
                             {sel ? `${sel.length} x ${sel.width} x ${sel.height} cm` : "—"}
                           </div>
                         </div>
-                      </div>
-
-                      <div className="mt-2 text-xs text-neutral-400">
-                        Not: API tek set boxWidth/boxLength/boxHeight alıyor. Şimdilik <span className="font-semibold">1. satırdaki</span> seçili kutuyu gönderiyoruz.
                       </div>
                     </div>
 
@@ -2148,55 +2203,64 @@ export default function CreateCargoPage() {
             ) : null}
             <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
               <div>
-                <Label text="serviceType" />
+                <Label text="Hizmet Türü" />
                 <select
                   value={serviceType}
                   onChange={(e) => setServiceType(e.target.value as any)}
                   className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
                 >
-                  <option value="express">express</option>
-                  <option value="sameDay">sameDay</option>
+                  <option value="express">Hızlı</option>
+                  <option value="sameDay">Aynı Gün</option>
+                  {/* 
                   <option value="fastDelivery">fastDelivery</option>
                   <option value="coldDelivery">coldDelivery</option>
                   <option value="heavyAndBulky">heavyAndBulky</option>
-                  <option value="electronicAndHeavy">electronicAndHeavy</option>
+                  <option value="electronicAndHeavy">electronicAndHeavy</option> */}
                 </select>
               </div>
 
               <div>
-                <Label text="deliveryType" />
+                <Label text="Teslimat Türü" />
                 <select
                   value={deliveryType}
                   onChange={(e) => setDeliveryType(e.target.value as any)}
                   className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
                 >
-                  <option value="toCustomerDoorstep">toCustomerDoorstep</option>
-                  <option value="pickupByCustomer">pickupByCustomer</option>
-                  <option value="toCustomerDoorstepOrPickupByCustomer">toCustomerDoorstepOrPickupByCustomer</option>
+                  <option value="toCustomerDoorstep">Müşteri Adresine Teslim</option>
+                  {/* <option value="pickupByCustomer">pickupByCustomer</option>
+                  <option value="toCustomerDoorstepOrPickupByCustomer">toCustomerDoorstepOrPickupByCustomer</option> */}
+                </select>
+              </div>
+              <div>
+                <Label text="Alım/Teslim Türü" />
+                <select
+                  value={pickupDropoff}
+                  onChange={(e) => setPickupDropoff(e.target.value as any)}
+                  className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+                >
+                  <option value="freePickup">Adresten alım</option>
+                  <option value="dropoffOnly">Şubeye teslim</option>
+                  <option value="freePickupDropoff">Adresten alım + şubeye teslim</option>
                 </select>
               </div>
             </div>
 
             <div className="mt-3 flex items-center justify-between">
-              <div className="text-xs text-neutral-500">
-                Endpoint: <span className="font-mono">POST /oto/logistics/oto-fee</span>
-              </div>
               <button
                 type="button"
-                onClick={fetchOtoFee}
                 disabled={feeLoading}
-                className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-semibold hover:bg-neutral-50 disabled:opacity-60"
+                className="h-9 rounded-lg border border-neutral-200 bg-orange-300 px-3 text-sm font-semibold hover:bg-neutral-50 disabled:opacity-60"
               >
-                {feeLoading ? "Yükleniyor…" : "Yenile"}
+                {feeLoading ? "Yükleniyor…" : "Filtreye Göre Fiyatları Yenile"}
               </button>
             </div>
 
             <div className="mt-4 rounded-xl border border-neutral-200 overflow-hidden">
-              <div className="bg-neutral-50 px-4 py-3 text-xs font-semibold text-neutral-600 grid grid-cols-[400px_140px_140px_160px_120px_80px] gap-3">
+              <div className="bg-neutral-50 px-4 py-3 text-xs font-semibold text-neutral-600 grid grid-cols-[400px_150px_180px_150px_100px_80px] gap-3">
                 <div>Kargo Şirketi</div>
-                <div>Servis</div>
-                <div>Teslimat</div>
-                <div>ETA</div>
+                <div>Hizmet Türü</div>
+                <div>Teslimat Türü</div>
+                <div>Alım/Teslim Türü</div>
                 <div>Fiyat</div>
                 <div />
               </div>
@@ -2207,9 +2271,9 @@ export default function CreateCargoPage() {
                 ) : feeOptions.length ? (
                   feeOptions.map((o, idx) => {
                     const id = optionIdOf(o);
-                    const chosen = selectedFeeIdx === idx;
+                    const chosen = optionIdOf(o) === selectedDeliveryOptionId;
                     return (
-                      <div key={idx} className="px-4 py-3 grid grid-cols-[400px_140px_140px_160px_120px_80px] gap-3 items-center">
+                      <div key={idx} className="px-4 py-3 grid grid-cols-[400px_150px_180px_150px_100px_80px] gap-3 items-center">
                         <div className="flex items-center gap-3">
                           {(o as any).logo ? (
                             <img
@@ -2225,11 +2289,10 @@ export default function CreateCargoPage() {
 
                           <div className="text-sm font-semibold text-neutral-900">{carrierOf(o)}</div>
                         </div>
-                        <div className="text-sm text-neutral-700">{String(o.serviceType ?? "—")}</div>
-                        <div className="text-sm text-neutral-700">{String(o.deliveryType ?? "—")}</div>
-                        <div className="text-xs text-neutral-600">
-                          {(o as any).estimatedPickupDate ? `PU: ${(o as any).estimatedPickupDate}` : "—"}
-                          {(o as any).estimatedDeliveryDate ? ` / DL: ${(o as any).estimatedDeliveryDate}` : ""}
+                        <div className="text-sm text-neutral-700">{trServiceType(o.serviceType)}</div>
+                        <div className="text-sm text-neutral-700">{trDeliveryType(o.deliveryType)}</div>
+                        <div className="text-sm text-neutral-700">
+                          {trPickupDropoff((o as any).pickupDropoff)} {/* ✅ */}
                         </div>
                         <div className="text-sm font-semibold text-neutral-900">
                           {priceOf(o)} {(o as any).currency || currency}
@@ -2239,10 +2302,11 @@ export default function CreateCargoPage() {
                           type="button"
                           disabled={!id}
                           onClick={() => {
-                            setSelectedFeeIdx(idx);
+                            const id = optionIdOf(o);
+                            setSelectedDeliveryOptionId(id);
                             setSelectedCarrierName(carrierOf(o));
                             setSelectedPrice(priceOf(o));
-                            if (id) setDeliveryOptionId(id); // ✅ Step4/create order için hazır
+                            if (id) setDeliveryOptionId(id);
                           }}
                           className={cn(
                             "h-9 rounded-lg px-3 text-sm font-semibold border",

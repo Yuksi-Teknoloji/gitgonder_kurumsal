@@ -110,6 +110,33 @@ function getOrderDims(o: any): { l?: number; w?: number; h?: number } {
   if (h !== null) out.h = h;
   return out;
 }
+/* ================= Human readable maps ================= */
+
+const SERVICE_TYPE_TR: Record<string, string> = {
+  express: "Hızlı",
+};
+
+const AVG_DELIVERY_TIME_TR: Record<string, string> = {
+  "1to3WorkingDays": "1–3 iş günü",
+  "1to7WorkingDays": "1–7 iş günü",
+};
+
+const PICKUP_DROPOFF_TR: Record<string, string> = {
+  dropoffOnly: "Şubeye teslim",
+  freePickup: "Adresten alım",
+  freePickupDropoff: "Adresten alım + şubeye teslim", // response’ta var
+};
+
+const DELIVERY_TYPE_TR: Record<string, string> = {
+  toCustomerDoorstep: "Müşteri adresine teslim",
+  toCustomerDoorstepOrPickupByCustomer: "Adrese teslim / müşteri teslim alabilir",
+};
+
+function trOrDash(v: any, map: Record<string, string>) {
+  const key = String(v || "").trim();
+  if (!key) return "—";
+  return map[key] || key; // bilinmeyen gelirse ham değer
+}
 
 /* ================= API Types ================= */
 
@@ -293,6 +320,10 @@ export default function CargoPricesPage() {
   const [minPrice, setMinPrice] = React.useState("");
   const [maxPrice, setMaxPrice] = React.useState("");
   const [selectedCompany, setSelectedCompany] = React.useState<string>("");
+  const [selectedServiceType, setSelectedServiceType] = React.useState<string>("");
+  const [selectedAvgDeliveryTime, setSelectedAvgDeliveryTime] = React.useState<string>("");
+  const [selectedPickupDropoff, setSelectedPickupDropoff] = React.useState<string>("");
+  const [selectedDeliveryType, setSelectedDeliveryType] = React.useState<string>("");
 
   function addBoxRowLocal() {
     setBoxes((b) => [...b, { l: 1, w: 1, h: 1, weight: 1 }]);
@@ -501,6 +532,10 @@ export default function CargoPricesPage() {
     setSelectedDeliveryOptionId(null);
     setSelectedDeliveryLabel("");
     setShipMsg(null);
+    setSelectedServiceType("");
+    setSelectedAvgDeliveryTime("");
+    setSelectedPickupDropoff("");
+    setSelectedDeliveryType("");
   }
 
   async function fetchPrices() {
@@ -644,6 +679,10 @@ export default function CargoPricesPage() {
       const name = (r.deliveryOptionName || r.deliveryCompanyName || "").trim();
 
       if (selectedCompany && name !== selectedCompany) return false;
+      if (selectedServiceType && (r.serviceType || "") !== selectedServiceType) return false;
+      if (selectedAvgDeliveryTime && (r.avgDeliveryTime || "") !== selectedAvgDeliveryTime) return false;
+      if (selectedPickupDropoff && (r.pickupDropoff || "") !== selectedPickupDropoff) return false;
+      if (selectedDeliveryType && (r.deliveryType || "") !== selectedDeliveryType) return false;
 
       const numeric = Number(r.price ?? NaN);
       if (Number.isFinite(numeric)) {
@@ -655,7 +694,7 @@ export default function CargoPricesPage() {
 
       return true;
     });
-  }, [rows, minPrice, maxPrice, selectedCompany]);
+  }, [rows, minPrice, maxPrice, selectedCompany, selectedServiceType, selectedAvgDeliveryTime, selectedPickupDropoff, selectedDeliveryType]);
 
   // initial loads
   React.useEffect(() => {
@@ -1091,20 +1130,60 @@ export default function CargoPricesPage() {
               ))}
             </select>
 
-            <select className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm" disabled>
-              <option>—</option>
+            <select
+              value={selectedServiceType}
+              onChange={(e) => setSelectedServiceType(e.target.value)}
+              className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm"
+              disabled={rows.length === 0}
+            >
+              <option value="">Seç</option>
+              {Array.from(new Set(rows.map((x) => String(x.serviceType || "").trim()).filter(Boolean))).map((v) => (
+                <option key={v} value={v}>
+                  {trOrDash(v, SERVICE_TYPE_TR)}
+                </option>
+              ))}
             </select>
 
-            <select className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm" disabled>
-              <option>—</option>
+            <select
+              value={selectedAvgDeliveryTime}
+              onChange={(e) => setSelectedAvgDeliveryTime(e.target.value)}
+              className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm"
+              disabled={rows.length === 0}
+            >
+              <option value="">Seç</option>
+              {Array.from(new Set(rows.map((x) => String(x.avgDeliveryTime || "").trim()).filter(Boolean))).map((v) => (
+                <option key={v} value={v}>
+                  {trOrDash(v, AVG_DELIVERY_TIME_TR)}
+                </option>
+              ))}
             </select>
 
-            <select className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm" disabled>
-              <option>—</option>
+            <select
+              value={selectedPickupDropoff}
+              onChange={(e) => setSelectedPickupDropoff(e.target.value)}
+              className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm"
+              disabled={rows.length === 0}
+            >
+              <option value="">Seç</option>
+              {Array.from(new Set(rows.map((x) => String(x.pickupDropoff || "").trim()).filter(Boolean))).map((v) => (
+                <option key={v} value={v}>
+                  {trOrDash(v, PICKUP_DROPOFF_TR)}
+                </option>
+              ))}
             </select>
 
-            <select className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm" disabled>
-              <option>—</option>
+            <select
+              value={selectedDeliveryType}
+              onChange={(e) => setSelectedDeliveryType(e.target.value)}
+              className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm"
+              disabled={rows.length === 0}
+            >
+              <option value="">Seç</option>
+              {Array.from(new Set(rows.map((x) => String(x.deliveryType || "").trim()).filter(Boolean))).map((v) => (
+                <option key={v} value={v}>
+                  {trOrDash(v, DELIVERY_TYPE_TR)}
+                </option>
+              ))}
             </select>
 
             <div className="flex gap-2">
@@ -1141,22 +1220,11 @@ export default function CargoPricesPage() {
 
             const eta =
               (r.estimatedDeliveryDate && String(r.estimatedDeliveryDate)) ||
-              (r.avgDeliveryTime && String(r.avgDeliveryTime)) ||
-              "—";
+              trOrDash(r.avgDeliveryTime, AVG_DELIVERY_TIME_TR);
 
-            const pickupReadable =
-              r.pickupDropoff === "freePickup"
-                ? "🚚 Ücretsiz adresten alım"
-                : r.pickupDropoff
-                  ? String(r.pickupDropoff)
-                  : "—";
+            const pickupReadable = trOrDash(r.pickupDropoff, PICKUP_DROPOFF_TR);
 
-            const deliveryReadable =
-              r.deliveryType === "toCustomerDoorstepOrPickupByCustomer"
-                ? "📍 Adrese teslim / müşteri teslim alabilir"
-                : r.deliveryType
-                  ? `📍 ${r.deliveryType}`
-                  : "—";
+            const deliveryReadable = trOrDash(r.deliveryType, DELIVERY_TYPE_TR);
 
             return (
               <div key={`${companyName}-${idx}`} className="px-4 py-4">
@@ -1177,7 +1245,7 @@ export default function CargoPricesPage() {
                     <div className="font-semibold text-neutral-900">{companyName || "—"}</div>
                   </div>
 
-                  <div className="text-neutral-700">{r.serviceType || "—"}</div>
+                  <div className="text-neutral-700">{trOrDash(r.serviceType, SERVICE_TYPE_TR)}</div>
 
                   <div>
                     <span className="inline-flex items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
