@@ -367,7 +367,7 @@ export default function SetupFeePage() {
             Ödemeniz Kontrol Ediliyor
           </h1>
           <p className="mt-3 text-neutral-600">
-            Dekontunuz başarıyla yüklendi. Admin ekibimiz ödemenizi kontrol
+            İsteğiniz başarıyla gönderildi. Admin ekibimiz ödemenizi kontrol
             ediyor.
           </p>
           <p className="mt-2 text-sm text-neutral-500">

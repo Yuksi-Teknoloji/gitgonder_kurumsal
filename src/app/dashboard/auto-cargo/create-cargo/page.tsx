@@ -359,7 +359,6 @@ export default function CreateCargoPage() {
   // ========== STEP 2 ==========
   const [boxes, setBoxes] = React.useState<Array<{ boxId: number | ""; weight: number }>>([
     { boxId: "", weight: 1 },
-    { boxId: "", weight: 1 },
   ]);
 
   const [invBoxes, setInvBoxes] = React.useState<InventoryBox[]>([]);

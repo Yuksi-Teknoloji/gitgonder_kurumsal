@@ -46,16 +46,16 @@ function IconCalculator(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
-type Metric = { label: string; value: number; href?: string };
+type Metric = { label: string;  href?: string };
 const METRICS: Metric[] = [
-  { label: "Kargo Oluşturulmayan", value: 0, href: "__PATH_WAITING_CREATE__" },
-  { label: "Kargoya Teslim Bekleyenler", value: 0, href: "__PATH_WAITING_DELIVERY__" },
-  { label: "Kargoya Teslim Edilmiş/Yolda", value: 0, href: "__PATH_IN_TRANSIT__" },
-  { label: "Askıdaki Siparişler", value: 0, href: "__PATH_PENDING__" },
-  { label: "Teslim Edilenler", value: 0, href: "__PATH_DELIVERED__" },
-  { label: "İade Edilenler", value: 0, href: "__PATH_RETURNED__" },
-  { label: "İptal Edilenler", value: 12, href: "__PATH_CANCELED__" },
-  { label: "Tüm Siparişler", value: 12, href: "__PATH_ALL__" },
+  { label: "Kargo Oluşturulmayan", href: "/dashboard/auto-cargo/cargo-list" },
+  { label: "Kargoya Teslim Bekleyenler", href: "/dashboard/auto-cargo/cargo-list" },
+  { label: "Kargoya Teslim Edilmiş/Yolda", href: "/dashboard/auto-cargo/cargo-list" },
+  { label: "Askıdaki Siparişler",href: "/dashboard/auto-cargo/cargo-list" },
+  { label: "Teslim Edilenler", href: "/dashboard/auto-cargo/cargo-list" },
+  { label: "İade Edilenler", href: "/dashboard/auto-cargo/cargo-list" },
+  { label: "İptal Edilenler", href: "/dashboard/auto-cargo/cargo-list" },
+  { label: "Tüm Siparişler", href: "/dashboard/auto-cargo/cargo-list" },
 ];
 
 export default function AutoCargoHomePage() {
@@ -86,21 +86,13 @@ export default function AutoCargoHomePage() {
         </div>
       </div>
       {/* 3 big cards */}
-      <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <CardLink
           title="Kargo Oluştur"
           subtitle="Siparişlerin için hızlıca kargo oluştur."
           icon={<IconPlus className="h-5 w-5" />}
           tone="indigo"
           href="/dashboard/auto-cargo/create-cargo"
-        />
-
-        <CardLink
-          title="Satış kanalınızı bağlayın"
-          subtitle="Siparişlerin otomatik aksın, zahmet azal­sın."
-          icon={<IconChain className="h-5 w-5" />}
-          tone="emerald"
-          href="__PATH_CONNECT_CHANNEL__"
         />
 
         <CardLink
@@ -188,7 +180,6 @@ function MetricCard({ metric }: { metric: Metric }) {
   const content = (
     <div className="rounded-xl border border-neutral-200 bg-white p-4 hover:bg-neutral-50 transition">
       <div className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">{metric.label}</div>
-      <div className="mt-2 text-2xl font-semibold text-neutral-900">{metric.value}</div>
       <div className="mt-2 text-sm font-semibold text-indigo-600">Görüntüle →</div>
     </div>
   );
