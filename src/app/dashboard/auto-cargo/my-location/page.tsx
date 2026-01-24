@@ -891,9 +891,6 @@ export default function MyLocationPage() {
                 <div>
                   <Label text="Konum Kısaltması *" />
                   <Field value={locationCode} onChange={setLocationCode} placeholder="Örn: PNLKNM" />
-                  <div className="mt-2 text-xs text-neutral-500">
-                    Not: Bu alan API&apos;de <span className="font-mono">code</span> olarak gönderilir.
-                  </div>
                 </div>
               </div>
 
@@ -901,9 +898,6 @@ export default function MyLocationPage() {
               <div className="mt-4">
                 <Label text="Açıklama" />
                 <Field value={description} onChange={setDescription} placeholder="Örn: Panel Konum deposu" />
-                <div className="mt-2 text-xs text-neutral-500">
-                  Not: Bu alan API&apos;de <span className="font-mono">description</span> olarak gönderilir.
-                </div>
               </div>
 
               {/* Row 2 */}
@@ -927,18 +921,11 @@ export default function MyLocationPage() {
                   </button>
                   <Field value={mobile} onChange={setMobile} placeholder="" />
                 </div>
-                <div className="mt-2 text-xs text-neutral-500">
-                  Not: API alanı <span className="font-mono">mobile</span>.
-                </div>
               </div>
 
               {/* ✅ Address selectors (ülke/il/ilçe endpointlerden) */}
               <div className="mt-8 border-t border-neutral-200 pt-6">
                 <div className="text-sm font-semibold text-neutral-900">Adres</div>
-                <div className="mt-2 text-xs text-neutral-500">
-                  Kaynaklar: <span className="font-mono">GET /logistics/countries</span>,{" "}
-                  <span className="font-mono">GET /logistics/states</span>, <span className="font-mono">GET /logistics/cities</span>
-                </div>
               </div>
 
               <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -1030,39 +1017,8 @@ export default function MyLocationPage() {
                 <Label text="Posta Kodu" />
                 <Field value={postcode} onChange={setPostcode} placeholder="06000" />
               </div>
-
-              {/* ✅ debug lat/lon (AUTO) */}
-              <div className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-sm font-semibold text-neutral-900">Debug (Lat/Lon)</div>
-                  <label className="flex items-center gap-2 text-sm text-neutral-700">
-                    <input checked={debugLatLon} onChange={(e) => setDebugLatLon(e.target.checked)} type="checkbox" />
-                    Göster
-                  </label>
-                </div>
-
-                {debugLatLon ? (
-                  <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
-                    <div>
-                      <Label text="lat (AUTO)" />
-                      <Field value={lat} onChange={setLat} placeholder="" readOnly />
-                    </div>
-                    <div>
-                      <Label text="lon (AUTO)" />
-                      <Field value={lon} onChange={setLon} placeholder="" readOnly />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-2 text-xs text-neutral-600">Lat/Lon ilçe seçilince otomatik doluyor ve payload’a gönderiliyor.</div>
-                )}
-              </div>
-
-              {/* hidden city/district preview (payload) */}
-              <div className="mt-2 text-xs text-neutral-500">
-                Payload preview: city=<span className="font-mono">{cityName || "-"}</span>, district=<span className="font-mono">{districtName || "-"}</span>
-              </div>
             </div>
-
+            
             <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-neutral-200">
               <button
                 type="button"

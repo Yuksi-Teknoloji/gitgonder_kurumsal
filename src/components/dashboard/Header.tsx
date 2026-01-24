@@ -373,7 +373,7 @@ export default function Header({
             >
               <span className="text-sm opacity-80">{userLabel}</span>
               <Image
-                src="/Brand/logo.png"
+                src="/brand/logo.png"
                 alt="Yuksi"
                 width={52}
                 height={52}
