@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from "react";
 import { type JwtClaims, decodeJwt } from "@/src/utils/jwt";
 import { getAuthToken } from "@/src/utils/auth";
 import Image from "next/image";
-import logo from "@/public/brand/logo.png";
 
 const token = getAuthToken();
 const claims: JwtClaims | null = token ? (decodeJwt(token) as JwtClaims) : null;
@@ -374,7 +373,7 @@ export default function Header({
             >
               <span className="text-sm opacity-80">{userLabel}</span>
               <Image
-                src={logo}
+                src="/Brand/logo.png"
                 alt="Yuksi"
                 width={52}
                 height={52}
