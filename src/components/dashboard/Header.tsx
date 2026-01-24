@@ -375,6 +375,7 @@ export default function Header({
               <Image
                 src="/Brand/logo1.png"
                 alt="Yuksi"
+                unoptimized
                 width={52}
                 height={52}
                 className="h-9 w-9 rounded-full bg-orange p-0 object-contain"
