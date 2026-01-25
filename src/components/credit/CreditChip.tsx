@@ -48,10 +48,12 @@ export default function CreditChip({
   onTopUp,
   movementsHref,
   onBalanceChange,
+  onRegisterRefresh,
 }: {
   onTopUp: (opts?: { refreshCredit?: () => void }) => void; // ✅ refresh callback geçeceğiz
   movementsHref?: string;
   onBalanceChange?: (balance: number) => void; // ✅ bakiye değişim callback
+    onRegisterRefresh?: (refresh: () => void) => void;
 }) {
   const router = useRouter();
 
@@ -100,12 +102,16 @@ export default function CreditChip({
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, [router, onBalanceChange]);
 
   // ilk render’da çek
   React.useEffect(() => {
     fetchCredit();
   }, [fetchCredit]);
+
+  React.useEffect(() => {
+  onRegisterRefresh?.(fetchCredit); // ✅ parent artık her zaman refresh’i biliyor
+}, [onRegisterRefresh, fetchCredit]);
 
   const fmt = React.useMemo(() => {
     return new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(creditBalance ?? 0);

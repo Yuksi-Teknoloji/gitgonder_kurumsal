@@ -96,6 +96,43 @@ type ApiOrder = {
   paymentMethod?: string; // "paid" | "cod" ...
   shipmentNumber?: string;
   trackingURL?: string;
+  skus?: string;
+  totalDue?: number;
+  quantities?: string;
+  subTotal?: number;
+
+  customerPhone?: string;
+  customerEmail?: string;
+
+  reverseShipment?: string; // "false"/"true" gibi geliyor
+  isReturnShipment?: string; // "no"/"yes" gibi geliyor
+  weight?: number;
+
+  destinationCountry?: string;
+  originCountry?: string;
+
+  district?: string;
+  deliverySlot?: string;
+
+  modifiedBy?: string;
+  modifiedDate?: string;
+  packageCount?: number;
+  addressConfirm?: string;
+
+  customer?: {
+    country?: string;
+    address?: string;
+    city?: string;
+    district?: string;
+    name?: string;
+    mobile?: string;
+    postcode?: string;
+    email?: string;
+    lat?: number;
+    lon?: number;
+    id?: number;
+    refID?: any;
+  };
 };
 
 type OrdersListResponse = {
@@ -109,6 +146,38 @@ type OrdersListResponse = {
   currentPage: number;
   totalCount: number;
   orders: ApiOrder[];
+};
+type DeliveryCompanyOption = {
+  serviceType?: string | null;
+  deliveryOptionName?: string | null;
+  deliveryOptionId?: number | null;
+  price?: number | null;
+  currency?: string | null;
+  logo?: string | null;
+  maxDeliveryDay?: number | null;
+};
+
+type GetDeliveryFeeResponse = {
+  success: boolean;
+  message: string | null;
+  otoErrorCode: any;
+  otoErrorMessage: string | null;
+  deliveryCompany?: DeliveryCompanyOption[];
+};
+
+type CreateShipmentResponse = {
+  success?: boolean;
+  message?: string | null;
+  otoErrorMessage?: string | null;
+  // swagger bazen "string" diyordu; o yüzden any toleranslıyız.
+  [k: string]: any;
+};
+
+type PrintAwbResponse = {
+  success: boolean;
+  message: string | null;
+  otoErrorMessage: string | null;
+  printAWBURL?: string | null;
 };
 
 type OrderDetailsResponse = {
@@ -160,6 +229,7 @@ function apiStatusToTr(s?: string): RowStatusTr {
   if (x === "assignedtowarehouse") return "Kargoya Teslim Bekleyenler";
 
   if (x === "searchingdriver") return "Kuryeye Verildi / Sürücü Aranıyor";
+  if (x.includes("shipmentcanceled") || x.includes("shipment_cancel")) return "İptal edildi";
 
   if (x.includes("in_transit") || x.includes("onway") || x.includes("on_way") || x.includes("shipped"))
     return "Kargoya Teslim Edilmiş/Yolda";
@@ -249,6 +319,7 @@ function OrderDetailsModal({
   const [loading, setLoading] = React.useState(false);
   const [err, setErr] = React.useState("");
   const [data, setData] = React.useState<OrderDetailsResponse | null>(null);
+  const [summary, setSummary] = React.useState<ApiOrder | null>(null);
 
   React.useEffect(() => {
     if (!open || !orderId) return;
@@ -258,6 +329,7 @@ function OrderDetailsModal({
       setLoading(true);
       setErr("");
       setData(null);
+      setSummary(null);
 
       try {
         const res = await fetch(`/yuksi/oto/orders/${encodeURIComponent(orderId)}`, {
@@ -273,6 +345,26 @@ function OrderDetailsModal({
 
         if (!alive) return;
         setData(j);
+        try {
+          const resL = await fetch("/yuksi/oto/orders/list", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({ page: 1, perPage: 1, orderId }), // orderId filtre destekliyorsa süper
+          });
+
+          const jl = await readJson<OrdersListResponse>(resL);
+          if (resL.ok && jl?.success && Array.isArray(jl.orders) && jl.orders.length > 0) {
+            setSummary(jl.orders[0]);
+          } else {
+            setSummary(null);
+          }
+        } catch {
+          setSummary(null);
+        }
       } catch (e: any) {
         if (!alive) return;
         setErr(String(e?.message || e || "Bilinmeyen hata"));
@@ -346,6 +438,66 @@ function OrderDetailsModal({
                   <div className="mt-2 text-sm font-semibold text-neutral-900">{data.items?.length ?? 0}</div>
                 </div>
               </div>
+              {/* List response özeti (Türkçeleştirilmiş) */}
+              {summary ? (
+                <div className="rounded-lg border border-neutral-200 bg-white p-4">
+                  <div className="text-sm font-semibold text-neutral-900">Sipariş Özeti</div>
+
+                  <div className="mt-3 grid gap-3 md:grid-cols-3">
+                    <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+                      <div className="text-xs font-semibold text-neutral-600">SKU</div>
+                      <div className="mt-1 text-sm text-neutral-900 break-words">{summary.skus || "-"}</div>
+                    </div>
+
+                    <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+                      <div className="text-xs font-semibold text-neutral-600">Paket Sayısı</div>
+                      <div className="mt-1 text-sm font-semibold text-neutral-900">{summary.packageCount ?? "-"}</div>
+                    </div>
+
+                    <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+                      <div className="text-xs font-semibold text-neutral-600">Ağırlık (kg)</div>
+                      <div className="mt-1 text-sm font-semibold text-neutral-900">{summary.weight ?? "-"}</div>
+                    </div>
+
+                    <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+                      <div className="text-xs font-semibold text-neutral-600">Müşteri Telefon</div>
+                      <div className="mt-1 text-sm text-neutral-900">{summary.customerPhone || summary.customer?.mobile || "-"}</div>
+                    </div>
+
+                    <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+                      <div className="text-xs font-semibold text-neutral-600">Müşteri E-posta</div>
+                      <div className="mt-1 text-sm text-neutral-900 break-all">{summary.customerEmail || summary.customer?.email || "-"}</div>
+                    </div>
+
+                    <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+                      <div className="text-xs font-semibold text-neutral-600">İlçe</div>
+                      <div className="mt-1 text-sm text-neutral-900">{summary.district || summary.customer?.district || "-"}</div>
+                    </div>
+
+                    <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 md:col-span-2">
+                      <div className="text-xs font-semibold text-neutral-600">Adres</div>
+                      <div className="mt-1 text-sm text-neutral-900 break-words">
+                        {summary.customerAddress || summary.customer?.address || "-"}
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+                      <div className="text-xs font-semibold text-neutral-600">Teslimat Slotu</div>
+                      <div className="mt-1 text-sm text-neutral-900">{summary.deliverySlot || "-"}</div>
+                    </div>
+
+                    <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+                      <div className="text-xs font-semibold text-neutral-600">Son Güncelleme</div>
+                      <div className="mt-1 text-sm text-neutral-900">{summary.modifiedDate || "-"}</div>
+                    </div>
+
+                    <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+                      <div className="text-xs font-semibold text-neutral-600">Güncelleyen</div>
+                      <div className="mt-1 text-sm text-neutral-900">{summary.modifiedBy || "-"}</div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
 
               {/* Items */}
               <div>
@@ -426,12 +578,293 @@ function OrderDetailsModal({
   );
 }
 
+function ShipOrderModal({
+  open,
+  orderId,
+  token,
+  onClose,
+  onAfterClose,
+}: {
+  open: boolean;
+  orderId: string | null;
+  token: string | null;
+  onClose: () => void;
+  onAfterClose?: () => void;
+}) {
+  const [loading, setLoading] = React.useState(false);
+  const [err, setErr] = React.useState("");
+  const [options, setOptions] = React.useState<DeliveryCompanyOption[]>([]);
+  const [selectedId, setSelectedId] = React.useState<number | null>(null);
+  const [creating, setCreating] = React.useState(false);
+  const [created, setCreated] = React.useState(false);
+  const [printLoading, setPrintLoading] = React.useState(false);
+  const [postCreateDelay, setPostCreateDelay] = React.useState(false);
+  const delayTimerRef = React.useRef<number | null>(null);
+  function closeAndRefresh() {
+    onClose();
+    onAfterClose?.();
+  }
+
+  React.useEffect(() => {
+    return () => {
+      if (delayTimerRef.current) window.clearTimeout(delayTimerRef.current);
+    };
+  }, []);
+
+  // 1) Modal açılınca delivery seçeneklerini çek
+  React.useEffect(() => {
+    if (!open || !orderId) return;
+
+    let alive = true;
+    (async () => {
+      setLoading(true);
+      setErr("");
+      setOptions([]);
+      setSelectedId(null);
+      setCreated(false);
+      setPostCreateDelay(false);
+      if (delayTimerRef.current) window.clearTimeout(delayTimerRef.current);
+      delayTimerRef.current = null;
+
+      try {
+        const res = await fetch("/yuksi/oto/logistics/get-delivery-fee", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ orderId }), // ✅ swagger screenshot 1
+        });
+
+        const j = await readJson<GetDeliveryFeeResponse>(res);
+        if (!res.ok || !j?.success) throw new Error(pickMsg(j, `Kargo seçenekleri alınamadı (HTTP ${res.status})`));
+
+        const arr = Array.isArray(j.deliveryCompany) ? j.deliveryCompany : [];
+        if (!alive) return;
+        setOptions(arr);
+      } catch (e: any) {
+        if (!alive) return;
+        setErr(String(e?.message || e || "Bilinmeyen hata"));
+      } finally {
+        if (!alive) return;
+        setLoading(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [open, orderId, token]);
+
+  async function createShipment() {
+    if (!orderId) return;
+    if (!selectedId) {
+      setErr("Lütfen bir kargo firması seç.");
+      return;
+    }
+
+    setCreating(true);
+    setErr("");
+
+    try {
+      const res = await fetch("/yuksi/oto/shipments/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          order_id: orderId,
+          delivery_option_id: selectedId,
+        }),
+      });
+
+      const j = await readJson<CreateShipmentResponse>(res);
+      if (!res.ok) throw new Error(pickMsg(j, `Kargo oluşturma başarısız (HTTP ${res.status})`));
+
+      // ✅ create success -> artık etiketi yazdır butonu çıkacak
+      setPostCreateDelay(true);
+      setCreated(false);
+
+      if (delayTimerRef.current) window.clearTimeout(delayTimerRef.current);
+      delayTimerRef.current = window.setTimeout(() => {
+        setPostCreateDelay(false);
+        setCreated(true);
+      }, 5000);
+    } catch (e: any) {
+      setErr(String(e?.message || e || "Bilinmeyen hata"));
+      setCreated(false);
+      setPostCreateDelay(false);
+      if (delayTimerRef.current) window.clearTimeout(delayTimerRef.current);
+      delayTimerRef.current = null;
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function printAwb() {
+    if (!orderId) return;
+
+    setPrintLoading(true);
+    setErr("");
+
+    try {
+      const res2 = await fetch(`/yuksi/oto/shipments/awb/${encodeURIComponent(orderId)}`, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      const j2 = await readJson<PrintAwbResponse>(res2);
+      if (!res2.ok || !j2?.success) throw new Error(pickMsg(j2, `Etiket alınamadı (HTTP ${res2.status})`));
+
+      const url = String(j2.printAWBURL || "").trim();
+      if (!url) throw new Error("printAWBURL boş geldi.");
+
+      window.open(url, "_blank", "noopener,noreferrer");
+      closeAndRefresh();
+    } catch (e: any) {
+      setErr(String(e?.message || e || "Bilinmeyen hata"));
+    } finally {
+      setPrintLoading(false);
+    }
+  }
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={closeAndRefresh}>
+      <div className="w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-4">
+          <div className="min-w-0">
+            <div className="text-base font-semibold text-neutral-900">Siparişi Kargola</div>
+            <div className="mt-1 text-xs text-neutral-500 truncate">Order ID: {orderId}</div>
+          </div>
+          <button type="button" className="h-9 w-9 rounded-lg hover:bg-neutral-100 text-neutral-600" onClick={closeAndRefresh} aria-label="Kapat">
+            ×
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="max-h-[75vh] overflow-auto px-5 py-4">
+          {err ? <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{err}</div> : null}
+
+          {loading ? (
+            <div className="rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-600">Yükleniyor…</div>
+          ) : options.length === 0 ? (
+            <div className="rounded-lg border border-neutral-200 bg-white px-4 py-6 text-sm text-neutral-600">Bu sipariş için kargo seçeneği yok.</div>
+          ) : (
+            <div className="space-y-2">
+              {options.map((o, idx) => {
+                const id = Number(o.deliveryOptionId || 0) || 0;
+                const active = selectedId === id;
+                return (
+                  <button
+                    key={`${id}-${idx}`}
+                    type="button"
+                    onClick={() => setSelectedId(id)}
+                    className={[
+                      "w-full rounded-lg border px-4 py-3 text-left hover:bg-neutral-50",
+                      active ? "border-indigo-600 bg-indigo-50" : "border-neutral-200 bg-white",
+                    ].join(" ")}
+                  >
+                    <div className="flex items-center gap-3">
+                      {o.logo ? (
+                        <img
+                          src={o.logo}
+                          alt={o.deliveryOptionName || "logo"}
+                          className="h-9 w-9 rounded-md border border-neutral-200 object-cover bg-white"
+                          loading="lazy"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div className="h-9 w-9 rounded-md border border-neutral-200 bg-neutral-100 flex items-center justify-center text-xs text-neutral-500">
+                          🚚
+                        </div>
+                      )}
+
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-semibold text-neutral-900 truncate">
+                          {o.deliveryOptionName || "Kargo"}
+                        </div>
+                        <div className="mt-0.5 text-xs text-neutral-600">
+                          OptionId: <span className="font-semibold">{String(o.deliveryOptionId ?? "-")}</span>
+                          {typeof o.price === "number" ? (
+                            <>
+                              {" "}
+                              • Ücret: <span className="font-semibold">{o.price}</span> {o.currency || ""}
+                            </>
+                          ) : null}
+                          {typeof o.maxDeliveryDay === "number" ? <> • Maks gün: {o.maxDeliveryDay}</> : null}
+                        </div>
+                      </div>
+
+                      <div className="text-xs font-semibold text-neutral-700">{active ? "Seçildi" : "Seç"}</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 border-t border-neutral-200 bg-neutral-50 px-5 py-4">
+          <button
+            type="button"
+            className="rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-800 hover:bg-neutral-50"
+            onClick={closeAndRefresh}
+            disabled={creating}
+          >
+            Vazgeç
+          </button>
+
+          {!created ? (
+            <button
+              type="button"
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+              onClick={createShipment}
+              disabled={creating || loading || options.length === 0 || !selectedId || postCreateDelay}
+              title="Kargo oluştur"
+            >
+              {creating ? "Oluşturuluyor…" : postCreateDelay ? "Etiket yazdırılıyor…" : "Kargoyu Yola Çıkar"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+              onClick={printAwb}
+              disabled={printLoading}
+              title="Etiketi yazdır (AWB)"
+            >
+              {printLoading ? "Etiket alınıyor…" : "Etiketi Yazdır"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 export default function CargoListPage() {
   const token = React.useMemo(getAuthToken, []);
 
   const [detailsOpen, setDetailsOpen] = React.useState(false);
   const [detailsOrderId, setDetailsOrderId] = React.useState<string | null>(null);
   const [canceling, setCanceling] = React.useState<Record<string, boolean>>({});
+  const [shipOpen, setShipOpen] = React.useState(false);
+  const [shipOrderId, setShipOrderId] = React.useState<string | null>(null);
+
+  function openShip(orderId: string) {
+    setShipOrderId(orderId);
+    setShipOpen(true);
+  }
 
   function openDetails(orderId: string) {
     setDetailsOrderId(orderId);
@@ -470,6 +903,7 @@ export default function CargoListPage() {
       // 200 response bazen "string" dönebiliyor (swagger)
       // başarılı sayıp listeyi yenileyelim
       await fetchOrders();
+      refreshCreditRef.current?.();
     } catch (e: any) {
       alert(String(e?.message || e || "İptal sırasında hata"));
     } finally {
@@ -680,8 +1114,11 @@ export default function CargoListPage() {
 
           <div className="order-2 shrink-0 self-start">
             <CreditChip
+              onRegisterRefresh={(refresh) => {
+                refreshCreditRef.current = refresh;
+              }}
               onTopUp={({ refreshCredit } = {}) => {
-                refreshCreditRef.current = refreshCredit || null;
+                refreshCreditRef.current = refreshCredit || refreshCreditRef.current;
                 setCreditOpen(true);
               }}
             />
@@ -702,14 +1139,6 @@ export default function CargoListPage() {
               <span className="opacity-90">▾</span>
             </button>
           </div>
-
-          <button
-            type="button"
-            className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-semibold text-neutral-800 hover:bg-neutral-50"
-            onClick={() => alert("Mock: Filtre paneli")}
-          >
-            ⛭
-          </button>
         </div>
 
         <div className="ml-auto flex items-center gap-2">
@@ -849,7 +1278,22 @@ export default function CargoListPage() {
 
                   <div className="min-w-0 truncate text-neutral-700">{r.paymentType}</div>
 
-                  <div className="flex justify-end">
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      className={cn(
+                        "h-9 rounded-lg border px-3 text-sm font-semibold",
+                        "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                      )}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openShip(r.id);
+                      }}
+                      title="Siparişi kargola (firma seç → oluştur → etiket aç)"
+                    >
+                      Siparişi Kargola
+                    </button>
+
                     <button
                       type="button"
                       className={cn(
@@ -970,6 +1414,19 @@ export default function CargoListPage() {
         }}
       />
       <CreditTopUpModal open={creditOpen} onOpenChange={setCreditOpen} creditBalance={creditBalance} />
+      <ShipOrderModal
+        open={shipOpen}
+        orderId={shipOrderId}
+        token={token}
+        onClose={() => {
+          setShipOpen(false);
+          setShipOrderId(null);
+        }}
+        onAfterClose={() => {
+          fetchOrders();                 // ✅ liste yenile
+          refreshCreditRef.current?.();  // ✅ credit chip yenile
+        }}
+      />
     </div>
   );
 }
