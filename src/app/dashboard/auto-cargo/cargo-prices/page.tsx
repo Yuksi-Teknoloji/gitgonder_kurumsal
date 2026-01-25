@@ -2,16 +2,14 @@
 "use client";
 
 import * as React from "react";
-import CreditTopUpModal from "@/src/components/credit/CreditTopUpModal";
-import CreditChip from "@/src/components/credit/CreditChip";
+import { useRouter } from "next/navigation";
 import { getAuthToken } from "@/src/utils/auth";
 
 function cn(...x: Array<string | false | null | undefined>) {
   return x.filter(Boolean).join(" ");
 }
 
-/* ================= Helpers ================= */
-
+/* ========= Helpers ========= */
 async function readJson<T = any>(res: Response): Promise<T> {
   const t = await res.text();
   try {
@@ -21,9 +19,8 @@ async function readJson<T = any>(res: Response): Promise<T> {
   }
 }
 
-function pickMsg(d: any, fb: string) {
-  return d?.error?.message || d?.message || d?.detail || d?.title || d?.otoErrorMessage || fb;
-}
+const pickMsg = (d: any, fb: string) =>
+  d?.error?.message || d?.otoErrorMessage || d?.message || d?.detail || d?.title || fb;
 
 function getBearerToken() {
   try {
@@ -33,1283 +30,477 @@ function getBearerToken() {
   }
 }
 
-function num(v: string) {
-  const n = Number(String(v).replace(",", "."));
-  return Number.isFinite(n) ? n : 0;
+function toNum(v: any, fb = 0) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fb;
 }
 
-function Label({ text, required }: { text: string; required?: boolean }) {
-  return (
-    <div className="mb-2 text-sm font-semibold text-neutral-800">
-      {text}
-      {required ? <span className="text-rose-500"> *</span> : null} <span className="text-neutral-400">ⓘ</span>
-    </div>
-  );
+function fmtMoney(amount?: number | null, currency?: string | null) {
+  const n = toNum(amount, 0);
+  const cur = String(currency || "TRY");
+  const fixed = n.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (cur === "TRY") return `₺ ${fixed}`;
+  return `${cur} ${fixed}`;
 }
 
-function extractCityName(s: string) {
-  // "Beşiktaş, İstanbul" -> "İstanbul"
-  const t = String(s || "").trim();
-  if (!t) return "";
-  const parts = t.split(",").map((x) => x.trim()).filter(Boolean);
-  return (parts[parts.length - 1] || t).trim();
-}
+/* ========= Types ========= */
 
-function safeStr(x: any) {
-  return x === null || x === undefined ? "" : String(x);
-}
-
-function asNumberOrNull(x: any): number | null {
-  const n = Number(x);
-  return Number.isFinite(n) ? n : null;
-}
-
-function getOrderField(o: any, keys: string[]) {
-  for (const k of keys) {
-    if (o && o[k] !== undefined && o[k] !== null && String(o[k]).trim() !== "") return o[k];
-  }
-  return null;
-}
-
-function getOrderOriginCity(o: any): string {
-  const v =
-    getOrderField(o, ["originCity", "origin_city", "origin_city_name", "originCityName", "pickupCity", "pickup_city"]) ??
-    "";
-  return String(v || "").trim();
-}
-
-function getOrderDestinationCity(o: any): string {
-  const v =
-    getOrderField(o, [
-      "destinationCity",
-      "destination_city",
-      "destination_city_name",
-      "destinationCityName",
-      "deliverCity",
-      "deliveryCity",
-      "delivery_city",
-      "customerCity",
-      "customer_city",
-      "city",
-    ]) ?? "";
-  return String(v || "").trim();
-}
-
-function getOrderWeight(o: any): number | null {
-  const v = getOrderField(o, ["totalWeight", "total_weight", "weight", "cargoWeight", "desiWeight"]);
-  return asNumberOrNull(v);
-}
-
-function getOrderDims(o: any): { l?: number; w?: number; h?: number } {
-  const l = asNumberOrNull(getOrderField(o, ["length", "cargoLength", "boxLength", "packageLength"]));
-  const w = asNumberOrNull(getOrderField(o, ["width", "cargoWidth", "boxWidth", "packageWidth"]));
-  const h = asNumberOrNull(getOrderField(o, ["height", "cargoHeight", "boxHeight", "packageHeight"]));
-  const out: any = {};
-  if (l !== null) out.l = l;
-  if (w !== null) out.w = w;
-  if (h !== null) out.h = h;
-  return out;
-}
-/* ================= Human readable maps ================= */
-
-const SERVICE_TYPE_TR: Record<string, string> = {
-  express: "Hızlı",
+type DeliveryCompanyOption = {
+  serviceType?: string | null;
+  deliveryOptionName?: string | null;
+  trackingType?: string | null;
+  score5?: any;
+  deliveryType?: string | null;
+  codCharge?: number | null;
+  pickupCutOffTime?: string | null;
+  maxOrderValue?: number | null;
+  maxCODValue?: number | null;
+  deliveryOptionId?: number | null;
+  extraWeightPerKg?: number | null;
+  estimatedDeliveryDate?: string | null;
+  deliveryCompanyName?: string | null;
+  estimatedPickupDate?: string | null;
+  checkAllBranches?: string | null;
+  returnFee?: number | null;
+  maxFreeWeight?: number | null;
+  avgDeliveryTime?: string | null;
+  price?: number | null;
+  logo?: string | null;
+  currency?: string | null;
+  pickupDropoff?: string | null;
+  cardOnDeliveryPercentage?: string | null;
+  needToVerifyCrDocStatus?: any;
 };
 
-const AVG_DELIVERY_TIME_TR: Record<string, string> = {
-  "1to3WorkingDays": "1–3 iş günü",
-  "1to7WorkingDays": "1–7 iş günü",
+type OtoFeeResponse = {
+  success: boolean;
+  message: string | null;
+  warnings: any;
+  otoErrorCode: any;
+  otoErrorMessage: string | null;
+  deliveryCompany: DeliveryCompanyOption[];
 };
 
-const PICKUP_DROPOFF_TR: Record<string, string> = {
-  dropoffOnly: "Şubeye teslim",
-  freePickup: "Adresten alım",
-  freePickupDropoff: "Adresten alım + şubeye teslim", // response’ta var
-};
-
-const DELIVERY_TYPE_TR: Record<string, string> = {
-  toCustomerDoorstep: "Müşteri adresine teslim",
-  toCustomerDoorstepOrPickupByCustomer: "Adrese teslim / müşteri teslim alabilir",
-};
-
-function trOrDash(v: any, map: Record<string, string>) {
-  const key = String(v || "").trim();
-  if (!key) return "—";
-  return map[key] || key; // bilinmeyen gelirse ham değer
-}
-
-/* ================= API Types ================= */
-
-type BoxRow = { l: number; w: number; h: number; weight: number };
-
-type InventoryBox = {
-  id: number;
-  boxName: string;
-  length: number;
-  width: number;
-  height: number;
-};
-
-type GetBoxesRes = {
-  success?: boolean;
-  message?: any;
-  warnings?: any;
-  otoErrorCode?: any;
-  otoErrorMessage?: any;
-  boxes?: InventoryBox[];
-};
-
-type AddBoxReq = {
-  name: string;
-  length: number;
-  width: number;
-  height: number;
-};
-
-type AddBoxRes = {
-  success?: boolean;
-  message?: any;
-  warnings?: any;
-  otoErrorCode?: any;
-  otoErrorMessage?: any;
-};
-
-type OtoFeeReq = {
-  weight: number;
+type OtoFeeRequest = {
   originCity: string;
   destinationCity: string;
-  height: number;
-  width: number;
+  weight: number;
+  packageCount: number;
   length: number;
-  includeEstimatedDate: boolean;
+  width: number;
+  height: number;
 };
-
-type DeliveryCompany = {
-  serviceType: string | null;
-  deliveryOptionName: string | null;
-  trackingType: any;
-  score5: any;
-  deliveryType: string | null;
-  codCharge: number | null;
-  pickupCutOffTime: string | null;
-  maxOrderValue: number | null;
-  maxCODValue: number | null;
-  deliveryOptionId: number | null;
-  extraWeightPerKg: number | null;
-  estimatedDeliveryDate: string | null;
-  deliveryCompanyName: string | null;
-  estimatedPickupDate: string | null;
-  checkAllBranches: any;
-  returnFee: number | null;
-  maxFreeWeight: number | null;
-  avgDeliveryTime: string | null;
-  price: number | null;
-  logo: string | null;
-  currency: string | null;
-  pickupDropoff: string | null;
-  cardOnDeliveryPercentage: string | null;
-  needToVerifyCrDocStatus: any;
-};
-
-type OtoFeeRes = {
-  success?: boolean;
-  message?: any;
-  warnings?: any;
-  otoErrorCode?: any;
-  otoErrorMessage?: any;
-  deliveryCompany?: DeliveryCompany[];
-};
-
-/** /api/oto/orders/list */
-type OtoOrder = {
-  id: string; // swagger response'da string gibi duruyor
-  orderId?: string;
-  status?: string;
-  customerName?: string;
-  customerPhone?: string;
-  customerEmail?: string;
-  originCity?: string;
-  destinationCity?: string;
-  totalWeight?: number;
-  length?: number;
-  width?: number;
-  height?: number;
-  shipmentNumber?: string;
-  customerAddress?: string;
-  trackingUrl?: string;
-  reverseShipment?: string;
-  // başka alanlar gelebilir; sıkıntı değil
-  [k: string]: any;
-};
-
-type OrdersListReq = {
-  page: number;
-  perPage: number;
-  search: string;
-  status: string;
-};
-
-type OrdersListRes = {
-  success?: boolean;
-  message?: any;
-  warnings?: any;
-  otoErrorCode?: any;
-  otoErrorMessage?: any;
-  perPage?: number;
-  totalPage?: number;
-  currentPage?: number;
-  totalCount?: number;
-  orders?: OtoOrder[];
-};
-
-type CreateShipmentReq = {
-  order_id: string;
-  delivery_option_id: number;
-};
-
-/* ================= Page ================= */
 
 export default function CargoPricesPage() {
-  // Orders
-  const [orderSearch, setOrderSearch] = React.useState("");
-  const [orderStatus, setOrderStatus] = React.useState<string>(""); // swagger'da var
-  const [orders, setOrders] = React.useState<OtoOrder[]>([]);
-  const [ordersLoading, setOrdersLoading] = React.useState(false);
-  const [ordersErr, setOrdersErr] = React.useState<string | null>(null);
-  const [selectedOrderId, setSelectedOrderId] = React.useState<string>("");
+  const router = useRouter();
+  const token = React.useMemo(getBearerToken, []);
 
-  const selectedOrder = React.useMemo(() => {
-    return orders.find((x) => String(x.id) === String(selectedOrderId)) || null;
-  }, [orders, selectedOrderId]);
+  const [form, setForm] = React.useState<OtoFeeRequest>({
+    originCity: "Ankara",
+    destinationCity: "İstanbul",
+    weight: 1,
+    packageCount: 1,
+    length: 10,
+    width: 10,
+    height: 10,
+  });
 
-  // Locations (fallback input)
-  const [origin, setOrigin] = React.useState("Beşiktaş, İstanbul");
-  const [destination, setDestination] = React.useState("Çankaya, Ankara");
+  const [loading, setLoading] = React.useState(false);
+  const [err, setErr] = React.useState<string>("");
+  const [data, setData] = React.useState<OtoFeeResponse | null>(null);
 
-  // Box preset / inventory
-  const [boxPreset, setBoxPreset] = React.useState("ambalaj");
-  const [inventoryBoxes, setInventoryBoxes] = React.useState<InventoryBox[]>([]);
-  const [boxesLoading, setBoxesLoading] = React.useState(false);
-  const [boxesErr, setBoxesErr] = React.useState<string | null>(null);
-  const [savingBox, setSavingBox] = React.useState(false);
+  // sort
+  const [sortBy, setSortBy] = React.useState<"price_asc" | "price_desc" | "fastest">("price_asc");
 
-  const [boxes, setBoxes] = React.useState<BoxRow[]>([{ l: 1, w: 1, h: 1, weight: 1 }]);
-  const totalWeight = boxes.reduce((a, b) => a + (Number.isFinite(b.weight) ? b.weight : 0), 0);
-
-  const [cod, setCod] = React.useState(false);
-  const [codAmount, setCodAmount] = React.useState<string>("");
-
-  // Credit modal
-  const [creditBalance] = React.useState<number>(0);
-  const [creditOpen, setCreditOpen] = React.useState(false);
-
-  // Prices state (NO MOCK)
-  const [pricesLoading, setPricesLoading] = React.useState(false);
-  const [pricesErr, setPricesErr] = React.useState<string | null>(null);
-  const [rows, setRows] = React.useState<DeliveryCompany[]>([]);
-
-  // Selected delivery option for shipment creation
-  const [selectedDeliveryOptionId, setSelectedDeliveryOptionId] = React.useState<number | null>(null);
-  const [selectedDeliveryLabel, setSelectedDeliveryLabel] = React.useState<string>("");
-
-  // Create shipment
-  const [shipLoading, setShipLoading] = React.useState(false);
-  const [shipMsg, setShipMsg] = React.useState<{ type: "ok" | "err"; text: string } | null>(null);
-
-  // Table filters
-  const [minPrice, setMinPrice] = React.useState("");
-  const [maxPrice, setMaxPrice] = React.useState("");
-  const [selectedCompany, setSelectedCompany] = React.useState<string>("");
-  const [selectedServiceType, setSelectedServiceType] = React.useState<string>("");
-  const [selectedAvgDeliveryTime, setSelectedAvgDeliveryTime] = React.useState<string>("");
-  const [selectedPickupDropoff, setSelectedPickupDropoff] = React.useState<string>("");
-  const [selectedDeliveryType, setSelectedDeliveryType] = React.useState<string>("");
-
-  function addBoxRowLocal() {
-    setBoxes((b) => [...b, { l: 1, w: 1, h: 1, weight: 1 }]);
-  }
-
-  function updateBox(i: number, patch: Partial<BoxRow>) {
-    setBoxes((prev) => prev.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
-  }
-
-  function applyInventoryBoxToFirstRow(bx: InventoryBox) {
-    setBoxes((prev) => {
-      const w = prev[0]?.weight ?? 1;
-      const next: BoxRow[] = [{ l: bx.length, w: bx.width, h: bx.height, weight: w }, ...prev.slice(1)];
-      return next;
-    });
-  }
-
-  async function loadInventoryBoxes() {
-    setBoxesErr(null);
-    setBoxesLoading(true);
-
-    const bearer = getBearerToken();
-    if (!bearer) {
-      setBoxesLoading(false);
-      setBoxesErr("Token yok.");
-      return;
-    }
-
-    try {
-      const res = await fetch("/yuksi/oto/inventory/box", {
-        method: "GET",
-        cache: "no-store",
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${bearer}`,
-        },
-      });
-
-      const json = await readJson<GetBoxesRes>(res);
-      if (!res.ok) throw new Error(pickMsg(json, `HTTP ${res.status}`));
-
-      const list = Array.isArray(json?.boxes) ? json.boxes : [];
-      setInventoryBoxes(list);
-      if (list.length > 0) {
-        const exists = list.some((x) => String(x.boxName) === String(boxPreset));
-        if (!exists) setBoxPreset(String(list[0].boxName));
-      }
-
-      // input ile eşleşen varsa auto-apply
-      const match = list.find((x) => String(x.boxName).toLowerCase() === String(boxPreset).toLowerCase());
-      if (match) applyInventoryBoxToFirstRow(match);
-    } catch (e: any) {
-      setInventoryBoxes([]);
-      setBoxesErr(e?.message || "Kutu listesi alınamadı.");
-    } finally {
-      setBoxesLoading(false);
-    }
-  }
-
-  async function saveBoxToInventory() {
-    setBoxesErr(null);
-
-    const name = String(boxPreset || "").trim();
-    if (!name) {
-      setBoxesErr("Kutu adı zorunlu.");
-      return;
-    }
-
-    const first = boxes[0];
-    const length = Math.max(0, Math.round(first?.l ?? 0));
-    const width = Math.max(0, Math.round(first?.w ?? 0));
-    const height = Math.max(0, Math.round(first?.h ?? 0));
-    if (!(length > 0 && width > 0 && height > 0)) {
-      setBoxesErr("Kutu boyutları 0 olamaz.");
-      return;
-    }
-
-    const bearer = getBearerToken();
-    if (!bearer) {
-      setBoxesErr("Token yok.");
-      return;
-    }
-
-    setSavingBox(true);
-    try {
-      const body: AddBoxReq = { name, length, width, height };
-
-      const res = await fetch("/yuksi/oto/inventory/add-box", {
-        method: "POST",
-        cache: "no-store",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${bearer}`,
-        },
-        body: JSON.stringify(body),
-      });
-
-      const json = await readJson<AddBoxRes>(res);
-      if (!res.ok || json?.success === false) throw new Error(pickMsg(json, `HTTP ${res.status}`));
-
-      await loadInventoryBoxes();
-    } catch (e: any) {
-      setBoxesErr(e?.message || "Kutu eklenemedi.");
-    } finally {
-      setSavingBox(false);
-    }
-  }
-
-  async function loadOrders() {
-    setOrdersErr(null);
-    setOrdersLoading(true);
-
-    const bearer = getBearerToken();
-    if (!bearer) {
-      setOrdersLoading(false);
-      setOrdersErr("Token yok.");
-      return;
-    }
-
-    try {
-      const body: OrdersListReq = {
-        page: 1,
-        perPage: 50,
-        search: String(orderSearch || ""),
-        status: String(orderStatus || ""),
-      };
-
-      const res = await fetch("/yuksi/oto/orders/list", {
-        method: "POST",
-        cache: "no-store",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${bearer}`,
-        },
-        body: JSON.stringify(body),
-      });
-
-      const json = await readJson<OrdersListRes>(res);
-      if (!res.ok || json?.success === false) throw new Error(pickMsg(json, `HTTP ${res.status}`));
-
-      const list = Array.isArray(json?.orders) ? json.orders : [];
-      setOrders(list);
-
-      // seçili order yoksa ilkini seç
-      if (!selectedOrderId && list[0]?.id) setSelectedOrderId(String(list[0].id));
-      // seçili order artık listede yoksa temizle
-      if (selectedOrderId && !list.some((x) => String(x.id) === String(selectedOrderId))) {
-        setSelectedOrderId(list[0]?.id ? String(list[0].id) : "");
-      }
-    } catch (e: any) {
-      setOrders([]);
-      setOrdersErr(e?.message || "Siparişler alınamadı.");
-    } finally {
-      setOrdersLoading(false);
-    }
-  }
-
-  // order seçilince: origin/destination/weight/dims mümkünse auto bas
   React.useEffect(() => {
-    if (!selectedOrder) return;
+    if (!token) router.replace("/");
+  }, [token, router]);
 
-    const oCity = getOrderOriginCity(selectedOrder);
-    const dCity = getOrderDestinationCity(selectedOrder);
+  function setField<K extends keyof OtoFeeRequest>(k: K, v: OtoFeeRequest[K]) {
+    setForm((s) => ({ ...s, [k]: v }));
+  }
 
-    if (oCity) setOrigin(oCity);
-    if (dCity) setDestination(dCity);
-
-    const w = getOrderWeight(selectedOrder);
-    const dims = getOrderDims(selectedOrder);
-
-    setBoxes((prev) => {
-      const first = prev[0] || { l: 1, w: 1, h: 1, weight: 1 };
-      const nextFirst: BoxRow = {
-        l: dims.l ?? first.l,
-        w: dims.w ?? first.w,
-        h: dims.h ?? first.h,
-        weight: w ?? first.weight,
-      };
-      return [nextFirst, ...prev.slice(1)];
-    });
-
-    // order değişince seçili kargo opsiyonu sıfırla (yanlışlıkla başka order’a shipment basılmasın)
-    setSelectedDeliveryOptionId(null);
-    setSelectedDeliveryLabel("");
-    setShipMsg(null);
-  }, [selectedOrder]);
-
-  function resetAll() {
-    setOrderSearch("");
-    setOrderStatus("");
-    setOrders([]);
-    setSelectedOrderId("");
-    setOrigin("Beşiktaş, İstanbul");
-    setDestination("Çankaya, Ankara");
-    setBoxPreset("ambalaj");
-    setBoxes([{ l: 1, w: 1, h: 1, weight: 1 }]);
-    setCod(false);
-    setCodAmount("");
-    setMinPrice("");
-    setMaxPrice("");
-    setSelectedCompany("");
-    setPricesErr(null);
-    setRows([]);
-    setSelectedDeliveryOptionId(null);
-    setSelectedDeliveryLabel("");
-    setShipMsg(null);
-    setSelectedServiceType("");
-    setSelectedAvgDeliveryTime("");
-    setSelectedPickupDropoff("");
-    setSelectedDeliveryType("");
+  function validate(): string | null {
+    if (!String(form.originCity || "").trim()) return "originCity zorunlu.";
+    if (!String(form.destinationCity || "").trim()) return "destinationCity zorunlu.";
+    if (toNum(form.weight, 0) <= 0) return "weight 0'dan büyük olmalı.";
+    if (toNum(form.packageCount, 0) <= 0) return "packageCount 0'dan büyük olmalı.";
+    if (toNum(form.length, 0) <= 0) return "length 0'dan büyük olmalı.";
+    if (toNum(form.width, 0) <= 0) return "width 0'dan büyük olmalı.";
+    if (toNum(form.height, 0) <= 0) return "height 0'dan büyük olmalı.";
+    return null;
   }
 
   async function fetchPrices() {
-    setPricesErr(null);
-    setPricesLoading(true);
-    setShipMsg(null);
+    setErr("");
+    setLoading(true);
+    setData(null);
 
-    const bearer = getBearerToken();
-    if (!bearer) {
-      setPricesLoading(false);
-      setPricesErr("Token yok.");
+    const v = validate();
+    if (v) {
+      setErr(v);
+      setLoading(false);
       return;
     }
 
     try {
-      const first = boxes[0] || { l: 0, w: 0, h: 0, weight: 0 };
-
-      // Order’dan mümkün olanları al, yoksa ekrandaki inputlardan fallback
-      const originCityFromOrder = selectedOrder ? getOrderOriginCity(selectedOrder) : "";
-      const destCityFromOrder = selectedOrder ? getOrderDestinationCity(selectedOrder) : "";
-      const weightFromOrder = selectedOrder ? getOrderWeight(selectedOrder) : null;
-      const dimsFromOrder = selectedOrder ? getOrderDims(selectedOrder) : {};
-      // ✅ Seçili kutuyu inventory’den bul (state yarışını bypass etmek için)
-      const invMatch =
-        inventoryBoxes.find((x) => String(x.boxName) === String(boxPreset)) || null;
-
-      // ✅ Etkin ölçüler: order dims varsa onları kullan, yoksa inventory kutusu, yoksa first row
-      const lengthEff = Number(dimsFromOrder.l ?? invMatch?.length ?? first.l ?? 0);
-      const widthEff = Number(dimsFromOrder.w ?? invMatch?.width ?? first.w ?? 0);
-      const heightEff = Number(dimsFromOrder.h ?? invMatch?.height ?? first.h ?? 0);
-
-      const originCity = (originCityFromOrder || extractCityName(origin) || "").trim();
-      const destinationCity = (destCityFromOrder || extractCityName(destination) || "").trim();
-
-      const payload: OtoFeeReq = {
-        weight: Math.max(0, Number(weightFromOrder ?? totalWeight ?? first.weight ?? 0)),
-        originCity,
-        destinationCity,
-        height: Math.max(0, heightEff),
-        width: Math.max(0, widthEff),
-        length: Math.max(0, lengthEff),
-        includeEstimatedDate: true,
-      };
-
       const res = await fetch("/yuksi/oto/logistics/oto-fee", {
         method: "POST",
-        cache: "no-store",
         headers: {
-          Accept: "application/json",
           "Content-Type": "application/json",
-          Authorization: `Bearer ${bearer}`,
+          Accept: "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          originCity: String(form.originCity || "").trim(),
+          destinationCity: String(form.destinationCity || "").trim(),
+          weight: toNum(form.weight, 0),
+          packageCount: toNum(form.packageCount, 0),
+          length: toNum(form.length, 0),
+          width: toNum(form.width, 0),
+          height: toNum(form.height, 0),
+        } satisfies OtoFeeRequest),
       });
 
-      const json = await readJson<OtoFeeRes>(res);
-      if (!res.ok || json?.success === false) throw new Error(pickMsg(json, `HTTP ${res.status}`));
+      const j = await readJson<OtoFeeResponse>(res);
 
-      const list = Array.isArray(json?.deliveryCompany) ? json.deliveryCompany : [];
-      setRows(list);
-
-      // company filter reset if now invalid
-      if (selectedCompany && !list.some((x) => (x.deliveryOptionName || x.deliveryCompanyName || "") === selectedCompany)) {
-        setSelectedCompany("");
-      }
-
-      // seçili delivery option artık yoksa sıfırla
-      if (selectedDeliveryOptionId !== null && !list.some((x) => x.deliveryOptionId === selectedDeliveryOptionId)) {
-        setSelectedDeliveryOptionId(null);
-        setSelectedDeliveryLabel("");
-      }
-    } catch (e: any) {
-      setRows([]);
-      setPricesErr(e?.message || "Fiyatlar alınamadı.");
-    } finally {
-      setPricesLoading(false);
-    }
-  }
-
-  async function createShipment() {
-    setShipMsg(null);
-
-    const bearer = getBearerToken();
-    if (!bearer) {
-      setShipMsg({ type: "err", text: "Token yok." });
-      return;
-    }
-
-    if (!selectedOrder) {
-      setShipMsg({ type: "err", text: "Sipariş seçmedin." });
-      return;
-    }
-
-    if (selectedDeliveryOptionId === null) {
-      setShipMsg({ type: "err", text: "Kargo seçmedin (tablodan bir satır seç)." });
-      return;
-    }
-
-    setShipLoading(true);
-    try {
-      const orderIdForShipment = String(selectedOrder.orderId || selectedOrder.id || "").trim();
-
-      if (!orderIdForShipment) {
-        setShipMsg({ type: "err", text: "OrderId bulunamadı (selectedOrder.orderId boş)." });
-        setShipLoading(false);
+      if (res.status === 401 || res.status === 403) {
+        router.replace("/");
         return;
       }
+      if (!res.ok || !j?.success) throw new Error(pickMsg(j, `Ücret sorgusu başarısız (HTTP ${res.status})`));
 
-      const body: CreateShipmentReq = {
-        order_id: orderIdForShipment, // ✅ artık YUKSI-ORD-... gidiyor
-        delivery_option_id: Number(selectedDeliveryOptionId),
-      };
-
-      const res = await fetch("/yuksi/oto/shipments/create", {
-        method: "POST",
-        cache: "no-store",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${bearer}`,
-        },
-        body: JSON.stringify(body),
+      setData({
+        ...j,
+        deliveryCompany: Array.isArray(j.deliveryCompany) ? j.deliveryCompany : [],
       });
-
-      const json = await readJson<any>(res);
-      if (!res.ok) throw new Error(pickMsg(json, `HTTP ${res.status}`));
-
-      setShipMsg({ type: "ok", text: "Kargo oluşturma isteği başarıyla gönderildi." });
     } catch (e: any) {
-      setShipMsg({ type: "err", text: e?.message || "Kargo oluşturulamadı." });
+      setErr(String(e?.message || e || "Bilinmeyen hata"));
+      setData(null);
     } finally {
-      setShipLoading(false);
+      setLoading(false);
     }
   }
 
-  const filteredRows = React.useMemo(() => {
-    const min = minPrice ? num(minPrice) : null;
-    const max = maxPrice ? num(maxPrice) : null;
+  const list = React.useMemo(() => {
+    const arr = data?.deliveryCompany ? [...data.deliveryCompany] : [];
+    if (arr.length === 0) return arr;
 
-    return rows.filter((r) => {
-      const name = (r.deliveryOptionName || r.deliveryCompanyName || "").trim();
+    if (sortBy === "price_asc") {
+      arr.sort((a, b) => toNum(a.price, 1e18) - toNum(b.price, 1e18));
+    } else if (sortBy === "price_desc") {
+      arr.sort((a, b) => toNum(b.price, -1) - toNum(a.price, -1));
+    } else if (sortBy === "fastest") {
+      // avgDeliveryTime string, "1to3WorkingDays" gibi
+      const rank = (s?: string | null) => {
+        const x = String(s || "").toLowerCase();
+        if (!x) return 999;
+        if (x.includes("1to3")) return 10;
+        if (x.includes("1to7")) return 30;
+        return 100;
+      };
+      arr.sort((a, b) => rank(a.avgDeliveryTime) - rank(b.avgDeliveryTime));
+    }
 
-      if (selectedCompany && name !== selectedCompany) return false;
-      if (selectedServiceType && (r.serviceType || "") !== selectedServiceType) return false;
-      if (selectedAvgDeliveryTime && (r.avgDeliveryTime || "") !== selectedAvgDeliveryTime) return false;
-      if (selectedPickupDropoff && (r.pickupDropoff || "") !== selectedPickupDropoff) return false;
-      if (selectedDeliveryType && (r.deliveryType || "") !== selectedDeliveryType) return false;
-
-      const numeric = Number(r.price ?? NaN);
-      if (Number.isFinite(numeric)) {
-        if (min !== null && numeric < min) return false;
-        if (max !== null && numeric > max) return false;
-      } else {
-        if (min !== null || max !== null) return false;
-      }
-
-      return true;
-    });
-  }, [rows, minPrice, maxPrice, selectedCompany, selectedServiceType, selectedAvgDeliveryTime, selectedPickupDropoff, selectedDeliveryType]);
-
-  // initial loads
-  React.useEffect(() => {
-    loadInventoryBoxes().catch(() => void 0);
-    loadOrders().catch(() => void 0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // search/status değişince siparişleri yenile (küçük debounce)
-  React.useEffect(() => {
-    const t = setTimeout(() => {
-      loadOrders().catch(() => void 0);
-    }, 350);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderSearch, orderStatus]);
-
-  const refreshCreditRef = React.useRef<null | (() => void)>(null);
-
-  const selectedOrderLabel = React.useMemo(() => {
-    if (!selectedOrder) return "";
-    const oid = safeStr(selectedOrder.orderId || selectedOrder.id);
-    const name = safeStr(selectedOrder.customerName);
-    const st = safeStr(selectedOrder.status);
-    const oc = safeStr(getOrderOriginCity(selectedOrder));
-    const dc = safeStr(getOrderDestinationCity(selectedOrder));
-    const parts = [oid, name && `• ${name}`, st && `• ${st}`, oc && `• ${oc}`, dc && `→ ${dc}`].filter(Boolean);
-    return parts.join(" ");
-  }, [selectedOrder]);
+    return arr;
+  }, [data, sortBy]);
 
   return (
     <div className="px-6 py-5">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="h-8 w-8 rounded-lg border border-neutral-200 bg-white flex items-center justify-center">🧮</div>
-          <h1 className="text-2xl font-semibold text-neutral-900">Fiyat Hesaplayıcı</h1>
-          <span className="text-neutral-400">ⓘ</span>
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-lg border border-neutral-200 bg-white flex items-center justify-center">💸</div>
+          <h1 className="text-2xl font-semibold text-neutral-900">Kargo Ücretleri</h1>
         </div>
 
-        <div className="shrink-0">
-          <CreditChip
-            onTopUp={({ refreshCredit } = {}) => {
-              refreshCreditRef.current = refreshCredit || null;
-              setCreditOpen(true);
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Top Panel */}
-      <div className="mt-4 rounded-xl border border-neutral-200 bg-white">
-        <div className="p-6">
-          {/* errors */}
-          {ordersErr ? (
-            <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-              {ordersErr}
-            </div>
-          ) : null}
-
-          {boxesErr ? (
-            <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-              {boxesErr}
-            </div>
-          ) : null}
-
-          {pricesErr ? (
-            <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-              {pricesErr}
-            </div>
-          ) : null}
-
-          {shipMsg ? (
-            <div
-              className={cn(
-                "mb-4 rounded-lg px-4 py-3 text-sm border",
-                shipMsg.type === "ok"
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                  : "border-rose-200 bg-rose-50 text-rose-700"
-              )}
-            >
-              {shipMsg.text}
-            </div>
-          ) : null}
-
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            {/* LEFT */}
-            <div>
-              <div className="flex items-center justify-between">
-                <Label text="Sipariş Seçin" required />
-                <button
-                  type="button"
-                  onClick={loadOrders}
-                  disabled={ordersLoading}
-                  className="text-xs font-semibold rounded-lg px-2 py-1 border border-neutral-200 hover:bg-neutral-50 disabled:opacity-60"
-                >
-                  {ordersLoading ? "Yükleniyor…" : "Yenile"}
-                </button>
-              </div>
-
-              {/* Search + status */}
-              <div className="grid grid-cols-1 gap-2">
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">🔎</span>
-                  <input
-                    value={orderSearch}
-                    onChange={(e) => setOrderSearch(e.target.value)}
-                    placeholder="Order ID / müşteri adı / tel ara"
-                    className="h-10 w-full rounded-lg border border-neutral-200 px-10 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-                  />
-                </div>
-
-                <select
-                  value={orderStatus}
-                  onChange={(e) => setOrderStatus(e.target.value)}
-                  className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm"
-                >
-                  <option value="">Tüm durumlar</option>
-                  <option value="new">new</option>
-                  <option value="processing">processing</option>
-                  <option value="shipped">shipped</option>
-                  <option value="delivered">delivered</option>
-                  <option value="cancelled">cancelled</option>
-                </select>
-
-                <select
-                  value={selectedOrderId}
-                  onChange={(e) => setSelectedOrderId(e.target.value)}
-                  className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm"
-                  disabled={orders.length === 0}
-                >
-                  {orders.length === 0 ? <option value="">Sipariş yok</option> : null}
-                  {orders.map((o) => {
-                    const oid = safeStr(o.orderId || o.id);
-                    const name = safeStr(o.customerName);
-                    const st = safeStr(o.status);
-                    const oc = safeStr(getOrderOriginCity(o));
-                    const dc = safeStr(getOrderDestinationCity(o));
-                    const label = [oid, name && `• ${name}`, st && `• ${st}`, oc && `• ${oc}`, dc && `→ ${dc}`]
-                      .filter(Boolean)
-                      .join(" ");
-                    return (
-                      <option key={String(o.id)} value={String(o.id)}>
-                        {label}
-                      </option>
-                    );
-                  })}
-                </select>
-
-                {selectedOrder ? (
-                  <div className="text-xs text-neutral-600">
-                    Seçili: <span className="font-semibold text-neutral-800">{selectedOrderLabel}</span>
-                  </div>
-                ) : null}
-              </div>
-
-              {/* Kutu Seçin (datalist yerine select) */}
-              <div className="mt-4">
-                <div className="flex items-center justify-between">
-                  <Label text="Kutu Seçin" />
-                  <button
-                    type="button"
-                    onClick={loadInventoryBoxes}
-                    disabled={boxesLoading}
-                    className="text-xs font-semibold rounded-lg px-2 py-1 border border-neutral-200 hover:bg-neutral-50 disabled:opacity-60"
-                  >
-                    {boxesLoading ? "Yükleniyor…" : "Yenile"}
-                  </button>
-                </div>
-
-                <select
-                  value={boxPreset}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setBoxPreset(v);
-                    const match = inventoryBoxes.find((x) => String(x.boxName) === String(v));
-                    if (match) applyInventoryBoxToFirstRow(match);
-                  }}
-                  className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-                  disabled={inventoryBoxes.length === 0}
-                >
-                  {inventoryBoxes.length === 0 ? (
-                    <option value="">Kutu yok</option>
-                  ) : (
-                    <>
-                      <option value="">Kutu seç</option>
-                      {inventoryBoxes.map((b) => (
-                        <option key={b.id} value={b.boxName}>
-                          {b.boxName} ({b.length}×{b.width}×{b.height})
-                        </option>
-                      ))}
-                    </>
-                  )}
-                </select>
-
-                <div className="mt-2 flex items-center justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={addBoxRowLocal}
-                    className="inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
-                  >
-                    + Kutu satırı ekle
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={saveBoxToInventory}
-                    disabled={savingBox}
-                    className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-                    title="İlk kutunun ölçülerini bu isimle envantere kaydeder"
-                  >
-                    {savingBox ? "Kaydediliyor…" : "Kutuyu Kaydet"}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* MID */}
-            <div>
-              <Label text="Çıkış Noktası" required />
-              <input
-                value={origin}
-                onChange={(e) => setOrigin(e.target.value)}
-                className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-              />
-
-              <div className="mt-4">
-                <Label text="Kutu Boyutları" required />
-                <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2 space-y-3">
-                  {boxes.map((b, i) => (
-                    <div key={i}>
-                      {boxes.length > 1 ? (
-                        <div className="mb-2 text-xs font-semibold text-neutral-600">Kutu {i + 1}</div>
-                      ) : null}
-
-                      <div className="grid grid-cols-7 items-center gap-2 text-sm">
-                        <input
-                          value={b.l}
-                          onChange={(e) => updateBox(i, { l: num(e.target.value) })}
-                          className="col-span-2 h-9 rounded-lg border border-neutral-200 px-2 outline-none focus:ring-2 focus:ring-indigo-200"
-                        />
-                        <div className="text-center text-neutral-400">x</div>
-                        <input
-                          value={b.w}
-                          onChange={(e) => updateBox(i, { w: num(e.target.value) })}
-                          className="col-span-2 h-9 rounded-lg border border-neutral-200 px-2 outline-none focus:ring-2 focus:ring-indigo-200"
-                        />
-                        <div className="text-center text-neutral-400">x</div>
-                        <input
-                          value={b.h}
-                          onChange={(e) => updateBox(i, { h: num(e.target.value) })}
-                          className="col-span-2 h-9 rounded-lg border border-neutral-200 px-2 outline-none focus:ring-2 focus:ring-indigo-200"
-                        />
-                        <div className="col-span-7 text-right text-xs text-neutral-400">cm</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-2 text-xs text-neutral-500">
-                  Envanterden kutu seçersen, <span className="font-semibold">ilk kutunun</span> ölçüleri otomatik dolar.
-                </div>
-              </div>
-            </div>
-
-            {/* RIGHT */}
-            <div>
-              <Label text="Varış Noktası" required />
-              <input
-                value={destination}
-                onChange={(e) => setDestination(e.target.value)}
-                className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-              />
-
-              <div className="mt-4">
-                <Label text="Ağırlık (kg)" required />
-                <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2 space-y-3">
-                  {boxes.map((b, i) => (
-                    <div key={i}>
-                      {boxes.length > 1 ? (
-                        <div className="mb-2 text-xs font-semibold text-neutral-600">Kutu {i + 1}</div>
-                      ) : null}
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => updateBox(i, { weight: Math.max(0, (boxes[i]?.weight ?? 1) - 1) })}
-                          className="h-9 w-9 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50"
-                        >
-                          −
-                        </button>
-                        <input
-                          value={b.weight}
-                          onChange={(e) => updateBox(i, { weight: num(e.target.value) })}
-                          className="h-9 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-                        />
-                        <div className="text-sm text-neutral-500">kg</div>
-                        <button
-                          type="button"
-                          onClick={() => updateBox(i, { weight: (boxes[i]?.weight ?? 1) + 1 })}
-                          className="h-9 w-9 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50"
-                        >
-                          +
-                        </button>
-                      </div>
-
-                      {i === boxes.length - 1 ? (
-                        <div className="mt-2 text-xs text-neutral-500 text-right">
-                          Kargo ücretinizin sonradan artmaması için doğru ağırlık giriniz.
-                        </div>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* COD row */}
-          <div className="mt-6 border-t border-neutral-200 pt-6">
-            <div className="text-sm font-semibold text-neutral-800">
-              Kapıda ödeme mi?<span className="text-rose-500"> *</span>
-            </div>
-            <div className="mt-3 flex items-center gap-6 text-sm text-neutral-700">
-              <label className="inline-flex items-center gap-2">
-                <input type="radio" checked={!cod} onChange={() => setCod(false)} />
-                Hayır
-              </label>
-              <label className="inline-flex items-center gap-2">
-                <input type="radio" checked={cod} onChange={() => setCod(true)} />
-                Evet
-              </label>
-            </div>
-
-            {cod ? (
-              <div className="mt-4">
-                <Label text="Kapıda Ödeme Tutarı" required />
-                <div className="relative">
-                  <input
-                    value={codAmount}
-                    onChange={(e) => setCodAmount(e.target.value)}
-                    className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 pr-14 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-                    placeholder="0"
-                  />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-neutral-500">
-                    TL
-                  </div>
-                </div>
-              </div>
-            ) : null}
-          </div>
-
-          {/* Selected summary + Create Shipment */}
-          <div className="mt-6 border-t border-neutral-200 pt-6">
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-              <div className="lg:col-span-2">
-                <div className="text-sm font-semibold text-neutral-800">Seçimler</div>
-                <div className="mt-2 text-sm text-neutral-700 space-y-1">
-                  <div>
-                    <span className="text-neutral-500">Sipariş:</span>{" "}
-                    <span className="font-semibold text-neutral-900">{selectedOrderLabel || "—"}</span>
-                  </div>
-                  <div>
-                    <span className="text-neutral-500">Kargo:</span>{" "}
-                    <span className="font-semibold text-neutral-900">
-                      {selectedDeliveryOptionId !== null
-                        ? `${selectedDeliveryLabel} (deliveryOptionId=${selectedDeliveryOptionId})`
-                        : "—"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="lg:col-span-1 flex items-end justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={createShipment}
-                  disabled={!selectedOrder || selectedDeliveryOptionId === null || shipLoading}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
-                  title="Seçili order + seçili deliveryOptionId ile kargo oluşturur"
-                >
-                  {shipLoading ? "Oluşturuluyor…" : "📦 Kargo Oluştur"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-3 border-t border-neutral-200 bg-neutral-60 px-6 py-4">
-          <button onClick={resetAll} className="text-sm font-semibold text-neutral-700 hover:text-neutral-900">
-            İptal Et
-          </button>
-
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-            onClick={fetchPrices}
-            disabled={pricesLoading}
+            className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-semibold text-neutral-800 hover:bg-neutral-50"
+            onClick={() => router.back()}
+            title="Geri"
           >
-            {pricesLoading ? "Hesaplanıyor…" : "🧾 Kargo Fiyatlarını Göster"}
+            ‹ Geri
+          </button>
+          <button
+            type="button"
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+            onClick={fetchPrices}
+            disabled={loading}
+            title="Ücret sorgula"
+          >
+            {loading ? "Sorgulanıyor…" : "Ücret Sorgula"}
           </button>
         </div>
       </div>
 
-      {/* Table Panel */}
-      <div className="mt-4 rounded-xl border border-neutral-200 bg-white overflow-hidden">
-        <div className="border-b border-neutral-200 bg-neutral-50 px-4 py-3">
-          <div className="grid grid-cols-[180px_120px_140px_160px_250px_160px_60px] gap-3 text-xs font-semibold text-neutral-600">
-            <div>Kargo Şirketi ⓘ</div>
-            <div>Hizmet Türü ⓘ</div>
-            <div>Teslimat Süresi ⓘ</div>
-            <div>Teslim Alma Koşulu ⓘ</div>
-            <div>Teslimat Türü ⓘ</div>
-            <div>Fiyat ⓘ</div>
-            <div />
-          </div>
+      {/* Form + Results */}
+      <div className="mt-4 grid gap-4 lg:grid-cols-[420px_1fr]">
+        {/* Form card */}
+        <div className="rounded-xl border border-neutral-200 bg-white p-4">
+          <div className="text-sm font-semibold text-neutral-900">Sorgu Parametreleri</div>
+          {err ? (
+            <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {err}
+            </div>
+          ) : null}
 
-          <div className="mt-3 grid grid-cols-[180px_120px_140px_160px_250px_160px_60px] gap-3">
-            <select
-              value={selectedCompany}
-              onChange={(e) => setSelectedCompany(e.target.value)}
-              className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm"
-              disabled={rows.length === 0}
-            >
-              <option value="">Seç</option>
-              {Array.from(
-                new Set(rows.map((x) => (x.deliveryOptionName || x.deliveryCompanyName || "").trim()).filter(Boolean))
-              ).map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={selectedServiceType}
-              onChange={(e) => setSelectedServiceType(e.target.value)}
-              className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm"
-              disabled={rows.length === 0}
-            >
-              <option value="">Seç</option>
-              {Array.from(new Set(rows.map((x) => String(x.serviceType || "").trim()).filter(Boolean))).map((v) => (
-                <option key={v} value={v}>
-                  {trOrDash(v, SERVICE_TYPE_TR)}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={selectedAvgDeliveryTime}
-              onChange={(e) => setSelectedAvgDeliveryTime(e.target.value)}
-              className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm"
-              disabled={rows.length === 0}
-            >
-              <option value="">Seç</option>
-              {Array.from(new Set(rows.map((x) => String(x.avgDeliveryTime || "").trim()).filter(Boolean))).map((v) => (
-                <option key={v} value={v}>
-                  {trOrDash(v, AVG_DELIVERY_TIME_TR)}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={selectedPickupDropoff}
-              onChange={(e) => setSelectedPickupDropoff(e.target.value)}
-              className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm"
-              disabled={rows.length === 0}
-            >
-              <option value="">Seç</option>
-              {Array.from(new Set(rows.map((x) => String(x.pickupDropoff || "").trim()).filter(Boolean))).map((v) => (
-                <option key={v} value={v}>
-                  {trOrDash(v, PICKUP_DROPOFF_TR)}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={selectedDeliveryType}
-              onChange={(e) => setSelectedDeliveryType(e.target.value)}
-              className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm"
-              disabled={rows.length === 0}
-            >
-              <option value="">Seç</option>
-              {Array.from(new Set(rows.map((x) => String(x.deliveryType || "").trim()).filter(Boolean))).map((v) => (
-                <option key={v} value={v}>
-                  {trOrDash(v, DELIVERY_TYPE_TR)}
-                </option>
-              ))}
-            </select>
-
-            <div className="flex gap-2">
+          <div className="mt-4 grid gap-3">
+            <div className="grid gap-1">
+              <div className="text-xs font-semibold text-neutral-600">Gönderici Şehir</div>
               <input
-                value={minPrice}
-                onChange={(e) => setMinPrice(e.target.value)}
-                className="h-9 w-full rounded-lg border border-neutral-200 px-3 text-sm"
-                placeholder="En az"
-                disabled={rows.length === 0}
-              />
-              <input
-                value={maxPrice}
-                onChange={(e) => setMaxPrice(e.target.value)}
-                className="h-9 w-full rounded-lg border border-neutral-200 px-3 text-sm"
-                placeholder="En fazla"
-                disabled={rows.length === 0}
+                className="h-10 rounded-lg border border-neutral-200 px-3 text-sm"
+                value={form.originCity}
+                onChange={(e) => setField("originCity", e.target.value)}
+                placeholder="Ankara"
               />
             </div>
 
-            <div />
-          </div>
-        </div>
+            <div className="grid gap-1">
+              <div className="text-xs font-semibold text-neutral-600">Alıcı Şehir</div>
+              <input
+                className="h-10 rounded-lg border border-neutral-200 px-3 text-sm"
+                value={form.destinationCity}
+                onChange={(e) => setField("destinationCity", e.target.value)}
+                placeholder="İstanbul"
+              />
+            </div>
 
-        <div className="divide-y divide-neutral-100">
-          {filteredRows.map((r, idx) => {
-            const companyName = (r.deliveryOptionName || r.deliveryCompanyName || `company-${idx}`).trim();
-            const currency = (r.currency || "").trim();
-            const priceStr =
-              r.price === null || r.price === undefined
-                ? "-"
-                : currency
-                  ? `${Number(r.price).toLocaleString("tr-TR")} ${currency}`
-                  : `${Number(r.price).toLocaleString("tr-TR")}`;
-
-            const eta =
-              (r.estimatedDeliveryDate && String(r.estimatedDeliveryDate)) ||
-              trOrDash(r.avgDeliveryTime, AVG_DELIVERY_TIME_TR);
-
-            const pickupReadable = trOrDash(r.pickupDropoff, PICKUP_DROPOFF_TR);
-
-            const deliveryReadable = trOrDash(r.deliveryType, DELIVERY_TYPE_TR);
-
-            return (
-              <div key={`${companyName}-${idx}`} className="px-4 py-4">
-                <div className="grid grid-cols-[180px_120px_140px_160px_250px_160px_60px] items-center gap-3 text-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="h-16 w-16 overflow-hidden rounded-lg border border-neutral-200 bg-white flex items-center justify-center">
-                      {r.logo ? (
-                        <img
-                          src={r.logo}
-                          alt={`${companyName} logo`}
-                          className="h-full w-full object-contain p-0"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <span className="text-xs text-neutral-500">🏷️</span>
-                      )}
-                    </div>
-                    <div className="font-semibold text-neutral-900">{companyName || "—"}</div>
-                  </div>
-
-                  <div className="text-neutral-700">{trOrDash(r.serviceType, SERVICE_TYPE_TR)}</div>
-
-                  <div>
-                    <span className="inline-flex items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
-                      {eta}
-                    </span>
-                  </div>
-
-                  <div className="text-neutral-700">{pickupReadable}</div>
-
-                  <div className="text-neutral-700">{deliveryReadable}</div>
-
-                  <div className="font-semibold text-neutral-900">{priceStr}</div>
-
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      className={cn(
-                        "h-10 w-28 rounded-lg text-sm font-semibold text-white",
-                        r.deliveryOptionId === selectedDeliveryOptionId ? "bg-emerald-600 hover:bg-emerald-700" : "bg-indigo-600 hover:bg-indigo-700",
-                        !r.deliveryOptionId ? "opacity-50 cursor-not-allowed" : ""
-                      )}
-                      disabled={!r.deliveryOptionId}
-                      onClick={() => {
-                        const id = Number(r.deliveryOptionId);
-                        setSelectedDeliveryOptionId(Number.isFinite(id) ? id : null);
-
-                        const name = (r.deliveryOptionName || r.deliveryCompanyName || "Seçili kargo").trim();
-                        const priceLabel =
-                          r.price === null || r.price === undefined
-                            ? ""
-                            : r.currency
-                              ? ` • ${Number(r.price).toLocaleString("tr-TR")} ${r.currency}`
-                              : ` • ${Number(r.price).toLocaleString("tr-TR")}`;
-
-                        setSelectedDeliveryLabel(`${name}${priceLabel}`);
-                        setShipMsg(null);
-                      }}
-                    >
-                      {r.deliveryOptionId === selectedDeliveryOptionId ? "Seçildi" : "Seç"}
-                    </button>
-                  </div>
-                </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1">
+                <div className="text-xs font-semibold text-neutral-600">Ağırlık (kg)</div>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  className="h-10 rounded-lg border border-neutral-200 px-3 text-sm"
+                  value={form.weight}
+                  onChange={(e) => setField("weight", toNum(e.target.value, 0))}
+                />
               </div>
-            );
-          })}
 
-          {rows.length === 0 && !pricesLoading ? (
-            <div className="px-4 py-10 text-center text-sm text-neutral-500">
-              Henüz veri yok. Üstten <span className="font-semibold">“Kargo Fiyatlarını Göster”</span> deyip fiyat çek.
+              <div className="grid gap-1">
+                <div className="text-xs font-semibold text-neutral-600">Paket Sayısı</div>
+                <input
+                  type="number"
+                  min={1}
+                  step="1"
+                  className="h-10 rounded-lg border border-neutral-200 px-3 text-sm"
+                  value={form.packageCount}
+                  onChange={(e) => setField("packageCount", Math.max(1, Math.floor(toNum(e.target.value, 1))) as any)}
+                />
+              </div>
             </div>
-          ) : null}
 
-          {filteredRows.length === 0 && rows.length > 0 ? (
-            <div className="px-4 py-10 text-center text-sm text-neutral-500">Filtreye göre sonuç bulunamadı.</div>
-          ) : null}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1">
+                <div className="text-xs font-semibold text-neutral-600">Uzunluk</div>
+                <input
+                  type="number"
+                  min={1}
+                  step="1"
+                  className="h-10 rounded-lg border border-neutral-200 px-3 text-sm"
+                  value={form.length}
+                  onChange={(e) => setField("length", toNum(e.target.value, 0))}
+                />
+              </div>
+
+              <div className="grid gap-1">
+                <div className="text-xs font-semibold text-neutral-600">Genişlik</div>
+                <input
+                  type="number"
+                  min={1}
+                  step="1"
+                  className="h-10 rounded-lg border border-neutral-200 px-3 text-sm"
+                  value={form.width}
+                  onChange={(e) => setField("width", toNum(e.target.value, 0))}
+                />
+              </div>
+
+              <div className="grid gap-1">
+                <div className="text-xs font-semibold text-neutral-600">Yükseklik</div>
+                <input
+                  type="number"
+                  min={1}
+                  step="1"
+                  className="h-10 rounded-lg border border-neutral-200 px-3 text-sm"
+                  value={form.height}
+                  onChange={(e) => setField("height", toNum(e.target.value, 0))}
+                />
+              </div>
+            </div>
+
+            <div className="mt-1 flex items-center gap-2">
+              <button
+                type="button"
+                className="h-10 flex-1 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50"
+                onClick={() =>
+                  setForm({
+                    originCity: "",
+                    destinationCity: "",
+                    weight: 1,
+                    packageCount: 1,
+                    length: 1,
+                    width: 1,
+                    height: 1,
+                  })
+                }
+                disabled={loading}
+                title="Örnek değerler"
+              >
+                Sıfırla
+              </button>
+
+              <button
+                type="button"
+                className="h-10 flex-1 rounded-lg bg-indigo-600 px-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                onClick={fetchPrices}
+                disabled={loading}
+              >
+                {loading ? "Sorgulanıyor…" : "Sorgula"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Results card */}
+        <div className="rounded-xl border border-neutral-200 bg-white overflow-hidden">
+          <div className="border-b border-neutral-200 bg-neutral-50 px-4 py-3 flex items-center gap-3">
+            <div className="text-sm font-semibold text-neutral-900">Sonuçlar</div>
+            <div className="ml-auto flex items-center gap-2">
+              <div className="text-xs font-semibold text-neutral-600">Sırala:</div>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm"
+                disabled={loading}
+              >
+                <option value="price_asc">Fiyat (Artan)</option>
+                <option value="price_desc">Fiyat (Azalan)</option>
+                <option value="fastest">En hızlı</option>
+              </select>
+
+              <button
+                type="button"
+                className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50"
+                onClick={() => {
+                  setData(null);
+                  setErr("");
+                }}
+                disabled={loading}
+                title="Sonuçları temizle"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+
+          <div className="p-4">
+            {loading ? (
+              <div className="rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-600">
+                Yükleniyor…
+              </div>
+            ) : !data ? (
+              <div className="rounded-lg border border-neutral-200 bg-white px-4 py-10 text-center text-sm text-neutral-500">
+                Henüz sorgu yok. Soldan değerleri girip “Sorgula” de. 🙂
+              </div>
+            ) : list.length === 0 ? (
+              <div className="rounded-lg border border-neutral-200 bg-white px-4 py-10 text-center text-sm text-neutral-500">
+                Kargo seçeneği bulunamadı.
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                {list.map((o, idx) => {
+                  const name = o.deliveryOptionName || o.deliveryCompanyName || "Kargo";
+                  const price = fmtMoney(o.price, o.currency);
+                  const id = o.deliveryOptionId ?? "-";
+                  const avg = o.avgDeliveryTime || "-";
+                  const pickup = o.pickupDropoff || "-";
+                  const cutOff = o.pickupCutOffTime ? `Cutoff: ${o.pickupCutOffTime}` : "";
+                  const cod = typeof o.codCharge === "number" ? fmtMoney(o.codCharge, o.currency) : "-";
+                  const returnFee = typeof o.returnFee === "number" ? fmtMoney(o.returnFee, o.currency) : "-";
+
+                  return (
+                    <div
+                      key={`${String(o.deliveryOptionId ?? idx)}-${idx}`}
+                      className={cn("rounded-xl border border-neutral-200 bg-white p-4 hover:bg-neutral-50")}
+                    >
+                      <div className="flex items-start gap-3">
+                        {o.logo ? (
+                          <img
+                            src={o.logo}
+                            alt={name}
+                            className="h-12 w-12 rounded-lg border border-neutral-200 object-cover bg-white"
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <div className="h-12 w-12 rounded-lg border border-neutral-200 bg-neutral-100 flex items-center justify-center">
+                            🚚
+                          </div>
+                        )}
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <div className="min-w-0 truncate text-sm font-semibold text-neutral-900">{name}</div>
+                          </div>
+
+                          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-600">
+                            <span className="rounded-full border border-neutral-200 bg-white px-2 py-0.5">
+                              {o.serviceType || "service"}
+                            </span>
+                            <span className="rounded-full border border-neutral-200 bg-white px-2 py-0.5">
+                              {o.trackingType || "tracking"}
+                            </span>
+                            <span className="rounded-full border border-neutral-200 bg-white px-2 py-0.5">{avg}</span>
+                            <span className="rounded-full border border-neutral-200 bg-white px-2 py-0.5">{pickup}</span>
+                            {cutOff ? (
+                              <span className="rounded-full border border-neutral-200 bg-white px-2 py-0.5">{cutOff}</span>
+                            ) : null}
+                          </div>
+
+                          <div className="mt-3 grid gap-2 md:grid-cols-2">
+                            <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+                              <div className="text-[11px] font-semibold text-neutral-600">Fiyat</div>
+                              <div className="mt-1 text-sm font-semibold text-neutral-900 tabular-nums">{price}</div>
+                            </div>
+
+                            <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+                              <div className="text-[11px] font-semibold text-neutral-600">İade Ücreti</div>
+                              <div className="mt-1 text-sm font-semibold text-neutral-900 tabular-nums">{returnFee}</div>
+                            </div>
+                          </div>
+
+                          {o.cardOnDeliveryPercentage ? (
+                            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                              Kartla kapıda ödeme: <span className="font-semibold">{o.cardOnDeliveryPercentage}</span>
+                            </div>
+                          ) : null}
+
+                          {o.checkAllBranches ? (
+                            <div className="mt-3 text-xs text-neutral-600">
+                              Şube:{" "}
+                              <a
+                                href={o.checkAllBranches}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="font-semibold text-indigo-700 underline"
+                              >
+                                link
+                              </a>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-
-      {/* tiny footer note */}
-      <div className="mt-3 text-xs text-neutral-500">
-        Toplam ağırlık: <span className="font-semibold text-neutral-700">{totalWeight} kg</span>
-      </div>
-
-      <CreditTopUpModal open={creditOpen} onOpenChange={setCreditOpen} creditBalance={creditBalance} />
     </div>
   );
 }
