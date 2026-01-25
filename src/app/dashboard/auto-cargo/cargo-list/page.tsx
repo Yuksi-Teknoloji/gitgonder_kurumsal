@@ -439,7 +439,7 @@ export default function CargoListPage() {
   }
   async function cancelShipment(orderId: string, shipmentId?: string) {
     if (!shipmentId) {
-      alert("Bu sipariş için shipmentNumber yok, iptal edemiyorum.");
+      alert("Bu sipariş için kargo oluşturulmadı, iptal edemiyorum.");
       return;
     }
 
@@ -448,7 +448,7 @@ export default function CargoListPage() {
 
     setCanceling((s) => ({ ...s, [orderId]: true }));
     try {
-      const res = await fetch("/api/oto/shipments/cancel", {
+      const res = await fetch("/yuksi/oto/shipments/cancel", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
