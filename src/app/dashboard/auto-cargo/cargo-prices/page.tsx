@@ -206,18 +206,18 @@ export default function CargoPricesPage() {
   }, [data, sortBy]);
 
   return (
-    <div className="px-6 py-5">
+    <div className="px-3 sm:px-6 py-4 sm:py-5">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg border border-neutral-200 bg-white flex items-center justify-center">💸</div>
-          <h1 className="text-2xl font-semibold text-neutral-900">Kargo Ücretleri</h1>
+          <div className="h-8 w-8 rounded-lg border border-neutral-200 bg-white flex items-center justify-center shrink-0">💸</div>
+          <h1 className="text-xl sm:text-2xl font-semibold text-neutral-900">Kargo Ücretleri</h1>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <button
             type="button"
-            className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-semibold text-neutral-800 hover:bg-neutral-50"
+            className="flex-1 sm:flex-none rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-semibold text-neutral-800 hover:bg-neutral-50"
             onClick={() => router.back()}
             title="Geri"
           >
@@ -225,7 +225,7 @@ export default function CargoPricesPage() {
           </button>
           <button
             type="button"
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+            className="flex-1 sm:flex-none rounded-lg bg-indigo-600 px-3 sm:px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
             onClick={fetchPrices}
             disabled={loading}
             title="Ücret sorgula"
@@ -236,12 +236,12 @@ export default function CargoPricesPage() {
       </div>
 
       {/* Form + Results */}
-      <div className="mt-4 grid gap-4 lg:grid-cols-[420px_1fr]">
+      <div className="mt-4 grid gap-4 grid-cols-1 lg:grid-cols-[420px_1fr]">
         {/* Form card */}
-        <div className="rounded-xl border border-neutral-200 bg-white p-4">
+        <div className="rounded-xl border border-neutral-200 bg-white p-3 sm:p-4">
           <div className="text-sm font-semibold text-neutral-900">Sorgu Parametreleri</div>
           {err ? (
-            <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 break-words">
               {err}
             </div>
           ) : null}
@@ -250,7 +250,7 @@ export default function CargoPricesPage() {
             <div className="grid gap-1">
               <div className="text-xs font-semibold text-neutral-600">Gönderici Şehir</div>
               <input
-                className="h-10 rounded-lg border border-neutral-200 px-3 text-sm"
+                className="h-10 rounded-lg border border-neutral-200 px-3 text-sm w-full"
                 value={form.originCity}
                 onChange={(e) => setField("originCity", e.target.value)}
                 placeholder="Ankara"
@@ -260,21 +260,21 @@ export default function CargoPricesPage() {
             <div className="grid gap-1">
               <div className="text-xs font-semibold text-neutral-600">Alıcı Şehir</div>
               <input
-                className="h-10 rounded-lg border border-neutral-200 px-3 text-sm"
+                className="h-10 rounded-lg border border-neutral-200 px-3 text-sm w-full"
                 value={form.destinationCity}
                 onChange={(e) => setField("destinationCity", e.target.value)}
                 placeholder="İstanbul"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="grid gap-1">
                 <div className="text-xs font-semibold text-neutral-600">Ağırlık (kg)</div>
                 <input
                   type="number"
                   min={0}
                   step="0.01"
-                  className="h-10 rounded-lg border border-neutral-200 px-3 text-sm"
+                  className="h-10 rounded-lg border border-neutral-200 px-3 text-sm w-full"
                   value={form.weight}
                   onChange={(e) => setField("weight", toNum(e.target.value, 0))}
                 />
@@ -286,21 +286,21 @@ export default function CargoPricesPage() {
                   type="number"
                   min={1}
                   step="1"
-                  className="h-10 rounded-lg border border-neutral-200 px-3 text-sm"
+                  className="h-10 rounded-lg border border-neutral-200 px-3 text-sm w-full"
                   value={form.packageCount}
                   onChange={(e) => setField("packageCount", Math.max(1, Math.floor(toNum(e.target.value, 1))) as any)}
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="grid gap-1">
                 <div className="text-xs font-semibold text-neutral-600">Uzunluk</div>
                 <input
                   type="number"
                   min={1}
                   step="1"
-                  className="h-10 rounded-lg border border-neutral-200 px-3 text-sm"
+                  className="h-10 rounded-lg border border-neutral-200 px-3 text-sm w-full"
                   value={form.length}
                   onChange={(e) => setField("length", toNum(e.target.value, 0))}
                 />
@@ -312,26 +312,26 @@ export default function CargoPricesPage() {
                   type="number"
                   min={1}
                   step="1"
-                  className="h-10 rounded-lg border border-neutral-200 px-3 text-sm"
+                  className="h-10 rounded-lg border border-neutral-200 px-3 text-sm w-full"
                   value={form.width}
                   onChange={(e) => setField("width", toNum(e.target.value, 0))}
                 />
               </div>
 
-              <div className="grid gap-1">
+              <div className="grid gap-1 sm:col-span-2">
                 <div className="text-xs font-semibold text-neutral-600">Yükseklik</div>
                 <input
                   type="number"
                   min={1}
                   step="1"
-                  className="h-10 rounded-lg border border-neutral-200 px-3 text-sm"
+                  className="h-10 rounded-lg border border-neutral-200 px-3 text-sm w-full"
                   value={form.height}
                   onChange={(e) => setField("height", toNum(e.target.value, 0))}
                 />
               </div>
             </div>
 
-            <div className="mt-1 flex items-center gap-2">
+            <div className="mt-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <button
                 type="button"
                 className="h-10 flex-1 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50"
@@ -366,24 +366,26 @@ export default function CargoPricesPage() {
 
         {/* Results card */}
         <div className="rounded-xl border border-neutral-200 bg-white overflow-hidden">
-          <div className="border-b border-neutral-200 bg-neutral-50 px-4 py-3 flex items-center gap-3">
+          <div className="border-b border-neutral-200 bg-neutral-50 px-3 sm:px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center gap-3">
             <div className="text-sm font-semibold text-neutral-900">Sonuçlar</div>
-            <div className="ml-auto flex items-center gap-2">
-              <div className="text-xs font-semibold text-neutral-600">Sırala:</div>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm"
-                disabled={loading}
-              >
-                <option value="price_asc">Fiyat (Artan)</option>
-                <option value="price_desc">Fiyat (Azalan)</option>
-                <option value="fastest">En hızlı</option>
-              </select>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto sm:ml-auto">
+              <div className="flex items-center gap-2">
+                <div className="text-xs font-semibold text-neutral-600 whitespace-nowrap">Sırala:</div>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="h-9 flex-1 sm:flex-none rounded-lg border border-neutral-200 bg-white px-3 text-sm min-w-0"
+                  disabled={loading}
+                >
+                  <option value="price_asc">Fiyat (Artan)</option>
+                  <option value="price_desc">Fiyat (Azalan)</option>
+                  <option value="fastest">En hızlı</option>
+                </select>
+              </div>
 
               <button
                 type="button"
-                className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50"
+                className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 whitespace-nowrap"
                 onClick={() => {
                   setData(null);
                   setErr("");
@@ -396,7 +398,7 @@ export default function CargoPricesPage() {
             </div>
           </div>
 
-          <div className="p-4">
+          <div className="p-3 sm:p-4">
             {loading ? (
               <div className="rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-600">
                 Yükleniyor…
@@ -424,19 +426,19 @@ export default function CargoPricesPage() {
                   return (
                     <div
                       key={`${String(o.deliveryOptionId ?? idx)}-${idx}`}
-                      className={cn("rounded-xl border border-neutral-200 bg-white p-4 hover:bg-neutral-50")}
+                      className={cn("rounded-xl border border-neutral-200 bg-white p-3 sm:p-4 hover:bg-neutral-50")}
                     >
                       <div className="flex items-start gap-3">
                         {o.logo ? (
                           <img
                             src={o.logo}
                             alt={name}
-                            className="h-12 w-12 rounded-lg border border-neutral-200 object-cover bg-white"
+                            className="h-12 w-12 rounded-lg border border-neutral-200 object-cover bg-white shrink-0"
                             loading="lazy"
                             referrerPolicy="no-referrer"
                           />
                         ) : (
-                          <div className="h-12 w-12 rounded-lg border border-neutral-200 bg-neutral-100 flex items-center justify-center">
+                          <div className="h-12 w-12 rounded-lg border border-neutral-200 bg-neutral-100 flex items-center justify-center shrink-0">
                             🚚
                           </div>
                         )}
@@ -447,45 +449,45 @@ export default function CargoPricesPage() {
                           </div>
 
                           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-600">
-                            <span className="rounded-full border border-neutral-200 bg-white px-2 py-0.5">
+                            <span className="rounded-full border border-neutral-200 bg-white px-2 py-0.5 whitespace-nowrap">
                               {o.serviceType || "service"}
                             </span>
-                            <span className="rounded-full border border-neutral-200 bg-white px-2 py-0.5">
+                            <span className="rounded-full border border-neutral-200 bg-white px-2 py-0.5 whitespace-nowrap">
                               {o.trackingType || "tracking"}
                             </span>
-                            <span className="rounded-full border border-neutral-200 bg-white px-2 py-0.5">{avg}</span>
-                            <span className="rounded-full border border-neutral-200 bg-white px-2 py-0.5">{pickup}</span>
+                            <span className="rounded-full border border-neutral-200 bg-white px-2 py-0.5 whitespace-nowrap">{avg}</span>
+                            <span className="rounded-full border border-neutral-200 bg-white px-2 py-0.5 whitespace-nowrap">{pickup}</span>
                             {cutOff ? (
-                              <span className="rounded-full border border-neutral-200 bg-white px-2 py-0.5">{cutOff}</span>
+                              <span className="rounded-full border border-neutral-200 bg-white px-2 py-0.5 whitespace-nowrap">{cutOff}</span>
                             ) : null}
                           </div>
 
-                          <div className="mt-3 grid gap-2 md:grid-cols-2">
+                          <div className="mt-3 grid gap-2 grid-cols-1 sm:grid-cols-2">
                             <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
                               <div className="text-[11px] font-semibold text-neutral-600">Fiyat</div>
-                              <div className="mt-1 text-sm font-semibold text-neutral-900 tabular-nums">{price}</div>
+                              <div className="mt-1 text-sm font-semibold text-neutral-900 tabular-nums break-words">{price}</div>
                             </div>
 
                             <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
                               <div className="text-[11px] font-semibold text-neutral-600">İade Ücreti</div>
-                              <div className="mt-1 text-sm font-semibold text-neutral-900 tabular-nums">{returnFee}</div>
+                              <div className="mt-1 text-sm font-semibold text-neutral-900 tabular-nums break-words">{returnFee}</div>
                             </div>
                           </div>
 
                           {o.cardOnDeliveryPercentage ? (
-                            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 break-words">
                               Kartla kapıda ödeme: <span className="font-semibold">{o.cardOnDeliveryPercentage}</span>
                             </div>
                           ) : null}
 
                           {o.checkAllBranches ? (
-                            <div className="mt-3 text-xs text-neutral-600">
+                            <div className="mt-3 text-xs text-neutral-600 break-words">
                               Şube:{" "}
                               <a
                                 href={o.checkAllBranches}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="font-semibold text-indigo-700 underline"
+                                className="font-semibold text-indigo-700 underline break-all"
                               >
                                 link
                               </a>

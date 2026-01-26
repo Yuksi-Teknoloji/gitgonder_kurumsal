@@ -949,26 +949,22 @@ export default function CommercialListingsPage() {
 
 
         return (
-            <div className="flex flex-col gap-3 rounded-2xl border border-neutral-200 p-4 hover:bg-neutral-50 shadow-sm soft-card">
-                <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start justify-between gap-4">
-                        <div className="flex min-w-0 gap-3">
-                            <div className="shrink-0">
-                                <div className="h-44 w-44 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">
-                                    {thumbUrl ? (
-                                        // eslint-disable-next-line @next/next/no-img-element
-                                        <img src={thumbUrl} alt="thumb" className="h-full w-full object-cover" />
-                                    ) : (
-                                        <div className="flex h-full w-full items-center justify-center text-[11px] text-neutral-500">
-                                            {thumbBusy ? '…' : 'no img'}
-                                        </div>
-                                    )}
+            <div className="flex flex-col gap-3 rounded-2xl border border-neutral-200 p-3 sm:p-4 hover:bg-neutral-50 shadow-sm soft-card">
+                <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
+                    <div className="shrink-0 w-full sm:w-auto">
+                        <div className="h-32 w-full sm:h-44 sm:w-44 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">
+                            {thumbUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={thumbUrl} alt="thumb" className="h-full w-full object-cover" />
+                            ) : (
+                                <div className="flex h-full w-full items-center justify-center text-[11px] text-neutral-500">
+                                    {thumbBusy ? '…' : 'no img'}
                                 </div>
-                            </div>
+                            )}
                         </div>
                     </div>
-                    <div className="min-w-0">
-                        <div className="flex items-center gap-2">
+                    <div className="min-w-0 flex-1 w-full">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                             <button
                                 type="button"
                                 onClick={() => openDetail(String(x.id), mode)}
@@ -988,18 +984,18 @@ export default function CommercialListingsPage() {
                         </div>
                     </div>
 
-                    <div className="shrink-0 text-right">
+                    <div className="shrink-0 w-full sm:w-auto text-left sm:text-right">
                         <div className="text-sm font-semibold text-neutral-900">{price}</div>
                         <div className="mt-1 text-xs text-neutral-500">{x.created_at ? String(x.created_at) : ''}</div>
                     </div>
                 </div>
 
                 {showActions && (
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2">
                         <button
                             type="button"
                             onClick={() => openDetail(String(x.id), 'mine')}
-                            className="rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-800 hover:bg-neutral-50"
+                            className="w-full sm:w-auto rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-800 hover:bg-neutral-50"
                         >
                             Detay
                         </button>
@@ -1007,7 +1003,7 @@ export default function CommercialListingsPage() {
                         <button
                             type="button"
                             onClick={() => startEdit(String(x.id))}
-                            className="rounded-xl border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
+                            className="w-full sm:w-auto rounded-xl border border-indigo-300 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
                         >
                             Güncelle (PUT)
                         </button>
@@ -1018,15 +1014,15 @@ export default function CommercialListingsPage() {
                                 setImgListingId(String(x.id));
                                 setImgOpen(true);
                             }}
-                            className="rounded-xl border border-sky-300 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-100"
+                            className="w-full sm:w-auto rounded-xl border border-sky-300 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-100"
                         >
-                            Resim Ekle (POST /images)
+                            Resim Ekle
                         </button>
 
                         <button
                             type="button"
                             onClick={() => markSold(String(x.id))}
-                            className="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+                            className="w-full sm:w-auto rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
                         >
                             Satıldı İşaretle
                         </button>
@@ -1034,7 +1030,7 @@ export default function CommercialListingsPage() {
                         <button
                             type="button"
                             onClick={() => removeListing(String(x.id))}
-                            className="rounded-xl border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+                            className="w-full sm:w-auto rounded-xl border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100"
                         >
                             Sil (DELETE)
                         </button>
@@ -1054,7 +1050,7 @@ export default function CommercialListingsPage() {
                     </p>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 overflow-x-auto pb-1">
                     {tabs.map((x) => (
                         <button
                             key={x.k}
@@ -1065,7 +1061,7 @@ export default function CommercialListingsPage() {
                                 setTab(x.k);
                             }}
                             className={[
-                                'rounded-2xl px-4 py-2 text-sm font-semibold border shadow-sm transition',
+                                'rounded-2xl px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold border shadow-sm transition whitespace-nowrap shrink-0',
                                 tab === x.k
                                     ? 'bg-indigo-500 text-white border-indigo-500'
                                     : 'bg-white text-neutral-800 border-neutral-300 hover:bg-neutral-50',
@@ -1147,8 +1143,8 @@ export default function CommercialListingsPage() {
                         </div>
                     </div>
 
-                    <div className="mt-5 grid gap-4 lg:grid-cols-3 shadow-sm soft-card p-4 border border-neutral-200 rounded-2xl bg-white">
-                        <div className="lg:col-span-2 grid gap-3 sm:grid-cols-2">
+                    <div className="mt-5 grid gap-4 lg:grid-cols-3 shadow-sm soft-card p-3 sm:p-4 border border-neutral-200 rounded-2xl bg-white overflow-x-auto">
+                        <div className="lg:col-span-2 grid gap-3 grid-cols-1 sm:grid-cols-2 min-w-0">
                             <div>
                                 <label className="mb-1 block text-sm font-semibold">Arama</label>
                                 <input
@@ -1360,9 +1356,9 @@ export default function CommercialListingsPage() {
                             </div>
                         </div>
 
-                        <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4 shadow-sm soft-card hover:shadow-md transition">
+                        <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3 sm:p-4 shadow-sm soft-card hover:shadow-md transition">
                             <div className="text-sm font-semibold text-neutral-900">Sayfalama</div>
-                            <div className="mt-3 grid grid-cols-2 gap-2">
+                            <div className="mt-3 grid grid-cols-2 gap-2 min-w-0">
                                 <div>
                                     <label className="mb-1 block text-xs font-semibold text-neutral-600">Limit</label>
                                     <input
@@ -1483,8 +1479,8 @@ export default function CommercialListingsPage() {
                         </div>
                     </div>
 
-                    <form onSubmit={submitCreate} className="mt-5 grid gap-4 shadow-sm soft-card p-4 border border-neutral-200 rounded-2xl bg-white ">
-                        <div className="grid gap-4 md:grid-cols-2">
+                    <form onSubmit={submitCreate} className="mt-5 grid gap-4 shadow-sm soft-card p-3 sm:p-4 border border-neutral-200 rounded-2xl bg-white overflow-x-auto">
+                        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 min-w-0">
                             <div>
                                 <label className="mb-1 block text-sm font-semibold">Başlık</label>
                                 <input
@@ -1983,8 +1979,8 @@ export default function CommercialListingsPage() {
 
             {/* ===== Edit Modal ===== */}
             {editOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-                    <div className="w-full max-w-6xl rounded-2xl border border-neutral-200 bg-white shadow-xl max-h-[90vh] flex flex-col">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-2 sm:p-4 overflow-y-auto">
+                    <div className="w-full max-w-6xl rounded-2xl border border-neutral-200 bg-white shadow-xl max-h-[95vh] flex flex-col my-4">
                         <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-4">
                             <div className="min-w-0">
                                 <div className="text-sm font-semibold text-neutral-900 truncate">İlan Güncelle</div>
@@ -2038,7 +2034,7 @@ export default function CommercialListingsPage() {
                                         />
                                     </div>
 
-                                    <div className="grid grid-cols-3 gap-2 md:col-span-2">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 md:col-span-2">
                                         <div>
                                             <label className="mb-1 block text-sm font-semibold">Yıl</label>
                                             <input
@@ -2197,8 +2193,8 @@ export default function CommercialListingsPage() {
 
                                         {/* Add image (POST) */}
                                         {/* ===== Edit: Create-like Upload + File Picker ===== */}
-                                        <div className="mt-3 rounded-2xl border border-neutral-200 bg-white p-4">
-                                            <div className="flex items-center justify-between gap-2">
+                                        <div className="mt-3 rounded-2xl border border-neutral-200 bg-white p-3 sm:p-4 overflow-x-auto">
+                                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 min-w-0">
                                                 <div className="text-sm font-semibold text-neutral-900">Resim Ekle (Upload)</div>
 
                                                 <button
@@ -2399,7 +2395,7 @@ export default function CommercialListingsPage() {
                                         </div>
 
                                         {/* Existing images list + actions (PUT main / DELETE) */}
-                                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                        <div className="mt-4 grid gap-3 grid-cols-1 sm:grid-cols-2 min-w-0">
                                             {editImages.length === 0 ? (
                                                 <div className="sm:col-span-2 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-600">
                                                     Resim yok.
@@ -2521,8 +2517,8 @@ export default function CommercialListingsPage() {
 
             {/* ===== Add Image Modal ===== */}
             {imgOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-                    <div className="w-full max-w-xl rounded-2xl border border-neutral-200 bg-white shadow-xl">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-2 sm:p-4 overflow-y-auto">
+                    <div className="w-full max-w-xl rounded-2xl border border-neutral-200 bg-white shadow-xl my-4 max-h-[95vh] overflow-y-auto">
                         <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-4">
                             <div className="min-w-0">
                                 <div className="text-sm font-semibold text-neutral-900 truncate">Resim Ekle</div>
@@ -2536,7 +2532,7 @@ export default function CommercialListingsPage() {
                             </button>
                         </div>
 
-                        <form onSubmit={submitAddImage} className="p-5 space-y-3">
+                        <form onSubmit={submitAddImage} className="p-3 sm:p-5 space-y-3 overflow-x-auto">
                             <div>
                                 <label className="mb-1 block text-sm font-semibold">listing_id</label>
                                 <input

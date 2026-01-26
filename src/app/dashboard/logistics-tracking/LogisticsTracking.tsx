@@ -260,8 +260,9 @@ export default function CorporateLogisticsTrackingPage() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-end justify-between bg-[#fff4ee] border border-neutral-200 rounded-2xl px-6 py-4 gap-4">
-        <div className="flex flex-col">
+      <div className="bg-[#fff4ee] border border-neutral-200 rounded-2xl px-4 sm:px-6 py-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+        <div className="flex flex-col w-full">
           <label htmlFor="limit">Limit</label>
           <input
             type="number"
@@ -276,7 +277,7 @@ export default function CorporateLogisticsTrackingPage() {
             name="limit"
           />
         </div>
-        <div className="flex flex-col">
+        <div className="flex flex-col w-full">
           <label htmlFor="offset">Offset</label>
           <input
             type="number"
@@ -291,7 +292,7 @@ export default function CorporateLogisticsTrackingPage() {
             name="offset"
           />
         </div>
-        <div className="flex flex-col">
+        <div className="flex flex-col w-full">
           <label htmlFor="type">Teslimat Türü</label>
           <select
             id="types"
@@ -309,10 +310,11 @@ export default function CorporateLogisticsTrackingPage() {
         </div>
         <button
           onClick={loadList}
-          className="rounded-xl border border-neutral-300 px-4 py-2 text-sm hover:bg-yellow-300 bg-[#ff5b04] text-white"
+          className="w-full rounded-xl border border-neutral-300 px-4 py-2 text-sm hover:bg-yellow-300 bg-[#ff5b04] text-white"
         >
           ARA
         </button>
+        </div>
       </div>
 
       {(okMsg || errMsg || error) && (
@@ -348,10 +350,21 @@ export default function CorporateLogisticsTrackingPage() {
             {rows.map((r) => (
               <div
                 key={r.id}
-                className="border-b border-neutral-200/70 md:grid md:grid-cols-9 hover:bg-neutral-50 bg-[#FFF4EE]"
+                className={[
+                  "border-b border-neutral-200/70 hover:bg-neutral-50 bg-[#FFF4EE]",
+                  // Mobil: kart görünümü (okunabilirlik)
+                  "grid grid-cols-1 gap-3 p-4 text-left",
+                  // md+: mevcut tablo düzeni
+                  "md:p-0 md:text-center md:grid md:grid-cols-9 md:gap-0",
+                ].join(" ")}
               >
-                <div className="px-6 py-3">{r.id}</div>
-                <div className="px-3 py-3 text-center md:text-left">
+                <div className="md:px-6 md:py-3">
+                  <div className="md:hidden text-[11px] text-neutral-500">
+                    ID
+                  </div>
+                  <div className="font-medium md:font-normal">{r.id}</div>
+                </div>
+                <div className="md:px-3 md:py-3 md:text-left">
                   <div className="md:hidden text-[11px] text-neutral-500">
                     Teslim Tipi
                   </div>
@@ -365,25 +378,25 @@ export default function CorporateLogisticsTrackingPage() {
                     </span>
                   )}
                 </div>
-                <div className="px-6 py-3">
+                <div className="md:px-6 md:py-3">
                   <div className="md:hidden text-[11px] text-neutral-500">
                     Taşıyıcı / Araç
                   </div>
                   {r.carrierType} • {r.vehicleType}
                 </div>
-                <div className="px-6 py-3">
+                <div className="md:px-6 md:py-3">
                   <div className="md:hidden text-[11px] text-neutral-500">
                     Alım
                   </div>
                   {r.pickupAddress}
                 </div>
-                <div className="px-6 py-3">
+                <div className="md:px-6 md:py-3">
                   <div className="md:hidden text-[11px] text-neutral-500">
                     Teslim
                   </div>
                   {r.dropoffAddress}
                 </div>
-                <div className="px-6 py-3">
+                <div className="md:px-6 md:py-3">
                   <div className="md:hidden text-[11px] text-neutral-500">
                     Fiyat
                   </div>
@@ -405,38 +418,38 @@ export default function CorporateLogisticsTrackingPage() {
                     )}
                   </div>
                 </div>
-                <div className="px-6 py-3">
+                <div className="md:px-6 md:py-3">
                   <div className="md:hidden text-[11px] text-neutral-500">
                     Ödeme
                   </div>
                   {r.paymentMethod ?? "—"}
                 </div>
-                <div className="px-6 py-3">
+                <div className="md:px-6 md:py-3">
                   <div className="md:hidden text-[11px] text-neutral-500">
                     Oluşturma
                   </div>
                   {fmtDT(r.createdAt)}
                 </div>
-                <div className="px-6 py-3">
+                <div className="md:px-6 md:py-3">
                   <div className="md:hidden text-[11px] text-neutral-500">
                     İşlemler
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 justify-center">
+                  <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 justify-start md:justify-center">
                     <button
                       onClick={() => showRoute(r)}
-                      className="rounded-md bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-700"
+                      className="w-full sm:w-auto rounded-md bg-sky-600 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-700"
                     >
                       Haritada Göster
                     </button>
                     <button
                       onClick={() => showEdit(r)}
-                      className="rounded-md bg-green-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-600"
+                      className="w-full sm:w-auto rounded-md bg-green-500 px-3 py-2 text-xs font-semibold text-white hover:bg-green-600"
                     >
                       Düzenle
                     </button>
                     <button
                       onClick={() => onDelete(r.id)}
-                      className="rounded-md bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-600"
+                      className="w-full sm:w-auto rounded-md bg-red-500 px-3 py-2 text-xs font-semibold text-white hover:bg-red-600"
                     >
                       Sil
                     </button>

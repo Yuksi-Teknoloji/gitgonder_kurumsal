@@ -234,9 +234,22 @@ export default function Header({
       ].join(" ")}
     >
       <div className="max-w-7xl mx-auto flex items-center justify-between">
-        <h1 className={["text-lg font-semibold", titleClass].join(" ")}>
-          {title}
-        </h1>
+        <div className="flex items-center gap-2">
+          {/* Mobil: Sidebar aç */}
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent("sidebar:open"))}
+            className="lg:hidden inline-flex items-center justify-center h-10 w-10 rounded-lg hover:bg-black/5"
+            aria-label="Menüyü aç"
+            title="Menüyü aç"
+          >
+            <span className="text-lg leading-none">☰</span>
+          </button>
+
+          <h1 className={["text-lg font-semibold", titleClass].join(" ")}>
+            {title}
+          </h1>
+        </div>
 
         <div className="flex items-center gap-2">
           {/* Notifications */}

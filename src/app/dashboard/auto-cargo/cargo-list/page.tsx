@@ -382,20 +382,20 @@ function OrderDetailsModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-2 sm:p-4" onMouseDown={onClose}>
       <div
-        className="w-full max-w-3xl overflow-hidden rounded-xl bg-white shadow-lg"
+        className="w-full max-w-3xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden rounded-xl bg-white shadow-lg"
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-4">
-          <div className="min-w-0">
-            <div className="text-base font-semibold text-neutral-900">Sipariş Detayı</div>
+        <div className="flex items-center justify-between border-b border-neutral-200 px-3 sm:px-5 py-3 sm:py-4">
+          <div className="min-w-0 flex-1">
+            <div className="text-sm sm:text-base font-semibold text-neutral-900">Sipariş Detayı</div>
             <div className="mt-1 text-xs text-neutral-500 truncate">Order ID: {orderId}</div>
           </div>
           <button
             type="button"
-            className="h-9 w-9 rounded-lg hover:bg-neutral-100 text-neutral-600"
+            className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg hover:bg-neutral-100 text-neutral-600 text-lg sm:text-xl shrink-0"
             onClick={onClose}
             aria-label="Kapat"
           >
@@ -404,7 +404,7 @@ function OrderDetailsModal({
         </div>
 
         {/* Body */}
-        <div className="max-h-[75vh] overflow-auto px-5 py-4">
+        <div className="max-h-[calc(95vh-120px)] sm:max-h-[75vh] overflow-auto px-3 sm:px-5 py-3 sm:py-4">
           {loading ? (
             <div className="rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-600">
               Yükleniyor…
@@ -414,15 +414,15 @@ function OrderDetailsModal({
           ) : data ? (
             <div className="space-y-5">
               {/* Top info */}
-              <div className="grid gap-3 md:grid-cols-3">
-                <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 sm:p-4">
                   <div className="text-xs font-semibold text-neutral-600">Durum (raw)</div>
-                  <div className="mt-2 text-sm font-semibold text-neutral-900">{data.status}</div>
+                  <div className="mt-2 text-xs sm:text-sm font-semibold text-neutral-900 break-words">{data.status}</div>
                 </div>
 
-                <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+                <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 sm:p-4">
                   <div className="text-xs font-semibold text-neutral-600">Tracking URL</div>
-                  <div className="mt-2 text-sm text-neutral-900 break-all">
+                  <div className="mt-2 text-xs sm:text-sm text-neutral-900 break-all">
                     {data.trackingURL ? (
                       <a className="text-indigo-700 underline" href={data.trackingURL} target="_blank" rel="noreferrer">
                         {data.trackingURL}
@@ -433,9 +433,9 @@ function OrderDetailsModal({
                   </div>
                 </div>
 
-                <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+                <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 sm:p-4">
                   <div className="text-xs font-semibold text-neutral-600">Kalem sayısı</div>
-                  <div className="mt-2 text-sm font-semibold text-neutral-900">{data.items?.length ?? 0}</div>
+                  <div className="mt-2 text-xs sm:text-sm font-semibold text-neutral-900">{data.items?.length ?? 0}</div>
                 </div>
               </div>
               {/* List response özeti (Türkçeleştirilmiş) */}
@@ -501,59 +501,63 @@ function OrderDetailsModal({
 
               {/* Items */}
               <div>
-                <div className="text-sm font-semibold text-neutral-900">Ürünler</div>
-                <div className="mt-2 overflow-hidden rounded-lg border border-neutral-200">
-                  <div className="grid grid-cols-[1.4fr_0.6fr_0.8fr_0.8fr_0.8fr] gap-2 bg-neutral-50 px-3 py-2 text-xs font-semibold text-neutral-600">
-                    <div>SKU</div>
-                    <div>Qty</div>
-                    <div>Price</div>
-                    <div>Tax</div>
-                    <div>Row Total</div>
-                  </div>
+                <div className="text-xs sm:text-sm font-semibold text-neutral-900">Ürünler</div>
+                <div className="mt-2 overflow-x-auto rounded-lg border border-neutral-200">
+                  <div className="min-w-[600px]">
+                    <div className="grid grid-cols-[1.4fr_0.6fr_0.8fr_0.8fr_0.8fr] gap-2 bg-neutral-50 px-2 sm:px-3 py-2 text-[10px] sm:text-xs font-semibold text-neutral-600">
+                      <div>SKU</div>
+                      <div>Qty</div>
+                      <div>Price</div>
+                      <div>Tax</div>
+                      <div>Row Total</div>
+                    </div>
 
-                  <div className="divide-y divide-neutral-100">
-                    {(data.items ?? []).map((it, idx) => (
-                      <div
-                        key={`${it.sku}-${idx}`}
-                        className="grid grid-cols-[1.4fr_0.6fr_0.8fr_0.8fr_0.8fr] gap-2 px-3 py-2 text-sm"
-                      >
-                        <div className="min-w-0 truncate font-semibold text-neutral-800">{it.sku}</div>
-                        <div className="text-neutral-700">{it.quantity ?? "-"}</div>
-                        <div className="text-neutral-700">{it.price ?? "-"}</div>
-                        <div className="text-neutral-700">{it.taxAmount ?? "-"}</div>
-                        <div className="text-neutral-700">{it.rowTotal ?? "-"}</div>
-                      </div>
-                    ))}
+                    <div className="divide-y divide-neutral-100">
+                      {(data.items ?? []).map((it, idx) => (
+                        <div
+                          key={`${it.sku}-${idx}`}
+                          className="grid grid-cols-[1.4fr_0.6fr_0.8fr_0.8fr_0.8fr] gap-2 px-2 sm:px-3 py-2 text-xs sm:text-sm"
+                        >
+                          <div className="min-w-0 truncate font-semibold text-neutral-800">{it.sku}</div>
+                          <div className="text-neutral-700">{it.quantity ?? "-"}</div>
+                          <div className="text-neutral-700">{it.price ?? "-"}</div>
+                          <div className="text-neutral-700">{it.taxAmount ?? "-"}</div>
+                          <div className="text-neutral-700">{it.rowTotal ?? "-"}</div>
+                        </div>
+                      ))}
 
-                    {(!data.items || data.items.length === 0) && (
-                      <div className="px-4 py-8 text-center text-sm text-neutral-500">Ürün yok.</div>
-                    )}
+                      {(!data.items || data.items.length === 0) && (
+                        <div className="px-4 py-8 text-center text-xs sm:text-sm text-neutral-500">Ürün yok.</div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Status history */}
               <div>
-                <div className="text-sm font-semibold text-neutral-900">Durum Geçmişi</div>
-                <div className="mt-2 overflow-hidden rounded-lg border border-neutral-200">
-                  <div className="grid grid-cols-[1fr_0.9fr_2fr] gap-2 bg-neutral-50 px-3 py-2 text-xs font-semibold text-neutral-600">
-                    <div>Tarih</div>
-                    <div>Status</div>
-                    <div>Açıklama</div>
-                  </div>
+                <div className="text-xs sm:text-sm font-semibold text-neutral-900">Durum Geçmişi</div>
+                <div className="mt-2 overflow-x-auto rounded-lg border border-neutral-200">
+                  <div className="min-w-[500px]">
+                    <div className="grid grid-cols-[1fr_0.9fr_2fr] gap-2 bg-neutral-50 px-2 sm:px-3 py-2 text-[10px] sm:text-xs font-semibold text-neutral-600">
+                      <div>Tarih</div>
+                      <div>Status</div>
+                      <div>Açıklama</div>
+                    </div>
 
-                  <div className="divide-y divide-neutral-100">
-                    {(data.statusHistory ?? []).map((h) => (
-                      <div key={h.id} className="grid grid-cols-[1fr_0.9fr_2fr] gap-2 px-3 py-2 text-sm">
-                        <div className="text-neutral-700">{h.date}</div>
-                        <div className="font-semibold text-neutral-800">{h.status}</div>
-                        <div className="text-neutral-700">{h.description}</div>
-                      </div>
-                    ))}
+                    <div className="divide-y divide-neutral-100">
+                      {(data.statusHistory ?? []).map((h) => (
+                        <div key={h.id} className="grid grid-cols-[1fr_0.9fr_2fr] gap-2 px-2 sm:px-3 py-2 text-xs sm:text-sm">
+                          <div className="text-neutral-700 break-words">{h.date}</div>
+                          <div className="font-semibold text-neutral-800 break-words">{h.status}</div>
+                          <div className="text-neutral-700 break-words">{h.description}</div>
+                        </div>
+                      ))}
 
-                    {(!data.statusHistory || data.statusHistory.length === 0) && (
-                      <div className="px-4 py-8 text-center text-sm text-neutral-500">Kayıt yok.</div>
-                    )}
+                      {(!data.statusHistory || data.statusHistory.length === 0) && (
+                        <div className="px-4 py-8 text-center text-xs sm:text-sm text-neutral-500">Kayıt yok.</div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -737,21 +741,21 @@ function ShipOrderModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={closeAndRefresh}>
-      <div className="w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-2 sm:p-4" onMouseDown={closeAndRefresh}>
+      <div className="w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden rounded-xl bg-white shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-4">
-          <div className="min-w-0">
-            <div className="text-base font-semibold text-neutral-900">Siparişi Kargola</div>
+        <div className="flex items-center justify-between border-b border-neutral-200 px-3 sm:px-5 py-3 sm:py-4">
+          <div className="min-w-0 flex-1">
+            <div className="text-sm sm:text-base font-semibold text-neutral-900">Siparişi Kargola</div>
             <div className="mt-1 text-xs text-neutral-500 truncate">Order ID: {orderId}</div>
           </div>
-          <button type="button" className="h-9 w-9 rounded-lg hover:bg-neutral-100 text-neutral-600" onClick={closeAndRefresh} aria-label="Kapat">
+          <button type="button" className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg hover:bg-neutral-100 text-neutral-600 text-lg sm:text-xl shrink-0" onClick={closeAndRefresh} aria-label="Kapat">
             ×
           </button>
         </div>
 
         {/* Body */}
-        <div className="max-h-[75vh] overflow-auto px-5 py-4">
+        <div className="max-h-[calc(95vh-180px)] sm:max-h-[75vh] overflow-auto px-3 sm:px-5 py-3 sm:py-4">
           {err ? <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{err}</div> : null}
 
           {loading ? (
@@ -814,10 +818,10 @@ function ShipOrderModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 border-t border-neutral-200 bg-neutral-50 px-5 py-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 border-t border-neutral-200 bg-neutral-50 px-3 sm:px-5 py-3 sm:py-4">
           <button
             type="button"
-            className="rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-800 hover:bg-neutral-50"
+            className="rounded-lg border border-neutral-200 bg-white px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-neutral-800 hover:bg-neutral-50"
             onClick={closeAndRefresh}
             disabled={creating}
           >
@@ -827,7 +831,7 @@ function ShipOrderModal({
           {!created ? (
             <button
               type="button"
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+              className="rounded-lg bg-indigo-600 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
               onClick={createShipment}
               disabled={creating || loading || options.length === 0 || !selectedId || postCreateDelay}
               title="Kargo oluştur"
@@ -837,7 +841,7 @@ function ShipOrderModal({
           ) : (
             <button
               type="button"
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+              className="rounded-lg bg-emerald-600 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
               onClick={printAwb}
               disabled={printLoading}
               title="Etiketi yazdır (AWB)"
@@ -1094,19 +1098,19 @@ export default function CargoListPage() {
   const refreshCreditRef = React.useRef<null | (() => void)>(null);
 
   return (
-    <div className="px-6 py-5">
+    <div className="w-full max-w-full overflow-x-hidden px-2 py-4 sm:px-4 sm:py-5 lg:px-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg border border-neutral-200 bg-white flex items-center justify-center">📦</div>
-          <h1 className="text-2xl font-semibold text-neutral-900">Kargo</h1>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="h-8 w-8 shrink-0 rounded-lg border border-neutral-200 bg-white flex items-center justify-center text-lg sm:text-base">📦</div>
+          <h1 className="text-xl sm:text-2xl font-semibold text-neutral-900 truncate">Kargo</h1>
         </div>
 
         {/* right top area */}
-        <div className="flex w-full items-start justify-end gap-3">
+        <div className="flex flex-col sm:flex-row w-full sm:w-auto items-stretch sm:items-start justify-end gap-2 sm:gap-3">
           <button
             type="button"
-            className="order-1 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+            className="order-1 inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-indigo-700 whitespace-nowrap"
             onClick={() => router.push("/dashboard/auto-cargo/create-cargo")}
           >
             + Sipariş Ekle
@@ -1127,16 +1131,19 @@ export default function CargoListPage() {
       </div>
 
       {/* Toolbar row */}
-      <div className="mt-3 flex items-center gap-2">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-2">
           <div className="relative">
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-2 sm:px-3 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-indigo-700"
               onClick={() => router.push("/dashboard/auto-cargo/create-cargo")}
             >
-              📦 {bulkMenu}
-              <span className="opacity-90">▾</span>
+              <span className="hidden sm:inline">📦</span>
+              <span className="sm:hidden">📦</span>
+              <span className="hidden sm:inline">{bulkMenu}</span>
+              <span className="sm:hidden">Kargo</span>
+              <span className="opacity-90 hidden sm:inline">▾</span>
             </button>
           </div>
         </div>
@@ -1144,7 +1151,7 @@ export default function CargoListPage() {
         <div className="ml-auto flex items-center gap-2">
           <button
             type="button"
-            className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-semibold text-neutral-800 hover:bg-neutral-50"
+            className="rounded-lg border border-neutral-200 bg-white px-2 sm:px-3 py-2 text-xs sm:text-sm font-semibold text-neutral-800 hover:bg-neutral-50"
             onClick={resetFilters}
             title="Filtreleri sıfırla"
           >
@@ -1152,7 +1159,7 @@ export default function CargoListPage() {
           </button>
           <button
             type="button"
-            className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-semibold text-neutral-800 hover:bg-neutral-50"
+            className="rounded-lg border border-neutral-200 bg-white px-2 sm:px-3 py-2 text-xs sm:text-sm font-semibold text-neutral-800 hover:bg-neutral-50"
             onClick={() => fetchOrders()}
             title="Yenile"
           >
@@ -1162,17 +1169,18 @@ export default function CargoListPage() {
       </div>
 
       {/* Info strip */}
-      <div className="mt-3">
+      <div className="mt-3 w-full">
         {loading ? (
-          <div className="rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-600">Yükleniyor…</div>
+          <div className="rounded-lg border border-neutral-200 bg-white px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-600">Yükleniyor…</div>
         ) : err ? (
-          <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{err}</div>
+          <div className="rounded-lg border border-rose-200 bg-rose-50 px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-rose-700 break-words">{err}</div>
         ) : null}
       </div>
 
       {/* Table */}
-      <div className="mt-3 overflow-hidden rounded-xl border border-neutral-200 bg-white">
-        <div className="overflow-x-auto">
+      <div className="mt-3 w-full overflow-hidden rounded-xl border border-neutral-200 bg-white">
+        {/* Desktop Table View */}
+        <div className="hidden lg:block overflow-x-auto">
           <div className={cn(MINW, "border-b border-neutral-200 bg-neutral-50 px-3 py-3")}>
             {/* Header row */}
             <div className={cn("grid items-center gap-3 text-xs font-semibold text-neutral-600", GRID)}>
@@ -1321,18 +1329,149 @@ export default function CargoListPage() {
           </div>
         </div>
 
+        {/* Mobile Card View */}
+        <div className="lg:hidden w-full overflow-x-hidden">
+          {/* Filters */}
+          <div className="border-b border-neutral-200 bg-neutral-50 p-2 sm:p-3 space-y-2">
+            <input
+              value={filters.orderNo}
+              onChange={(e) => setFilters((f) => ({ ...f, orderNo: e.target.value }))}
+              className="h-9 w-full rounded-lg border border-neutral-200 px-2 sm:px-3 text-xs sm:text-sm"
+              placeholder="Sipariş no"
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                value={filters.orderDate}
+                onChange={(e) => setFilters((f) => ({ ...f, orderDate: e.target.value }))}
+                className="h-9 w-full rounded-lg border border-neutral-200 px-2 sm:px-3 text-xs sm:text-sm"
+                placeholder="Tarih"
+              />
+              <select
+                value={filters.paymentType}
+                onChange={(e) => setFilters((f) => ({ ...f, paymentType: e.target.value }))}
+                className="h-9 w-full rounded-lg border border-neutral-200 bg-white px-2 sm:px-3 text-xs sm:text-sm"
+              >
+                <option value="">Ödeme Türü</option>
+                <option value="Kapıda Ödeme">Kapıda Ödeme</option>
+                <option value="Ödendi">Ödendi</option>
+                <option value="Ödenmedi">Ödenmedi</option>
+              </select>
+            </div>
+            <select
+              value={filters.apiStatus}
+              onChange={(e) => setFilters((f) => ({ ...f, apiStatus: e.target.value }))}
+              className="h-9 w-full rounded-lg border border-neutral-200 bg-white px-2 sm:px-3 text-xs sm:text-sm"
+            >
+              {STATUS_OPTIONS.map((o) => (
+                <option key={o.value || "all"} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Cards */}
+          <div className="divide-y divide-neutral-100 w-full">
+            {filteredRows.map((r) => (
+              <div
+                key={r.id}
+                className="p-2 sm:p-4 cursor-pointer hover:bg-neutral-50 w-full overflow-hidden"
+                onClick={() => openDetails(r.id)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") openDetails(r.id);
+                }}
+              >
+                <div className="flex items-start gap-2 sm:gap-3 w-full">
+                  <input
+                    type="checkbox"
+                    checked={!!selected[r.id]}
+                    onChange={() => toggleOne(r.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="mt-1 shrink-0"
+                  />
+                  <div className="flex-1 min-w-0 space-y-2 w-full overflow-hidden">
+                    <div className="flex items-start justify-between gap-2 w-full">
+                      <div className="min-w-0 flex-1 overflow-hidden">
+                        <div className="text-xs sm:text-sm font-semibold text-indigo-700 truncate">{r.id}</div>
+                        <div className="text-[10px] sm:text-xs text-neutral-500 mt-0.5 truncate">{r.orderDate}</div>
+                      </div>
+                      <span
+                        title={`raw: ${r.apiStatus}`}
+                        className={cn(
+                          "inline-flex items-center rounded-full border px-1.5 sm:px-2 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-semibold shrink-0 max-w-[70px] sm:max-w-none",
+                          statusBadgeClass(r.statusTr)
+                        )}
+                      >
+                        <span className="truncate">{r.statusTr}</span>
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[10px] sm:text-xs w-full">
+                      <div className="min-w-0 overflow-hidden">
+                        <span className="text-neutral-500">Tutar: </span>
+                        <span className="font-semibold text-neutral-900 truncate block">{r.invoiceAmount}</span>
+                      </div>
+                      <div className="min-w-0 overflow-hidden">
+                        <span className="text-neutral-500">Ödeme: </span>
+                        <span className="font-semibold text-neutral-900 truncate block">{r.paymentType}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2 pt-2 w-full">
+                      <button
+                        type="button"
+                        className={cn(
+                          "h-8 sm:h-9 w-full rounded-lg border text-[10px] sm:text-xs font-semibold whitespace-nowrap",
+                          "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                        )}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openShip(r.id);
+                        }}
+                      >
+                        Siparişi Kargola
+                      </button>
+
+                      <button
+                        type="button"
+                        className={cn(
+                          "h-8 sm:h-9 w-full rounded-lg border text-[10px] sm:text-xs font-semibold whitespace-nowrap",
+                          "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100",
+                          canceling[r.id] ? "opacity-60 pointer-events-none" : ""
+                        )}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          cancelShipment(r.id, r.shipmentNumber);
+                        }}
+                      >
+                        {canceling[r.id] ? "İptal ediliyor…" : "Kargoyu İptal Et"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {!loading && filteredRows.length === 0 ? (
+              <div className="px-2 sm:px-4 py-12 text-center text-xs sm:text-sm text-neutral-500">Sonuç bulunamadı.</div>
+            ) : null}
+          </div>
+        </div>
+
         {/* Footer */}
-        <div className="flex items-center justify-between gap-4 border-t border-neutral-200 bg-white px-4 py-3">
-          <div className="flex items-center gap-2 text-sm text-neutral-600">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3 md:gap-4 border-t border-neutral-200 bg-white px-2 sm:px-3 md:px-4 py-2 sm:py-3 w-full overflow-x-hidden">
+          <div className="flex items-center gap-2 text-xs sm:text-sm text-neutral-600 shrink-0">
             <span>Toplam: </span>
             <span className="font-semibold text-neutral-800">{apiTotal}</span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
             <select
               value={pageSize}
               onChange={(e) => setPageSize(Number(e.target.value))}
-              className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm"
+              className="h-8 sm:h-9 rounded-lg border border-neutral-200 bg-white px-2 sm:px-3 text-xs sm:text-sm"
             >
               {[10, 20, 30, 50].map((n) => (
                 <option key={n} value={n}>
@@ -1340,13 +1479,13 @@ export default function CargoListPage() {
                 </option>
               ))}
             </select>
-            <div className="text-sm text-neutral-600">/ {apiTotal}</div>
+            <div className="text-xs sm:text-sm text-neutral-600 hidden sm:block">/ {apiTotal}</div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center gap-1 sm:gap-2 shrink-0 overflow-x-auto">
             <button
               type="button"
-              className="h-9 w-9 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50"
+              className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 text-sm shrink-0"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={pageSafe <= 1 || loading}
               title="Önceki"
@@ -1354,7 +1493,7 @@ export default function CargoListPage() {
               ‹
             </button>
 
-            <div className="inline-flex items-center gap-2">
+            <div className="inline-flex items-center gap-1 sm:gap-2 shrink-0">
               {Array.from({ length: Math.min(3, apiTotalPages) }).map((_, idx) => {
                 const p = idx + 1;
                 const active = p === pageSafe;
@@ -1365,7 +1504,7 @@ export default function CargoListPage() {
                     onClick={() => setPage(p)}
                     disabled={loading}
                     className={cn(
-                      "h-9 w-9 rounded-lg border text-sm font-semibold",
+                      "h-8 w-8 sm:h-9 sm:w-9 rounded-lg border text-xs sm:text-sm font-semibold shrink-0",
                       active ? "border-neutral-900 bg-neutral-900 text-white" : "border-neutral-200 bg-white hover:bg-neutral-50"
                     )}
                   >
@@ -1376,13 +1515,13 @@ export default function CargoListPage() {
 
               {apiTotalPages > 3 ? (
                 <>
-                  <span className="px-1 text-sm text-neutral-500">…</span>
+                  <span className="px-0.5 sm:px-1 text-xs sm:text-sm text-neutral-500 shrink-0">…</span>
                   <button
                     type="button"
                     onClick={() => setPage(apiTotalPages)}
                     disabled={loading}
                     className={cn(
-                      "h-9 w-9 rounded-lg border text-sm font-semibold",
+                      "h-8 w-8 sm:h-9 sm:w-9 rounded-lg border text-xs sm:text-sm font-semibold shrink-0",
                       pageSafe === apiTotalPages ? "border-neutral-900 bg-neutral-900 text-white" : "border-neutral-200 bg-white hover:bg-neutral-50"
                     )}
                   >
@@ -1394,7 +1533,7 @@ export default function CargoListPage() {
 
             <button
               type="button"
-              className="h-9 w-9 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50"
+              className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 text-sm shrink-0"
               onClick={() => setPage((p) => Math.min(apiTotalPages, p + 1))}
               disabled={pageSafe >= apiTotalPages || loading}
               title="Sonraki"

@@ -237,19 +237,22 @@ export default function CorporateRegisterPage() {
   }
 
   return (
-    <div className="min-h-screen py-12 px-4 bg-gradient-to-br from-orange-50 via-white to-orange-50">
+    <div className="min-h-screen py-10 sm:py-12 px-4 bg-gradient-to-br from-orange-50 via-white to-orange-50">
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-2xl shadow-xl border border-neutral-200">
-          <div className="border-b border-neutral-200 px-8 py-6">
-            <h1 className="text-3xl font-bold text-orange-600">
+          <div className="border-b border-neutral-200 px-4 sm:px-6 md:px-8 py-5 sm:py-6">
+            <h1 className="text-2xl sm:text-3xl font-bold text-orange-600">
               Kurumsal Üyelik Kaydı
             </h1>
-            <p className="mt-2 text-sm text-neutral-600">
+            <p className="mt-2 text-sm sm:text-base text-neutral-600">
               Kurumsal üyelik için aşağıdaki bilgileri doldurun
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="px-8 py-6">
+          <form
+            onSubmit={handleSubmit}
+            className="px-4 sm:px-6 md:px-8 py-6 space-y-8"
+          >
             {error && (
               <>
                 {isDuplicateEmailError ? (
@@ -315,7 +318,7 @@ export default function CorporateRegisterPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
+                  <div className="min-w-0">
                     <label className="block text-sm font-medium text-neutral-700 mb-1">
                       Vergi Dairesi <span className="text-red-500">*</span>
                     </label>
@@ -332,7 +335,7 @@ export default function CorporateRegisterPage() {
                     />
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <label className="block text-sm font-medium text-neutral-700 mb-1">
                       VKN (10 haneli) <span className="text-red-500">*</span>
                     </label>
@@ -419,8 +422,8 @@ export default function CorporateRegisterPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="min-w-0">
                     <label className="block text-sm font-medium text-neutral-700 mb-1">
                       Bina No
                     </label>
@@ -435,7 +438,7 @@ export default function CorporateRegisterPage() {
                     />
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <label className="block text-sm font-medium text-neutral-700 mb-1">
                       Daire No
                     </label>
@@ -450,7 +453,7 @@ export default function CorporateRegisterPage() {
                     />
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <label className="block text-sm font-medium text-neutral-700 mb-1">
                       Kat
                     </label>
@@ -465,7 +468,7 @@ export default function CorporateRegisterPage() {
                     />
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <label className="block text-sm font-medium text-neutral-700 mb-1">
                       Posta Kodu
                     </label>
@@ -484,7 +487,7 @@ export default function CorporateRegisterPage() {
             </div>
 
             {/* İletişim Bilgileri */}
-            <div className="mb-8">
+            <div>
               <h2 className="text-lg font-semibold text-neutral-900 mb-4">
                 Yetkili Kişi Bilgileri
               </h2>
@@ -559,7 +562,7 @@ export default function CorporateRegisterPage() {
             </div>
 
             {/* Şifre */}
-            <div className="mb-8">
+            <div>
               <h2 className="text-lg font-semibold text-neutral-900 mb-4">
                 Şifre
               </h2>
@@ -602,7 +605,7 @@ export default function CorporateRegisterPage() {
             </div>
 
             {/* Onaylar */}
-            <div className="mb-8 space-y-3">
+            <div className="space-y-3">
               <label className="flex items-start gap-3">
                 <input
                   type="checkbox"
@@ -651,11 +654,11 @@ export default function CorporateRegisterPage() {
             </div>
 
             {/* Submit */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-2">
               <button
                 type="button"
                 onClick={() => router.push("/")}
-                className="px-6 py-3 text-neutral-700 font-semibold rounded-lg hover:bg-neutral-100 transition"
+                className="w-full sm:w-auto px-6 py-3 text-neutral-700 font-semibold rounded-lg hover:bg-neutral-100 transition"
               >
                 Giriş Sayfasına Dön
               </button>
@@ -663,7 +666,7 @@ export default function CorporateRegisterPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="px-8 py-3 bg-orange-600 text-white font-semibold rounded-lg shadow-md hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full sm:w-auto px-8 py-3 bg-orange-600 text-white font-semibold rounded-lg shadow-md hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? "Kaydediliyor..." : "Kayıt Ol"}
               </button>

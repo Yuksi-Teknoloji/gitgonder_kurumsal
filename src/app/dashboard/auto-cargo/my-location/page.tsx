@@ -191,7 +191,7 @@ function StatusPill({ v }: { v: PickupLocationItem["status"] }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold",
+        "inline-flex items-center gap-1 sm:gap-2 rounded-full border px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold",
         v === "active"
           ? "border-emerald-200 bg-emerald-50 text-emerald-700"
           : v === "passive"
@@ -201,7 +201,7 @@ function StatusPill({ v }: { v: PickupLocationItem["status"] }) {
     >
       <span
         className={cn(
-          "h-2 w-2 rounded-full",
+          "h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full shrink-0",
           v === "active" ? "bg-emerald-500" : v === "passive" ? "bg-neutral-400" : "bg-neutral-300"
         )}
       />
@@ -238,7 +238,7 @@ function Field({
       readOnly={readOnly}
       type={type}
       className={cn(
-        "h-10 w-full rounded-lg border px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200",
+        "h-9 sm:h-10 w-full rounded-lg border px-2 sm:px-3 text-xs sm:text-sm outline-none focus:ring-2 focus:ring-indigo-200",
         disabled || readOnly ? "border-neutral-200 bg-neutral-50 text-neutral-500" : "border-neutral-200 bg-white"
       )}
     />
@@ -692,14 +692,14 @@ export default function MyLocationPage() {
   }, [open]);
 
   return (
-    <div className="px-6 py-5">
+    <div className="w-full max-w-full overflow-x-hidden px-2 py-4 sm:px-4 sm:py-5 lg:px-6">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg border border-neutral-200 bg-white flex items-center justify-center text-neutral-700">
-            <span className="text-lg">⌂</span>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="h-8 w-8 sm:h-9 sm:w-9 shrink-0 rounded-lg border border-neutral-200 bg-white flex items-center justify-center text-neutral-700">
+            <span className="text-base sm:text-lg">⌂</span>
           </div>
-          <h1 className="text-2xl font-semibold text-neutral-900">Gönderici Konumları</h1>
+          <h1 className="text-xl sm:text-2xl font-semibold text-neutral-900 truncate">Gönderici Konumları</h1>
         </div>
 
         <button
@@ -708,21 +708,21 @@ export default function MyLocationPage() {
             resetForm();
             setOpen(true);
           }}
-          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-indigo-700 whitespace-nowrap"
         >
           + Gönderici Konumu Ekle
         </button>
       </div>
 
       {/* Controls */}
-      <div className="mt-4 rounded-xl border border-neutral-200 bg-white p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="mt-3 sm:mt-4 rounded-xl border border-neutral-200 bg-white p-3 sm:p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold text-neutral-700">Durum:</span>
+            <span className="text-xs sm:text-sm font-semibold text-neutral-700">Durum:</span>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as any)}
-              className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+              className="h-9 sm:h-10 rounded-lg border border-neutral-200 bg-white px-2 sm:px-3 text-xs sm:text-sm outline-none focus:ring-2 focus:ring-indigo-200"
             >
               <option value="active">active</option>
               <option value="passive">passive</option>
@@ -732,38 +732,145 @@ export default function MyLocationPage() {
               type="button"
               onClick={() => load(status)}
               disabled={loading}
-              className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 disabled:opacity-60"
+              className="h-9 sm:h-10 rounded-lg border border-neutral-200 bg-white px-2 sm:px-3 text-xs sm:text-sm font-semibold text-neutral-800 hover:bg-neutral-50 disabled:opacity-60"
             >
               {loading ? "Yükleniyor…" : "Yenile"}
             </button>
           </div>
         </div>
 
-        {err ? <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{err}</div> : null}
+        {err ? <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-rose-700 break-words">{err}</div> : null}
       </div>
 
       {/* Table */}
-      <div className="mt-4 rounded-xl border border-neutral-200 bg-white overflow-hidden">
-        {/* Filters row */}
-        <div className="border-b border-neutral-200 bg-neutral-50 px-4 py-3">
-          {/* Header */}
-          <div className={cn("grid gap-2 text-xs font-semibold text-neutral-600", GRID)}>
-            <div>Yer ismi</div>
-            <div>Ad Soyad</div>
-            <div>Telefon</div>
-            <div>Şehir</div>
-            <div>Adres</div>
-            <div>Durum</div>
+      <div className="mt-3 sm:mt-4 w-full rounded-xl border border-neutral-200 bg-white overflow-hidden">
+        {/* Desktop Table View */}
+        <div className="hidden lg:block">
+          {/* Filters row */}
+          <div className="border-b border-neutral-200 bg-neutral-50 px-4 py-3">
+            {/* Header */}
+            <div className={cn("grid gap-2 text-xs font-semibold text-neutral-600", GRID)}>
+              <div>Yer ismi</div>
+              <div>Ad Soyad</div>
+              <div>Telefon</div>
+              <div>Şehir</div>
+              <div>Adres</div>
+              <div>Durum</div>
+            </div>
+
+            {/* Filters */}
+            <div className={cn("mt-2 grid gap-2 items-center", GRID)}>
+              <select
+                value={fPlace}
+                onChange={(e) => setFPlace(e.target.value)}
+                className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+              >
+                <option value="">Tümü</option>
+                {placeOptions.map((x) => (
+                  <option key={x} value={x}>
+                    {x}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                value={fName}
+                onChange={(e) => setFName(e.target.value)}
+                className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+                placeholder="İsim ara"
+              />
+
+              <input
+                value={fPhone}
+                onChange={(e) => setFPhone(e.target.value)}
+                className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+                placeholder="Telefon"
+              />
+
+              <select
+                value={fCity}
+                onChange={(e) => setFCity(e.target.value)}
+                className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+              >
+                <option value="">Tümü</option>
+                {cityOptions.map((x) => (
+                  <option key={x} value={x}>
+                    {x}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                value={fAddr}
+                onChange={(e) => setFAddr(e.target.value)}
+                className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+                placeholder="Adres"
+              />
+
+              <select
+                value={fStatus}
+                onChange={(e) => setFStatus(e.target.value as any)}
+                className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+              >
+                <option value="">Tümü</option>
+                <option value="active">Aktif</option>
+                <option value="passive">Pasif</option>
+              </select>
+            </div>
           </div>
 
-          {/* Filters (sadece gerekli olanlar) */}
-          <div className={cn("mt-2 grid gap-2 items-center", GRID)}>
+          {/* Body */}
+          <div className="divide-y divide-neutral-100">
+            {loading ? (
+              <div className="p-6 text-sm text-neutral-600">Yükleniyor…</div>
+            ) : filtered.length === 0 ? (
+              <div className="p-6 text-sm text-neutral-600">Kayıt bulunamadı.</div>
+            ) : (
+              filtered.map((r) => (
+                <div key={r.id} className="px-3 py-2">
+                  <div className={cn("grid gap-2 items-center text-[13px]", GRID)}>
+                    <div className="text-neutral-900 font-semibold truncate" title={r.placeName}>
+                      {r.placeName || "—"}
+                      {r.locationCode ? <div className="text-xs text-neutral-500 font-normal truncate">Kod: {r.locationCode}</div> : null}
+                      {r.description ? <div className="text-xs text-neutral-500 font-normal truncate">Açıklama: {r.description}</div> : null}
+                    </div>
+
+                    <div className="text-neutral-800 truncate" title={r.contactName}>
+                      {r.contactName || "—"}
+                    </div>
+
+                    <div className="text-indigo-600 font-semibold truncate" title={r.mobile}>
+                      {r.mobile || "—"}
+                    </div>
+
+                    <div className="text-neutral-800 truncate" title={r.city}>
+                      {r.city || "—"}
+                    </div>
+
+                    <div className="text-neutral-800 truncate" title={r.address}>
+                      {r.address || "—"}
+                    </div>
+
+                    <div>
+                      <StatusPill v={r.status} />
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="lg:hidden w-full overflow-x-hidden">
+          {/* Filters */}
+          <div className="border-b border-neutral-200 bg-neutral-50 p-2 sm:p-3 space-y-2">
             <select
               value={fPlace}
               onChange={(e) => setFPlace(e.target.value)}
-              className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+              className="h-9 w-full rounded-lg border border-neutral-200 bg-white px-2 sm:px-3 text-xs sm:text-sm outline-none focus:ring-2 focus:ring-indigo-200"
             >
-              <option value="">Tümü</option>
+              <option value="">Yer İsmi - Tümü</option>
               {placeOptions.map((x) => (
                 <option key={x} value={x}>
                   {x}
@@ -771,26 +878,28 @@ export default function MyLocationPage() {
               ))}
             </select>
 
-            <input
-              value={fName}
-              onChange={(e) => setFName(e.target.value)}
-              className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-              placeholder="İsim ara"
-            />
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                value={fName}
+                onChange={(e) => setFName(e.target.value)}
+                className="h-9 w-full rounded-lg border border-neutral-200 bg-white px-2 sm:px-3 text-xs sm:text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+                placeholder="İsim ara"
+              />
 
-            <input
-              value={fPhone}
-              onChange={(e) => setFPhone(e.target.value)}
-              className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-              placeholder="Telefon"
-            />
+              <input
+                value={fPhone}
+                onChange={(e) => setFPhone(e.target.value)}
+                className="h-9 w-full rounded-lg border border-neutral-200 bg-white px-2 sm:px-3 text-xs sm:text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+                placeholder="Telefon"
+              />
+            </div>
 
             <select
               value={fCity}
               onChange={(e) => setFCity(e.target.value)}
-              className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+              className="h-9 w-full rounded-lg border border-neutral-200 bg-white px-2 sm:px-3 text-xs sm:text-sm outline-none focus:ring-2 focus:ring-indigo-200"
             >
-              <option value="">Tümü</option>
+              <option value="">Şehir - Tümü</option>
               {cityOptions.map((x) => (
                 <option key={x} value={x}>
                   {x}
@@ -798,91 +907,104 @@ export default function MyLocationPage() {
               ))}
             </select>
 
-            <input
-              value={fAddr}
-              onChange={(e) => setFAddr(e.target.value)}
-              className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-              placeholder="Adres"
-            />
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                value={fAddr}
+                onChange={(e) => setFAddr(e.target.value)}
+                className="h-9 w-full rounded-lg border border-neutral-200 bg-white px-2 sm:px-3 text-xs sm:text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+                placeholder="Adres"
+              />
 
-            <select
-              value={fStatus}
-              onChange={(e) => setFStatus(e.target.value as any)}
-              className="h-9 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-            >
-              <option value="">Tümü</option>
-              <option value="active">Aktif</option>
-              <option value="passive">Pasif</option>
-            </select>
+              <select
+                value={fStatus}
+                onChange={(e) => setFStatus(e.target.value as any)}
+                className="h-9 w-full rounded-lg border border-neutral-200 bg-white px-2 sm:px-3 text-xs sm:text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+              >
+                <option value="">Durum - Tümü</option>
+                <option value="active">Aktif</option>
+                <option value="passive">Pasif</option>
+              </select>
+            </div>
           </div>
-        </div>
 
-        {/* Body */}
-        <div className="divide-y divide-neutral-100">
-          {loading ? (
-            <div className="p-6 text-sm text-neutral-600">Yükleniyor…</div>
-          ) : filtered.length === 0 ? (
-            <div className="p-6 text-sm text-neutral-600">Kayıt bulunamadı.</div>
-          ) : (
-            filtered.map((r) => (
-              <div key={r.id} className="px-3 py-2">
-                <div className={cn("grid gap-2 items-center text-[13px]", GRID)}>
-                  <div className="text-neutral-900 font-semibold truncate" title={r.placeName}>
-                    {r.placeName || "—"}
-                    {r.locationCode ? <div className="text-xs text-neutral-500 font-normal truncate">Kod: {r.locationCode}</div> : null}
-                    {r.description ? <div className="text-xs text-neutral-500 font-normal truncate">Açıklama: {r.description}</div> : null}
-                  </div>
+          {/* Cards */}
+          <div className="divide-y divide-neutral-100 w-full">
+            {loading ? (
+              <div className="p-4 sm:p-6 text-xs sm:text-sm text-neutral-600">Yükleniyor…</div>
+            ) : filtered.length === 0 ? (
+              <div className="p-4 sm:p-6 text-xs sm:text-sm text-neutral-600">Kayıt bulunamadı.</div>
+            ) : (
+              filtered.map((r) => (
+                <div key={r.id} className="p-3 sm:p-4 w-full">
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm sm:text-base font-semibold text-neutral-900 truncate" title={r.placeName}>
+                          {r.placeName || "—"}
+                        </div>
+                        {r.locationCode ? (
+                          <div className="text-xs text-neutral-500 font-normal mt-0.5">Kod: {r.locationCode}</div>
+                        ) : null}
+                        {r.description ? (
+                          <div className="text-xs text-neutral-500 font-normal mt-0.5 truncate">Açıklama: {r.description}</div>
+                        ) : null}
+                      </div>
+                      <div className="shrink-0">
+                        <StatusPill v={r.status} />
+                      </div>
+                    </div>
 
-                  <div className="text-neutral-800 truncate" title={r.contactName}>
-                    {r.contactName || "—"}
-                  </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
+                      <div>
+                        <span className="text-neutral-500">Ad Soyad: </span>
+                        <span className="font-semibold text-neutral-800 truncate block">{r.contactName || "—"}</span>
+                      </div>
+                      <div>
+                        <span className="text-neutral-500">Telefon: </span>
+                        <span className="font-semibold text-indigo-600 truncate block">{r.mobile || "—"}</span>
+                      </div>
+                      <div>
+                        <span className="text-neutral-500">Şehir: </span>
+                        <span className="font-semibold text-neutral-800 truncate block">{r.city || "—"}</span>
+                      </div>
+                    </div>
 
-                  <div className="text-indigo-600 font-semibold truncate" title={r.mobile}>
-                    {r.mobile || "—"}
-                  </div>
-
-                  <div className="text-neutral-800 truncate" title={r.city}>
-                    {r.city || "—"}
-                  </div>
-
-                  <div className="text-neutral-800 truncate" title={r.address}>
-                    {r.address || "—"}
-                  </div>
-
-                  <div>
-                    <StatusPill v={r.status} />
+                    <div>
+                      <span className="text-neutral-500 text-xs">Adres: </span>
+                      <div className="text-xs sm:text-sm text-neutral-800 mt-0.5 break-words">{r.address || "—"}</div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
         </div>
       </div>
 
       {/* Modal */}
       {open ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
           <div className="absolute inset-0 bg-black/30" onClick={() => !saving && setOpen(false)} />
-          <div className="relative w-[980px] max-w-[95vw] rounded-2xl bg-white shadow-xl border border-neutral-200">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200">
-              <div className="text-lg font-semibold text-neutral-900">Gönderici Konumu Ekle</div>
+          <div className="relative w-full max-w-[980px] max-h-[95vh] sm:max-h-[90vh] overflow-hidden rounded-xl sm:rounded-2xl bg-white shadow-xl border border-neutral-200">
+            <div className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 border-b border-neutral-200">
+              <div className="text-sm sm:text-lg font-semibold text-neutral-900 truncate">Gönderici Konumu Ekle</div>
               <button
                 type="button"
                 onClick={() => !saving && setOpen(false)}
-                className="h-9 w-9 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700"
+                className="h-8 w-8 sm:h-9 sm:w-9 shrink-0 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-lg sm:text-xl"
                 title="Kapat"
               >
                 ×
               </button>
             </div>
 
-            <div className="px-6 py-5">
+            <div className="overflow-y-auto max-h-[calc(95vh-120px)] sm:max-h-[calc(90vh-120px)] px-3 sm:px-6 py-4 sm:py-5">
               {formErr ? (
-                <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{formErr}</div>
+                <div className="mb-3 sm:mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-rose-700 break-words">{formErr}</div>
               ) : null}
 
               {/* Row 1 */}
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-2">
                 <div>
                   <Label text="Yer ismi *" />
                   <Field value={placeName} onChange={setPlaceName} placeholder="" />
@@ -895,13 +1017,13 @@ export default function MyLocationPage() {
               </div>
 
               {/* ✅ Description */}
-              <div className="mt-4">
+              <div className="mt-3 sm:mt-4">
                 <Label text="Açıklama" />
                 <Field value={description} onChange={setDescription} placeholder="Örn: Panel Konum deposu" />
               </div>
 
               {/* Row 2 */}
-              <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div className="mt-3 sm:mt-4 grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-2">
                 <div>
                   <Label text="Ad Soyad *" />
                   <Field value={contactName} onChange={setContactName} placeholder="" />
@@ -913,10 +1035,10 @@ export default function MyLocationPage() {
               </div>
 
               {/* Phone */}
-              <div className="mt-4">
+              <div className="mt-3 sm:mt-4">
                 <Label text="Telefon Numarası *" />
                 <div className="flex gap-2">
-                  <button type="button" className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm">
+                  <button type="button" className="h-9 sm:h-10 rounded-lg border border-neutral-200 bg-white px-2 sm:px-3 text-xs sm:text-sm shrink-0">
                     🇹🇷 ▼
                   </button>
                   <Field value={mobile} onChange={setMobile} placeholder="" />
@@ -924,11 +1046,11 @@ export default function MyLocationPage() {
               </div>
 
               {/* ✅ Address selectors (ülke/il/ilçe endpointlerden) */}
-              <div className="mt-8 border-t border-neutral-200 pt-6">
-                <div className="text-sm font-semibold text-neutral-900">Adres</div>
+              <div className="mt-6 sm:mt-8 border-t border-neutral-200 pt-4 sm:pt-6">
+                <div className="text-xs sm:text-sm font-semibold text-neutral-900">Adres</div>
               </div>
 
-              <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <div className="mt-3 sm:mt-4 grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-3">
                 {/* Ülke */}
                 <div className="lg:col-span-1">
                   <Label text="Ülke *" />
@@ -939,7 +1061,7 @@ export default function MyLocationPage() {
                       const v = e.target.value ? Number(e.target.value) : "";
                       setCountryId(v);
                     }}
-                    className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+                    className="h-9 sm:h-10 w-full rounded-lg border border-neutral-200 bg-white px-2 sm:px-3 text-xs sm:text-sm outline-none focus:ring-2 focus:ring-indigo-200"
                   >
                     <option value="">{countries.length ? "Ülke seçin" : "Ülkeler yükleniyor..."}</option>
                     {countries.map((c) => (
@@ -961,7 +1083,7 @@ export default function MyLocationPage() {
                     }}
                     disabled={!countryId}
                     className={cn(
-                      "h-10 w-full rounded-lg border px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200",
+                      "h-9 sm:h-10 w-full rounded-lg border px-2 sm:px-3 text-xs sm:text-sm outline-none focus:ring-2 focus:ring-indigo-200",
                       !countryId ? "border-neutral-200 bg-neutral-50 text-neutral-500" : "border-neutral-200 bg-white"
                     )}
                   >
@@ -985,7 +1107,7 @@ export default function MyLocationPage() {
                     }}
                     disabled={!countryId || !stateId}
                     className={cn(
-                      "h-10 w-full rounded-lg border px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200",
+                      "h-9 sm:h-10 w-full rounded-lg border px-2 sm:px-3 text-xs sm:text-sm outline-none focus:ring-2 focus:ring-indigo-200",
                       !countryId || !stateId ? "border-neutral-200 bg-neutral-50 text-neutral-500" : "border-neutral-200 bg-white"
                     )}
                   >
@@ -1002,28 +1124,28 @@ export default function MyLocationPage() {
               </div>
 
               {/* Address */}
-              <div className="mt-4">
+              <div className="mt-3 sm:mt-4">
                 <Label text="Tam Açık Adres *" />
                 <textarea
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   placeholder="Sorun yaşamamak için tam adres giriniz (Mahalle, Sokak, Bina no, İlçe, İl)"
-                  className="min-h-[90px] w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+                  className="min-h-[80px] sm:min-h-[90px] w-full rounded-lg border border-neutral-200 px-2 sm:px-3 py-2 text-xs sm:text-sm outline-none focus:ring-2 focus:ring-indigo-200"
                 />
               </div>
 
               {/* Postcode */}
-              <div className="mt-4">
+              <div className="mt-3 sm:mt-4">
                 <Label text="Posta Kodu" />
                 <Field value={postcode} onChange={setPostcode} placeholder="06000" />
               </div>
             </div>
             
-            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-neutral-200">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-2 px-3 sm:px-6 py-3 sm:py-4 border-t border-neutral-200">
               <button
                 type="button"
                 onClick={() => !saving && setOpen(false)}
-                className="h-10 rounded-lg border border-indigo-200 bg-white px-4 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 disabled:opacity-60"
+                className="h-9 sm:h-10 rounded-lg border border-indigo-200 bg-white px-3 sm:px-4 text-xs sm:text-sm font-semibold text-indigo-700 hover:bg-indigo-50 disabled:opacity-60"
                 disabled={saving}
               >
                 İptal Et
@@ -1031,7 +1153,7 @@ export default function MyLocationPage() {
               <button
                 type="button"
                 onClick={createPickupLocation}
-                className="h-10 rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                className="h-9 sm:h-10 rounded-lg bg-indigo-600 px-3 sm:px-4 text-xs sm:text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
                 disabled={saving}
               >
                 {saving ? "Ekleniyor…" : "Ekle"}

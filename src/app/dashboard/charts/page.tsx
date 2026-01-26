@@ -68,21 +68,32 @@ export default function Charts() {
 
   if (error) {
     return (
-      <div className="p-10 text-rose-600 whitespace-pre-wrap">{error}</div>
+      <div className="p-4 sm:p-10 text-rose-600 whitespace-pre-wrap break-words">{error}</div>
     );
   }
 
   return (
-    <div className="flex flex-wrap">
-      <div className="w-full max-w-[500px] h-[300px] bg-white rounded-md shadow overflow-auto">
-        <div className="flex justify-between items-center p-3">
-            <span className="text-sm font-semibold">Kurumsal Üye Komisyonları</span>
-            <span className="bg-gray-100 px-2 py-1 text-sm fonst-semibold rounded">
-                Toplam: {data.reduce((sum, job) => sum + (job.totalPrice! * (job.commissionRate! / 100) || 0), 0).toFixed(2)}₺
-            </span> 
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold text-neutral-900">Grafikler</h1>
+        <p className="mt-1 text-sm text-neutral-600">
+          Kurumsal üye komisyon istatistikleri
+        </p>
+      </div>
+
+      <div className="w-full bg-white rounded-2xl border border-neutral-200 shadow-sm overflow-hidden">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-3 sm:p-4 border-b border-neutral-200">
+          <span className="text-sm sm:text-base font-semibold text-neutral-900">Kurumsal Üye Komisyonları</span>
+          <span className="bg-gray-100 px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-lg whitespace-nowrap">
+            Toplam: {data.reduce((sum, job) => sum + (job.totalPrice! * (job.commissionRate! / 100) || 0), 0).toFixed(2)}₺
+          </span> 
         </div>
         
-        <ChartBar data={data}></ChartBar>
+        <div className="p-3 sm:p-4">
+          <div className="w-full h-[250px] sm:h-[300px] md:h-[350px] min-w-0">
+            <ChartBar data={data}></ChartBar>
+          </div>
+        </div>
       </div>
     </div>
   );

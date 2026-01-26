@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
-import { usePathname, useParams } from "next/navigation";
-import { useState } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import type { NavGroup } from "@/src/types/roles";
 import { ChevronRight } from "lucide-react";
 
@@ -16,12 +16,69 @@ const ROLE_TITLES: Record<string, string> = {
 export default function Sidebar({ nav = [] as NavGroup[] }: { nav?: NavGroup[] }) {
   const pathname = usePathname();
 
+  // Mobilde kapalı, masaüstünde açık gelsin (ama kullanıcı isterse masaüstünde de kapatabilsin)
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   const [open, setOpen] = useState<Record<string, boolean>>(
     () => Object.fromEntries(nav.map((g) => [g.title, true])) as Record<string, boolean>
   );
 
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)"); // tailwind lg
+    const applyDefault = () => setSidebarOpen(mq.matches);
+
+    applyDefault();
+    mq.addEventListener?.("change", applyDefault);
+
+    const onOpen = () => setSidebarOpen(true);
+    const onClose = () => setSidebarOpen(false);
+    const onToggle = () => setSidebarOpen((s) => !s);
+
+    window.addEventListener("sidebar:open", onOpen as EventListener);
+    window.addEventListener("sidebar:close", onClose as EventListener);
+    window.addEventListener("sidebar:toggle", onToggle as EventListener);
+
+    return () => {
+      mq.removeEventListener?.("change", applyDefault);
+      window.removeEventListener("sidebar:open", onOpen as EventListener);
+      window.removeEventListener("sidebar:close", onClose as EventListener);
+      window.removeEventListener("sidebar:toggle", onToggle as EventListener);
+    };
+  }, []);
+
   return (
-    <aside className="sticky top-0 h-dvh w-72 shrink-0 bg-white border-r border-neutral-200 flex flex-col overflow-hidden">
+    <>
+      {/* Mobil overlay */}
+      {sidebarOpen && (
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          aria-label="Menüyü kapat"
+        />
+      )}
+
+      {/* Masaüstünde kapalıyken açma düğmesi */}
+      {!sidebarOpen && (
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(true)}
+          className="hidden lg:flex fixed left-4 top-4 z-20 items-center justify-center h-10 w-10 rounded-xl bg-white border border-neutral-200 shadow-sm hover:bg-neutral-50"
+          aria-label="Menüyü aç"
+          title="Menüyü aç"
+        >
+          <span className="text-lg leading-none">☰</span>
+        </button>
+      )}
+
+      <aside
+        className={[
+          "fixed lg:sticky top-0 left-0 z-40 h-dvh w-72 shrink-0 bg-white border-r border-neutral-200 flex flex-col overflow-hidden",
+          "transition-transform duration-200 ease-out will-change-transform",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full",
+          sidebarOpen ? "lg:flex" : "lg:hidden",
+        ].join(" ")}
+      >
        {/* Header */}
       <div className="px-5 pt-6 pb-4">
         <div className="flex items-center gap-2 h-8 overflow-visible">
@@ -32,6 +89,15 @@ export default function Sidebar({ nav = [] as NavGroup[] }: { nav?: NavGroup[] }
             draggable={false}
           />
           <div className="text-lg font-semibold text-orange-600">Kurumsal Üye Paneli</div>
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(false)}
+            className="ml-auto inline-flex items-center justify-center h-9 w-9 rounded-lg hover:bg-neutral-100"
+            aria-label="Menüyü kapat"
+            title="Menüyü kapat"
+          >
+            <span className="text-xl leading-none">×</span>
+          </button>
         </div>
       </div>
 
@@ -59,6 +125,10 @@ export default function Sidebar({ nav = [] as NavGroup[] }: { nav?: NavGroup[] }
                     <li key={it.href}>
                       <Link
                         href={href}
+                        onClick={() => {
+                          // Mobilde tıklayınca menüyü kapat
+                          if (window.matchMedia("(max-width: 1023px)").matches) setSidebarOpen(false);
+                        }}
                         className={[
                           "flex items-center justify-between rounded-xl px-4 py-3 transition",
                           active ? "bg-orange-500 text-white shadow-sm" : "text-orange-600 hover:bg-orange-50",
@@ -76,5 +146,6 @@ export default function Sidebar({ nav = [] as NavGroup[] }: { nav?: NavGroup[] }
         })}
       </nav>
     </aside>
+    </>
   );
 }
