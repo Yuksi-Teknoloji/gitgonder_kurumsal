@@ -3,13 +3,37 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 import type { CorporateRegisterInput } from "@/src/types/auth";
+
+// Türkçe alfabeye göre sıralama fonksiyonu
+const turkishSort = <T extends { name: string }>(items: T[]): T[] => {
+  return [...items].sort((a, b) =>
+    a.name.localeCompare(b.name, "tr", { sensitivity: "base" })
+  );
+};
+
+interface State {
+  id: number;
+  name: string;
+}
+
+interface City {
+  id: number;
+  name: string;
+}
 
 export default function CorporateRegisterPage() {
   const router = useRouter();
   const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState(false);
+
+  // İl ve ilçe state'leri
+  const [states, setStates] = React.useState<State[]>([]);
+  const [cities, setCities] = React.useState<City[]>([]);
+  const [selectedStateId, setSelectedStateId] = React.useState<number | null>(null);
+  const [statesLoading, setStatesLoading] = React.useState(false);
+  const [citiesLoading, setCitiesLoading] = React.useState(false);
 
   const [form, setForm] = React.useState<CorporateRegisterInput>({
     companyName: "",
@@ -33,12 +57,61 @@ export default function CorporateRegisterPage() {
     acceptedKvkk: false,
   });
 
-  const isDuplicateEmailError =
-    error && error.includes("Bu email adresi zaten kullanılıyor");
+  // İlleri yükle
+  React.useEffect(() => {
+    const fetchStates = async () => {
+      setStatesLoading(true);
+      try {
+        const res = await fetch(
+          "https://www.yuksi.dev/geo/states?country_id=225&limit=100&offset=0",
+          {
+            headers: { accept: "application/json" },
+          }
+        );
+        const data = await res.json();
+        if (data && Array.isArray(data)) {
+          setStates(turkishSort(data));
+        }
+      } catch (err) {
+        toast.error("İller yüklenirken hata oluştu");
+      } finally {
+        setStatesLoading(false);
+      }
+    };
+    fetchStates();
+  }, []);
+
+  // İl seçildiğinde ilçeleri yükle
+  React.useEffect(() => {
+    if (!selectedStateId) {
+      setCities([]);
+      return;
+    }
+
+    const fetchCities = async () => {
+      setCitiesLoading(true);
+      try {
+        const res = await fetch(
+          `https://www.yuksi.dev/geo/cities?state_id=${selectedStateId}&limit=100&offset=0`,
+          {
+            headers: { accept: "application/json" },
+          }
+        );
+        const data = await res.json();
+        if (data && Array.isArray(data)) {
+          setCities(turkishSort(data));
+        }
+      } catch (err) {
+        toast.error("İlçeler yüklenirken hata oluştu");
+      } finally {
+        setCitiesLoading(false);
+      }
+    };
+    fetchCities();
+  }, [selectedStateId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
 
     // Zorunlu alan kontrolü
     const requiredFields: Array<{
@@ -68,49 +141,49 @@ export default function CorporateRegisterPage() {
 
     if (missingFields.length > 0) {
       const fieldNames = missingFields.map((f) => f.label).join(", ");
-      setError(`Lütfen aşağıdaki zorunlu alanları doldurun: ${fieldNames}`);
+      toast.error(`Lütfen aşağıdaki zorunlu alanları doldurun: ${fieldNames}`);
       return;
     }
 
     // Email format kontrolü
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(form.email)) {
-      setError("Lütfen geçerli bir e-posta adresi giriniz.");
+      toast.error("Lütfen geçerli bir e-posta adresi giriniz.");
       return;
     }
 
     // Şifre validasyonları
     if (form.password !== form.passwordConfirm) {
-      setError("Şifreler eşleşmiyor.");
+      toast.error("Şifreler eşleşmiyor.");
       return;
     }
 
     if (form.password.length < 6) {
-      setError("Şifre en az 6 karakter olmalıdır.");
+      toast.error("Şifre en az 6 karakter olmalıdır.");
       return;
     }
 
     // VKN validasyonu
     if (form.vkn.length !== 10) {
-      setError("VKN 10 haneli olmalıdır.");
+      toast.error("VKN 10 haneli olmalıdır.");
       return;
     }
 
     // Telefon validasyonu
     const phoneDigits = form.phone.replace(/\D/g, "");
     if (phoneDigits.length < 7) {
-      setError("Telefon numarası en az 7 haneli olmalıdır.");
+      toast.error("Telefon numarası en az 7 haneli olmalıdır.");
       return;
     }
 
     // Onay kutuları kontrolü
     if (!form.acceptedTos) {
-      setError("Kullanım şartlarını kabul etmelisiniz.");
+      toast.error("Kullanım şartlarını kabul etmelisiniz.");
       return;
     }
 
     if (!form.acceptedKvkk) {
-      setError("KVKK metnini kabul etmelisiniz.");
+      toast.error("KVKK metnini kabul etmelisiniz.");
       return;
     }
 
@@ -177,6 +250,7 @@ export default function CorporateRegisterPage() {
       }
 
       setSuccess(true);
+      toast.success("Kayıt başarılı! Yönlendiriliyorsunuz...");
 
       // Status'a göre yönlendirme
       setTimeout(() => {
@@ -198,7 +272,7 @@ export default function CorporateRegisterPage() {
         }
       }, 2000);
     } catch (err: any) {
-      setError(err?.message || "Kayıt sırasında bir hata oluştu.");
+      toast.error(err?.message || "Kayıt sırasında bir hata oluştu.");
     } finally {
       setLoading(false);
     }
@@ -253,47 +327,6 @@ export default function CorporateRegisterPage() {
             onSubmit={handleSubmit}
             className="px-4 sm:px-6 md:px-8 py-6 space-y-8"
           >
-            {error && (
-              <>
-                {isDuplicateEmailError ? (
-                  <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                    <div className="flex gap-3">
-                      <div className="mt-0.5">
-                        <svg
-                          className="w-5 h-5 text-amber-600"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-amber-800">
-                          Bu e-posta adresiyle zaten bir hesap oluşturulmuş.
-                        </p>
-                        <p className="mt-1 text-xs text-amber-700">
-                          Lütfen giriş yapmayı deneyin veya farklı bir e-posta
-                          adresiyle kayıt olun. Eğer size ait olmayan bir kayıt
-                          olduğunu düşünüyorsanız{" "}
-                          <span className="font-semibold">
-                            destek ekibimizle iletişime geçin.
-                          </span>
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-sm text-red-700">{error}</p>
-                  </div>
-                )}
-              </>
-            )}
-
             {/* Firma Bilgileri */}
             <div className="mb-8">
               <h2 className="text-lg font-semibold text-neutral-900 mb-4">
@@ -359,34 +392,58 @@ export default function CorporateRegisterPage() {
                     <label className="block text-sm font-medium text-neutral-700 mb-1">
                       İl <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="text"
+                    <select
                       required
-                      minLength={2}
-                      value={form.city}
-                      onChange={(e) =>
-                        setForm({ ...form, city: e.target.value })
-                      }
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
-                      placeholder="İstanbul"
-                    />
+                      value={selectedStateId || ""}
+                      onChange={(e) => {
+                        const stateId = e.target.value ? Number(e.target.value) : null;
+                        setSelectedStateId(stateId);
+                        const selectedState = states.find((s) => s.id === stateId);
+                        setForm({
+                          ...form,
+                          city: selectedState?.name || "",
+                          district: "",
+                        });
+                        setCities([]);
+                      }}
+                      disabled={statesLoading}
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none bg-white disabled:bg-neutral-100"
+                    >
+                      <option value="">
+                        {statesLoading ? "Yükleniyor..." : "İl Seçiniz"}
+                      </option>
+                      {states.map((state) => (
+                        <option key={state.id} value={state.id}>
+                          {state.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-neutral-700 mb-1">
                       İlçe <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="text"
+                    <select
                       required
-                      minLength={2}
                       value={form.district}
-                      onChange={(e) =>
-                        setForm({ ...form, district: e.target.value })
-                      }
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
-                      placeholder="Kadıköy"
-                    />
+                      onChange={(e) => setForm({ ...form, district: e.target.value })}
+                      disabled={!selectedStateId || citiesLoading}
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none bg-white disabled:bg-neutral-100"
+                    >
+                      <option value="">
+                        {citiesLoading
+                          ? "Yükleniyor..."
+                          : !selectedStateId
+                            ? "Önce il seçiniz"
+                            : "İlçe Seçiniz"}
+                      </option>
+                      {cities.map((city) => (
+                        <option key={city.id} value={city.name}>
+                          {city.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
