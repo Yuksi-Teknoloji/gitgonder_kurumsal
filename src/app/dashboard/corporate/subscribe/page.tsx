@@ -79,8 +79,6 @@ function onlyDigits(s: string) {
 type PaymentMethod = "card" | "eft" | "cash";
 
 type PayForm = {
-  quantity: number;
-
   paymentMethod: PaymentMethod;
 
   email: string;
@@ -120,7 +118,6 @@ export default function CorporateSubscribePage() {
   );
 
   const [payForm, setPayForm] = React.useState<PayForm>({
-    quantity: 10, // default (min)
     paymentMethod: "card",
 
     email: "",
@@ -137,11 +134,7 @@ export default function CorporateSubscribePage() {
   });
 
   const unitPrice = selectedPackage?.price ?? 0;
-  const totalAmount = Math.max(0, Math.round(unitPrice * (payForm.quantity || 0)));
-
-  // Paket adedi limitleri (istersen paket verisinden dinamik bağlarız)
-  const MIN_QTY = 10;
-  const MAX_QTY = 250;
+  const totalAmount = Math.max(0, Math.round(unitPrice));
 
   // ===== initial packages load =====
   React.useEffect(() => {
@@ -228,7 +221,7 @@ export default function CorporateSubscribePage() {
 
       installment_count: 0,
       no_installment: 1,
-      basket_json: JSON.stringify([[pkg.packageName, String(form.quantity), String(totalAmount)]]),
+      basket_json: JSON.stringify([[pkg.packageName, "1", String(totalAmount)]]),
       lang: "tr",
       test_mode: 0,
       non_3d: 0,
@@ -344,10 +337,6 @@ export default function CorporateSubscribePage() {
       if (!bearer) throw new Error("No token");
       if (!selectedPackage) throw new Error("Lütfen bir paket seç.");
 
-      // quantity clamp
-      const qty = Math.min(MAX_QTY, Math.max(MIN_QTY, Number(payForm.quantity || MIN_QTY)));
-      if (qty !== payForm.quantity) setPayForm((s) => ({ ...s, quantity: qty }));
-
       if (!payForm.email) throw new Error("E-posta gerekli.");
 
       if (payForm.paymentMethod !== "card") {
@@ -369,10 +358,14 @@ export default function CorporateSubscribePage() {
       if (!corporate_user_id) throw new Error("Token içinden corporate_user_id okunamadı.");
 
       // 1) subscription request
-      const merchant_oid = await createSubscriptionRequest(bearer, corporate_user_id, selectedPackage.packageId);
+      const merchant_oid = await createSubscriptionRequest(
+        bearer,
+        corporate_user_id,
+        selectedPackage.packageId
+      );
 
       // 2) paytr init -> url
-      const url = await createPaytrUrl(bearer, merchant_oid, selectedPackage, { ...payForm, quantity: qty });
+      const url = await createPaytrUrl(bearer, merchant_oid, selectedPackage, payForm);
 
       // 3) yeni sekme
       const win = window.open(url, "_blank", "noopener,noreferrer");
@@ -512,23 +505,20 @@ export default function CorporateSubscribePage() {
             </div>
 
             <div className="px-6 py-5">
-              {/* Top row: Paket adedi + ödeme yöntemi */}
+              {/* Top row: Seçili Paket + ödeme yöntemi */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div>
-                  <div className="text-sm font-semibold text-neutral-800">Paket Adedi</div>
-                  <input
-                    value={String(payForm.quantity)}
-                    onChange={(e) =>
-                      setPayForm((s) => ({ ...s, quantity: Number(e.target.value || MIN_QTY) }))
-                    }
-                    className="mt-2 w-full rounded-xl border border-neutral-200 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-                    inputMode="numeric"
-                  />
-                  <div className="mt-2 text-xs text-neutral-500">
-                    En az {MIN_QTY} paket • En fazla {MAX_QTY} paket
+                <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
+                  <div className="text-sm font-semibold text-neutral-800">Seçili Paket</div>
+                  <div className="mt-2 text-sm font-semibold text-neutral-900">
+                    {selectedPackage?.packageName}
                   </div>
-                  <div className="mt-2 text-sm text-neutral-700">
-                    Toplam: <span className="font-semibold">₺{totalAmount.toLocaleString("tr-TR")}</span>
+                  <div className="mt-1 text-xs text-neutral-600">
+                    Süre:{" "}
+                    <span className="font-semibold text-neutral-800">{selectedPackage?.durationDays} gün</span>
+                  </div>
+                  <div className="mt-3 text-sm text-neutral-700">
+                    Ödenecek Tutar:{" "}
+                    <span className="font-semibold">₺{totalAmount.toLocaleString("tr-TR")}</span>
                   </div>
                 </div>
 
@@ -544,26 +534,6 @@ export default function CorporateSubscribePage() {
                         onChange={() => setPayForm((s) => ({ ...s, paymentMethod: "card" }))}
                       />
                       Kredi Kartı (PayTR)
-                    </label>
-
-                    <label className="inline-flex items-center gap-2 text-sm text-neutral-400">
-                      <input
-                        type="radio"
-                        name="pm"
-                        checked={payForm.paymentMethod === "eft"}
-                        onChange={() => setPayForm((s) => ({ ...s, paymentMethod: "eft" }))}
-                      />
-                      Havale/EFT
-                    </label>
-
-                    <label className="inline-flex items-center gap-2 text-sm text-neutral-400">
-                      <input
-                        type="radio"
-                        name="pm"
-                        checked={payForm.paymentMethod === "cash"}
-                        onChange={() => setPayForm((s) => ({ ...s, paymentMethod: "cash" }))}
-                      />
-                      Nakit
                     </label>
                   </div>
                 </div>
