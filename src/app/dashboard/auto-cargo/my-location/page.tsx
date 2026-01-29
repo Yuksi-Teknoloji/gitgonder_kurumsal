@@ -411,7 +411,31 @@ export default function MyLocationPage() {
         list.find((c) => String(c?.name || "").toLowerCase() === "turkey") ||
         list[0];
 
-      if (tr?.id) setCountryId(tr.id);
+      if (tr?.id) {
+        setCountryId(tr.id);
+
+        // İlleri hemen yükle - useEffect beklemeden (create-cargo mantığı)
+        try {
+          const statesRes = await fetch(`/yuksi/logistics/states?country_id=${encodeURIComponent(String(tr.id))}&limit=5000&offset=0`, {
+            method: "GET",
+            cache: "no-store",
+            headers: { Accept: "application/json", Authorization: `Bearer ${bearer}` },
+          });
+
+          const statesJson = await readJson<LogisticsRes<LogisticsState>>(statesRes);
+
+          if (statesRes.status === 401 || statesRes.status === 403) {
+            router.replace("/");
+            return;
+          }
+          if (statesRes.ok) {
+            const statesList = Array.isArray(statesJson?.data) ? statesJson.data : [];
+            setStates(statesList);
+          }
+        } catch {
+          // İller yüklenemezse sessizce devam et, useEffect tekrar deneyecek
+        }
+      }
     } catch (e: any) {
       setCountries([]);
       setCountryId("");
@@ -579,9 +603,8 @@ export default function MyLocationPage() {
     setAddress("");
     setPostcode("");
 
-    // ✅ logistics reset (modal her açılışta temiz başlasın)
-    setCountryId((prev) => prev); // TR default kalsın
-    setStates([]);
+    // ✅ logistics reset - states listesini koruyoruz (iller zaten yüklü)
+    // countryId TR olarak kalıyor, sadece seçimleri sıfırlıyoruz
     setStateId("");
     setCities([]);
     setCityId("");
