@@ -43,6 +43,38 @@ function fmtMoney(amount?: number | null, currency?: string | null) {
   return `${cur} ${fixed}`;
 }
 
+/* ========= Localization (TR) ========= */
+function trServiceType(v?: string | null) {
+  const x = String(v || "").toLowerCase();
+  if (!x) return "-";
+  if (x === "express") return "Hızlı";
+  return v || "-";
+}
+
+function trAvgDeliveryTime(v?: string | null) {
+  const x = String(v || "");
+  if (!x) return "-";
+  if (x === "1to3WorkingDays") return "1-3 iş günü";
+  if (x === "1to7WorkingDays") return "1-7 iş günü";
+  return x;
+}
+
+function trDeliveryType(v?: string | null) {
+  const x = String(v || "");
+  if (!x) return "-";
+  if (x === "toCustomerDoorstep") return "Müşteri adresine teslim";
+  return x;
+}
+
+function trPickupDropoff(v?: string | null) {
+  const x = String(v || "");
+  if (!x) return "-";
+  if (x === "dropoffOnly") return "Şubeden alım";
+  if (x === "freePickup") return "Adresten alım";
+  if (x === "freePickupDropoff") return "Şubeden ve adresten alım";
+  return x;
+}
+
 /* ========= Types ========= */
 
 type DeliveryCompanyOption = {
@@ -417,8 +449,10 @@ export default function CargoPricesPage() {
                   const name = o.deliveryOptionName || o.deliveryCompanyName || "Kargo";
                   const price = fmtMoney(o.price, o.currency);
                   const id = o.deliveryOptionId ?? "-";
-                  const avg = o.avgDeliveryTime || "-";
-                  const pickup = o.pickupDropoff || "-";
+                  const avg = trAvgDeliveryTime(o.avgDeliveryTime);
+                  const pickup = trPickupDropoff(o.pickupDropoff);
+                  const svc = trServiceType(o.serviceType);
+                  const dtype = trDeliveryType(o.deliveryType);
                   const cutOff = o.pickupCutOffTime ? `Cutoff: ${o.pickupCutOffTime}` : "";
                   const cod = typeof o.codCharge === "number" ? fmtMoney(o.codCharge, o.currency) : "-";
                   const returnFee = typeof o.returnFee === "number" ? fmtMoney(o.returnFee, o.currency) : "-";
@@ -450,16 +484,11 @@ export default function CargoPricesPage() {
 
                           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-600">
                             <span className="rounded-full border border-neutral-200 bg-white px-2 py-0.5 whitespace-nowrap">
-                              {o.serviceType || "service"}
-                            </span>
-                            <span className="rounded-full border border-neutral-200 bg-white px-2 py-0.5 whitespace-nowrap">
-                              {o.trackingType || "tracking"}
+                              {svc}
                             </span>
                             <span className="rounded-full border border-neutral-200 bg-white px-2 py-0.5 whitespace-nowrap">{avg}</span>
+                            <span className="rounded-full border border-neutral-200 bg-white px-2 py-0.5 whitespace-nowrap">{dtype}</span>
                             <span className="rounded-full border border-neutral-200 bg-white px-2 py-0.5 whitespace-nowrap">{pickup}</span>
-                            {cutOff ? (
-                              <span className="rounded-full border border-neutral-200 bg-white px-2 py-0.5 whitespace-nowrap">{cutOff}</span>
-                            ) : null}
                           </div>
 
                           <div className="mt-3 grid gap-2 grid-cols-1 sm:grid-cols-2">
@@ -473,12 +502,6 @@ export default function CargoPricesPage() {
                               <div className="mt-1 text-sm font-semibold text-neutral-900 tabular-nums break-words">{returnFee}</div>
                             </div>
                           </div>
-
-                          {o.cardOnDeliveryPercentage ? (
-                            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 break-words">
-                              Kartla kapıda ödeme: <span className="font-semibold">{o.cardOnDeliveryPercentage}</span>
-                            </div>
-                          ) : null}
 
                           {o.checkAllBranches ? (
                             <div className="mt-3 text-xs text-neutral-600 break-words">
