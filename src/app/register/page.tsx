@@ -62,12 +62,7 @@ export default function CorporateRegisterPage() {
     const fetchStates = async () => {
       setStatesLoading(true);
       try {
-        const res = await fetch(
-          "https://www.yuksi.dev/geo/states?country_id=225&limit=100&offset=0",
-          {
-            headers: { accept: "application/json" },
-          }
-        );
+        const res = await fetch("/api/geo/states");
         const data = await res.json();
         if (data && Array.isArray(data)) {
           setStates(turkishSort(data));
@@ -91,12 +86,7 @@ export default function CorporateRegisterPage() {
     const fetchCities = async () => {
       setCitiesLoading(true);
       try {
-        const res = await fetch(
-          `https://www.yuksi.dev/geo/cities?state_id=${selectedStateId}&limit=100&offset=0`,
-          {
-            headers: { accept: "application/json" },
-          }
-        );
+        const res = await fetch(`/api/geo/cities?state_id=${selectedStateId}`);
         const data = await res.json();
         if (data && Array.isArray(data)) {
           setCities(turkishSort(data));
