@@ -20,7 +20,7 @@ export default async function CorporateLayout({
         <Sidebar nav={nav} />
         <div className="flex-1 orange-ui">
           <Header
-            title="Yüksi Panel"
+            title=""
             headerClass="bg-orange-500 border-orange-400 text-white"
             titleClass="font-extrabold"
           />

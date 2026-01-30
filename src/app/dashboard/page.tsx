@@ -22,6 +22,9 @@ export default function CorporateHome() {
   // ✅ Profil adı için state
   const [fullName, setFullName] = useState<string>("");
 
+  // ✅ Status için state
+  const [userStatus, setUserStatus] = useState<string | null>(null);
+
   useEffect(() => {
     setToken(getAuthToken());
   }, []);
@@ -59,6 +62,34 @@ export default function CorporateHome() {
     run();
   }, [token]);
 
+  // ✅ Status kontrolü
+  useEffect(() => {
+    const checkStatus = async () => {
+      if (!token) return;
+
+      try {
+        const res = await fetch("/api/onboarding/status", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (res.ok) {
+          const json = await readJson(res);
+          if (json?.data?.status) {
+            setUserStatus(json.data.status);
+          }
+        }
+      } catch {
+        // sessiz geç
+      }
+    };
+
+    checkStatus();
+  }, [token]);
+
   if (token === null) {
     return null;
   }
@@ -77,6 +108,17 @@ export default function CorporateHome() {
   if (role !== "corporate" && role !== "business") {
     console.log("[Dashboard Page] Role mismatch, redirecting to /");
     redirect("/");
+  }
+
+  // SUBSCRIBED veya ACTIVE_READY ise sadece hoşgeldin mesajı göster
+  if (userStatus === "SUBSCRIBED" || userStatus === "ACTIVE_READY") {
+    return (
+      <div className="rounded-2xl bg-white p-5 sm:p-6 shadow border border-neutral-200">
+        <div className="text-lg sm:text-xl font-semibold text-neutral-900">
+          Kurumsal Üye Paneline Hoşgeldin{fullName ? `, ${fullName}` : ""}
+        </div>
+      </div>
+    );
   }
 
   return (

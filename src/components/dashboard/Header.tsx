@@ -49,6 +49,9 @@ export default function Header({
   const [notifs, setNotifs] = useState<ApiNotif[]>([]);
   const notifRef = useRef<HTMLDivElement>(null);
 
+  // ===== User Name =====
+  const [userName, setUserName] = useState<string>("");
+
   const readJson = async <T,>(res: Response): Promise<T> => {
     const t = await res.text();
     try {
@@ -165,6 +168,38 @@ export default function Header({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notifOpen]);
 
+  // ===== Fetch User Name =====
+  useEffect(() => {
+    const fetchUserName = async () => {
+      const bearer = getBearerToken();
+      if (!bearer) return;
+
+      try {
+        const res = await fetch("/yuksi/corporate/profile", {
+          cache: "no-store",
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${bearer}`,
+          },
+        });
+
+        const json = await readJson<any>(res);
+        if (res.ok) {
+          const data = json?.data ?? json ?? {};
+          const firstName = data.firstName ?? data.first_name ?? "";
+          const lastName = data.lastName ?? data.last_name ?? "";
+          if (firstName || lastName) {
+            setUserName(`${firstName} ${lastName}`.trim());
+          }
+        }
+      } catch {
+        // sessizce geç
+      }
+    };
+
+    fetchUserName();
+  }, []);
+
   const getCookie = (name: string) => {
     const m = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
     return m ? decodeURIComponent(m[1]) : null;
@@ -247,7 +282,7 @@ export default function Header({
           </button>
 
           <h1 className={["text-lg font-semibold", titleClass].join(" ")}>
-            {title}
+            Hoşgeldiniz, {userName}
           </h1>
         </div>
 
@@ -384,14 +419,14 @@ export default function Header({
               className="flex items-center gap-3 rounded-lg px-2 py-1 hover:bg-white/10"
               title={userLabel}
             >
-              <span className="text-sm opacity-80">{userLabel}</span>
+              <span className="text-lg font-medium opacity-90">{userLabel}</span>
               <Image
                 src="/Brand/logo1.png"
                 alt="Yuksi"
                 unoptimized
-                width={52}
-                height={52}
-                className="h-9 w-9 rounded-full bg-orange p-0 object-contain"
+                width={64}
+                height={64}
+                className="h-12 w-12 rounded-full bg-orange p-0 object-contain"
               />
             </button>
 
