@@ -152,7 +152,7 @@ export default function CorporateLoginPage() {
       <div className="w-full max-w-md bg-white/90 backdrop-blur-md p-8 rounded-2xl shadow-2xl border border-orange-200">
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold text-orange-600">
-            Kurumsal Üye Paneli
+            Kurumsal Üye Girişi
           </h1>
           <p className="text-gray-600 mt-2">Kurumsal Üye giriş ekranı</p>
         </div>

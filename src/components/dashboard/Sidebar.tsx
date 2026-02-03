@@ -88,7 +88,7 @@ export default function Sidebar({ nav = [] as NavGroup[] }: { nav?: NavGroup[] }
             className="h-28 w-[120px] object-containshrink-0 select-none"
             draggable={false}
           />
-          <div className="text-lg font-semibold text-orange-600">Kurumsal Üye Paneli</div>
+          <div className="text-lg font-semibold text-orange-600">Kurumsal Üye</div>
           <button
             type="button"
             onClick={() => setSidebarOpen(false)}
