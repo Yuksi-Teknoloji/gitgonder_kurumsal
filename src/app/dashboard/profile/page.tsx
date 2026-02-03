@@ -587,6 +587,7 @@ export default function CorporateProfilePage() {
                 <Image
                   src="/Brand/yuksi.png"
                   alt="profile"
+                  unoptimized
                   fill
                   className="rounded-full object-cover ring-4 ring-orange-500"
                 />

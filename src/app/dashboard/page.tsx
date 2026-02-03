@@ -111,11 +111,11 @@ export default function CorporateHome() {
   }
 
   // SUBSCRIBED veya ACTIVE_READY ise sadece hoşgeldin mesajı göster
-  if (userStatus === "SUBSCRIBED" || userStatus === "ACTIVE_READY") {
+  if ( userStatus === "SUBSCRIBED" || userStatus === "ACTIVE_READY" ) {
     return (
       <div className="rounded-2xl bg-white p-5 sm:p-6 shadow border border-neutral-200">
         <div className="text-lg sm:text-xl font-semibold text-neutral-900">
-          Kurumsal Üye Paneline Hoşgeldin{fullName ? `, ${fullName}` : ""}
+          Kurumsal Üye Sayfasına Hoşgeldin{fullName ? `, ${fullName}` : ""}
         </div>
       </div>
     );
@@ -132,7 +132,7 @@ export default function CorporateHome() {
             </div>
             <div className="min-w-0">
               <div className="text-lg sm:text-xl font-semibold text-neutral-900 truncate">
-                Kurumsal Üye Paneline Hoşgeldin{fullName ? `, ${fullName}` : ""}
+                Kurumsal Üye Sayfasına Hoşgeldin{fullName ? `, ${fullName}` : ""}
               </div>
               <div className="mt-1 text-sm text-neutral-600">
                 Kurulumu tamamlayınca sistemi eksiksiz ve sorunsuz kullanabilirsiniz.
