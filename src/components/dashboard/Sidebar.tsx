@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import type { NavGroup } from "@/src/types/roles";
 import { ChevronRight } from "lucide-react";
+import { useCorporateAccess } from "@/src/hooks/useCorporateAccess";
 
 const ROLE_TITLES: Record<string, string> = {
   admin: "Admin",
@@ -15,9 +16,36 @@ const ROLE_TITLES: Record<string, string> = {
 
 export default function Sidebar({ nav = [] as NavGroup[] }: { nav?: NavGroup[] }) {
   const pathname = usePathname();
+  const { access, loading: accessLoading } = useCorporateAccess();
 
   // Mobilde kapalı, masaüstünde açık gelsin (ama kullanıcı isterse masaüstünde de kapatabilsin)
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Erişim kontrolüne göre filtrelenmiş navigasyon
+  const filteredNav = useMemo(() => {
+    // Henüz access yüklenmediyse tüm menüyü göster (loading state)
+    if (access === null) return nav;
+
+    return nav
+      .filter((group) => {
+        // Grup seviyesinde erişim kontrolü
+        if (group.requiredAccess && group.requiredAccess.length > 0) {
+          return group.requiredAccess.some((id) => access.includes(id));
+        }
+        return true;
+      })
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => {
+          // Item seviyesinde erişim kontrolü
+          if (item.requiredAccess && item.requiredAccess.length > 0) {
+            return item.requiredAccess.some((id) => access.includes(id));
+          }
+          return true;
+        }),
+      }))
+      .filter((group) => group.items.length > 0); // Boş grupları kaldır
+  }, [nav, access]);
 
   const [open, setOpen] = useState<Record<string, boolean>>(
     () => Object.fromEntries(nav.map((g) => [g.title, true])) as Record<string, boolean>
@@ -103,7 +131,12 @@ export default function Sidebar({ nav = [] as NavGroup[] }: { nav?: NavGroup[] }
 
       {/* Scrollable area */}
       <nav className="flex-1 overflow-y-auto px-3 pb-6 space-y-4 [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-neutral-300/60 [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-track]:bg-transparent">
-        {nav.map((group) => {
+        {accessLoading && (
+          <div className="px-4 py-2 text-sm text-orange-500 animate-pulse">
+            Menü yükleniyor...
+          </div>
+        )}
+        {filteredNav.map((group) => {
           const isOpen = open[group.title] ?? true;
           return (
             <div key={group.title} className="rounded-2xl">

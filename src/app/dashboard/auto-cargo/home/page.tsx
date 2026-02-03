@@ -5,6 +5,8 @@ import * as React from "react";
 import Link from "next/link";
 import CreditTopUpModal from "@/src/components/credit/CreditTopUpModal";
 import CreditChip from "@/src/components/credit/CreditChip";
+import { ModuleAccessGuard } from "@/src/components/access/ModuleAccessGuard";
+import { CORPORATE_MODULES } from "@/src/hooks/useCorporateAccess";
 
 function cn(...x: Array<string | false | null | undefined>) {
   return x.filter(Boolean).join(" ");
@@ -66,6 +68,7 @@ export default function AutoCargoHomePage() {
   const refreshCreditRef = React.useRef<null | (() => void)>(null);
 
   return (
+    <ModuleAccessGuard moduleId={CORPORATE_MODULES.YUKSI_KARGO}>
     <div className="px-4 py-4 sm:px-6 sm:py-5 shadow-sm soft-card border border-neutral-200 rounded-2xl bg-white">
       {/* Hero */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
@@ -133,6 +136,7 @@ export default function AutoCargoHomePage() {
       </div>
       <CreditTopUpModal open={creditOpen} onOpenChange={setCreditOpen} creditBalance={creditBalance} />
     </div>
+    </ModuleAccessGuard>
   );
 }
 

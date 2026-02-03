@@ -3,6 +3,8 @@
 
 import * as React from 'react';
 import { getAuthToken } from '@/src/utils/auth';
+import { ModuleAccessGuard } from '@/src/components/access/ModuleAccessGuard';
+import { CORPORATE_MODULES } from '@/src/hooks/useCorporateAccess';
 
 /* ========= Helpers ========= */
 async function readJson<T = any>(res: Response): Promise<T> {
@@ -1041,6 +1043,7 @@ export default function CommercialListingsPage() {
     };
 
     return (
+        <ModuleAccessGuard moduleId={CORPORATE_MODULES.TICARI}>
         <div className="space-y-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
@@ -2621,5 +2624,6 @@ export default function CommercialListingsPage() {
                 </div>
             )}
         </div>
+        </ModuleAccessGuard>
     );
 }

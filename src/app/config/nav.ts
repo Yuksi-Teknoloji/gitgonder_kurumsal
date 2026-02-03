@@ -3,8 +3,16 @@ import type { Role } from "@/src/types/roles";
 import type { NavGroup as SidebarNavGroup } from "@/src/types/roles";
 
 // path tabanlı tanım
-export type RawNavItem = { label: string; path: string };
-export type RawNavGroup = { title: string; items: RawNavItem[] };
+export type RawNavItem = {
+  label: string;
+  path: string;
+  requiredAccess?: number[]; // Modül erişim ID'leri
+};
+export type RawNavGroup = {
+  title: string;
+  items: RawNavItem[];
+  requiredAccess?: number[]; // Grup seviyesinde erişim kontrolü
+};
 
 // Proje dosya yapına göre path’ler:
 // - admin sayfaları: /dashboards/[role]/admin/...
@@ -146,21 +154,22 @@ export const NAV: Record<Role, RawNavGroup[]> = {
       items: [
         { label: "Ana", path: "dashboard" },
         { label: "Profil Yönetimi", path: "dashboard/profile"},
-        { label: "Lojistik Takip", path: "dashboard/logistics-tracking" },
-        { label: "Yük Oluştur", path: "dashboard/create-load" },
-        { label: "Ticarim", path: "dashboard/commercial" },
+        { label: "Lojistik Takip", path: "dashboard/logistics-tracking", requiredAccess: [1] },
+        { label: "Yük Oluştur", path: "dashboard/create-load", requiredAccess: [1] },
+        { label: "Ticarim", path: "dashboard/commercial", requiredAccess: [2] },
         { label: "Grafikler", path: "dashboard/charts" },
       ],
     },
     {
       title: "Yüksi-Kargo",
+      requiredAccess: [3], // Grup seviyesinde kontrol - sadece access 3 varsa göster
       items: [
-        { label: "Ana Sayfa", path: "dashboard/auto-cargo/home" },
-        { label: "Kargo Oluştur", path: "dashboard/auto-cargo/create-cargo" },
-        { label: "Kargo Ücretleri", path: "dashboard/auto-cargo/cargo-prices" },
-        { label: "Kargolarım", path: "dashboard/auto-cargo/cargo-list" },
-        { label: "Kargo Paketi Ekle", path: "dashboard/auto-cargo/cargo-package" },
-        { label: "Konumum", path: "dashboard/auto-cargo/my-location" },
+        { label: "Ana Sayfa", path: "dashboard/auto-cargo/home", requiredAccess: [3] },
+        { label: "Kargo Oluştur", path: "dashboard/auto-cargo/create-cargo", requiredAccess: [3] },
+        { label: "Kargo Ücretleri", path: "dashboard/auto-cargo/cargo-prices", requiredAccess: [3] },
+        { label: "Kargolarım", path: "dashboard/auto-cargo/cargo-list", requiredAccess: [3] },
+        { label: "Kargo Paketi Ekle", path: "dashboard/auto-cargo/cargo-package", requiredAccess: [3] },
+        { label: "Konumum", path: "dashboard/auto-cargo/my-location", requiredAccess: [3] },
       ],
     },
   ],
@@ -205,18 +214,20 @@ export const NAV: Record<Role, RawNavGroup[]> = {
   ],
 };
 
-/** Sidebar için href’e çevir: path -> `/${path}`  */
+/** Sidebar için href'e çevir: path -> `/${path}`  */
 export function navForRole(role: Role): SidebarNavGroup[] | undefined {
   const raw = NAV[role];
   if (!raw) return undefined;
 
   return raw.map((g) => ({
     title: g.title,
+    requiredAccess: g.requiredAccess, // Grup seviyesinde erişim kontrolü
     items: g.items.map((it) => ({
       label: it.label,
       // Sidebar zaten `/dashboards/${role}${href}` yapıyor.
       // Bu yüzden href burada `/admin/...` veya `/restaurants/...` şeklinde olmalı.
       href: "/" + it.path.replace(/^\/+/, ""),
+      requiredAccess: it.requiredAccess, // Item seviyesinde erişim kontrolü
     })),
   }));
 }

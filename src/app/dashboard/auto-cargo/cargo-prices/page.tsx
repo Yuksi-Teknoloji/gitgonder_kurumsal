@@ -4,6 +4,8 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { getAuthToken } from "@/src/utils/auth";
+import { ModuleAccessGuard } from "@/src/components/access/ModuleAccessGuard";
+import { CORPORATE_MODULES } from "@/src/hooks/useCorporateAccess";
 
 function cn(...x: Array<string | false | null | undefined>) {
   return x.filter(Boolean).join(" ");
@@ -238,6 +240,7 @@ export default function CargoPricesPage() {
   }, [data, sortBy]);
 
   return (
+    <ModuleAccessGuard moduleId={CORPORATE_MODULES.YUKSI_KARGO}>
     <div className="px-3 sm:px-6 py-4 sm:py-5">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
@@ -527,5 +530,6 @@ export default function CargoPricesPage() {
         </div>
       </div>
     </div>
+    </ModuleAccessGuard>
   );
 }

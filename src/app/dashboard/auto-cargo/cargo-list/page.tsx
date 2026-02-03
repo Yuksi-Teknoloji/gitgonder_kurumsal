@@ -6,6 +6,8 @@ import CreditTopUpModal from "@/src/components/credit/CreditTopUpModal";
 import CreditChip from "@/src/components/credit/CreditChip";
 import { getAuthToken } from "@/src/utils/auth";
 import { useRouter } from "next/navigation";
+import { ModuleAccessGuard } from "@/src/components/access/ModuleAccessGuard";
+import { CORPORATE_MODULES } from "@/src/hooks/useCorporateAccess";
 
 function cn(...x: Array<string | false | null | undefined>) {
   return x.filter(Boolean).join(" ");
@@ -1098,6 +1100,7 @@ export default function CargoListPage() {
   const refreshCreditRef = React.useRef<null | (() => void)>(null);
 
   return (
+    <ModuleAccessGuard moduleId={CORPORATE_MODULES.YUKSI_KARGO}>
     <div className="w-full max-w-full overflow-x-hidden px-2 py-4 sm:px-4 sm:py-5 lg:px-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
@@ -1567,5 +1570,6 @@ export default function CargoListPage() {
         }}
       />
     </div>
+    </ModuleAccessGuard>
   );
 }

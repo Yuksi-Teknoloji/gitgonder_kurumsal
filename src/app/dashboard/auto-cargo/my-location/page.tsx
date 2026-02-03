@@ -4,6 +4,8 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { getAuthToken } from "@/src/utils/auth";
+import { ModuleAccessGuard } from "@/src/components/access/ModuleAccessGuard";
+import { CORPORATE_MODULES } from "@/src/hooks/useCorporateAccess";
 
 /* ================= Helpers ================= */
 
@@ -715,6 +717,7 @@ export default function MyLocationPage() {
   }, [open]);
 
   return (
+    <ModuleAccessGuard moduleId={CORPORATE_MODULES.YUKSI_KARGO}>
     <div className="w-full max-w-full overflow-x-hidden px-2 py-4 sm:px-4 sm:py-5 lg:px-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
@@ -1186,5 +1189,6 @@ export default function MyLocationPage() {
         </div>
       ) : null}
     </div>
+    </ModuleAccessGuard>
   );
 }

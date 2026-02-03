@@ -3,6 +3,8 @@
 import React from "react";
 import dynamic from "next/dynamic";
 import { getAuthToken } from "@/src/utils/auth";
+import { ModuleAccessGuard } from "@/src/components/access/ModuleAccessGuard";
+import { CORPORATE_MODULES } from "@/src/hooks/useCorporateAccess";
 
 const MapPicker = dynamic(() => import("@/src/components/map/MapPicker"), {
   ssr: false,
@@ -849,6 +851,7 @@ export default function CorporateCreateLoadPage() {
   );
 
   return (
+    <ModuleAccessGuard moduleId={CORPORATE_MODULES.YUK_OLUSTUR}>
     <form onSubmit={submit} className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Yeni Yük (Kurumsal)</h1>
@@ -1237,5 +1240,6 @@ export default function CorporateCreateLoadPage() {
         </button>
       </div>
     </form>
+    </ModuleAccessGuard>
   );
 }
