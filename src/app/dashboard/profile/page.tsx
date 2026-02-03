@@ -29,11 +29,22 @@ type CorporateProfileForm = {
   tax_number: string;
   iban: string;
   resume: string;
+
+  // ✅ NEW: password (sadece update için)
+  password: string;
 };
 
 type Country = { id: number; name: string; iso2?: string; iso3?: string; phonecode?: string };
 type State = { id: number; name: string; country_id: number; country_code?: string; iso2?: string };
-type City = { id: number; name: string; state_id: number; state_code?: string; country_id?: number; country_code?: string; timezone?: string | null };
+type City = {
+  id: number;
+  name: string;
+  state_id: number;
+  state_code?: string;
+  country_id?: number;
+  country_code?: string;
+  timezone?: string | null;
+};
 
 const pickMsg = (j: any, fallback: string) =>
   j?.error?.message || j?.message || j?.detail || j?.title || (typeof j === "string" ? j : fallback);
@@ -56,6 +67,9 @@ export default function CorporateProfilePage() {
     tax_number: "",
     iban: "",
     resume: "",
+
+    // ✅ NEW
+    password: "",
   });
 
   const [commissionRate, setCommissionRate] = React.useState<number | null>(null);
@@ -76,6 +90,9 @@ export default function CorporateProfilePage() {
     tax_number: false,
     iban: false,
     resume: false,
+
+    // ✅ NEW
+    password: false,
   });
 
   const toggle = (k: keyof typeof editing) => setEditing((s) => ({ ...s, [k]: !s[k] }));
@@ -227,6 +244,9 @@ export default function CorporateProfilePage() {
           resume: data.resume ?? "",
           latitude: Number(data.latitude ?? 0) || 0,
           longitude: Number(data.longitude ?? 0) || 0,
+
+          // ✅ NEW: server'dan gelmese bile boş kalsın
+          password: "",
         };
 
         setForm(nextForm);
@@ -298,6 +318,10 @@ export default function CorporateProfilePage() {
       if (Number.isFinite(latNum)) body.latitude = latNum;
       if (Number.isFinite(lngNum)) body.longitude = lngNum;
 
+      // ✅ NEW: password sadece doluysa gönder (boşsa backend'de şifreyi ezmesin)
+      const pw = String(form.password || "").trim();
+      if (pw) body.password = pw;
+
       const res = await fetch("/yuksi/corporate/profile", {
         method: "PUT",
         headers: {
@@ -312,6 +336,10 @@ export default function CorporateProfilePage() {
       if (!res.ok) throw new Error(pickMsg(j, `HTTP ${res.status}`));
 
       setOkMsg(j?.message || "Profil başarıyla güncellendi.");
+
+      // ✅ NEW: başarı sonrası password alanını temizle
+      setForm((p) => ({ ...p, password: "" }));
+
       setEditing({
         email: false,
         phone: false,
@@ -327,6 +355,9 @@ export default function CorporateProfilePage() {
         resume: false,
         latitude: false,
         longitude: false,
+
+        // ✅ NEW
+        password: false,
       });
     } catch (e: any) {
       setErrMsg(e?.message || "Profil güncellenemedi.");
@@ -519,7 +550,20 @@ export default function CorporateProfilePage() {
                 <EditButton onClick={() => toggle("iban")} active={editing.iban} />
               </Row>
             </Block>
-
+            <Block title="Şifre Güncelle (sadece doluysa kaydedilir)">
+              <Row>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none disabled:bg-white"
+                  placeholder="Yeni Şifre"
+                  value={form.password}
+                  onChange={onChangeText("password")}
+                  disabled={!editing.password}
+                />
+                <EditButton onClick={() => toggle("password")} active={editing.password} />
+              </Row>
+            </Block>
             <Block title="Konum">
               <Row>
                 <input
