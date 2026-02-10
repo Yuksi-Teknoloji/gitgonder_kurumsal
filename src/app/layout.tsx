@@ -1,10 +1,17 @@
 import type { Metadata } from "next";
-import { Nunito } from "next/font/google";
+import { Outfit, Inter } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import "@/globals.css";
 
-const nunito = Nunito({
+const outfit = Outfit({
   subsets: ["latin"],
+  variable: "--font-outfit",
+  weight: ["300", "400", "500", "600", "700"],
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
   weight: ["300", "400", "500", "600", "700"],
 });
 
@@ -20,7 +27,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="tr" suppressHydrationWarning>
-      <body className={`${nunito.className} antialiased`}>
+      <body className={`${outfit.variable} ${inter.variable} antialiased font-sans`}>
         {children}
         <Toaster position="top-right" />
       </body>

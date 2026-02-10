@@ -9,15 +9,22 @@
   font-display: swap;
 }
 
+@theme {
+  --font-outfit: var(--font-outfit);
+  --font-inter: var(--font-inter);
+}
+
 :root {
   --foreground: #171717;
-  --background-color: #f97316; /* flat orange base */
+  --background-color: #f97316;
+  /* flat orange base */
 }
 
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
   :root {
-    --foreground: #171717; /* karanlık temada yazıların görünmesi için */
+    --foreground: #171717;
+    /* karanlık temada yazıların görünmesi için */
     --background-color: #f97316;
   }
 }
@@ -25,33 +32,42 @@
 body {
   background-color: var(--background-color);
   color: var(--foreground);
-  font-family: "CircularStd", "Inter", system-ui, -apple-system, "Segoe UI",
-    Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-inter), system-ui, sans-serif;
 
   /* Concentric rings directly on body */
-  background-image: repeating-radial-gradient(
-    circle at center,
-    rgba(255, 255, 255, 0.15) 0px,
-    rgba(255, 255, 255, 0.15) 20px,
-    transparent 20px,
-    transparent 200px
-  );
+  background-image: repeating-radial-gradient(circle at center,
+      rgba(255, 255, 255, 0.15) 0px,
+      rgba(255, 255, 255, 0.15) 20px,
+      transparent 20px,
+      transparent 200px);
 
   background-repeat: no-repeat;
   background-position: center;
-  background-size: 200% 200%; /* slightly larger for subtle effect */
+  background-size: 200% 200%;
+  /* slightly larger for subtle effect */
 
   /* Continuous zoom without scroll */
   animation: zoomRings 12s ease-in-out infinite;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-outfit), system-ui, sans-serif;
 }
 
 @keyframes zoomRings {
   0% {
     background-size: 180% 180%;
   }
+
   50% {
     background-size: 220% 220%;
   }
+
   100% {
     background-size: 180% 180%;
   }
