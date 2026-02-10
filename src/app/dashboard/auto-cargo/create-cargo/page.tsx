@@ -312,7 +312,7 @@ export default function CreateCargoPage() {
   const [pickupCreateOk, setPickupCreateOk] = React.useState<string | null>(null);
   const [useDifferentSender, setUseDifferentSender] = React.useState(false);
 
-  // pickup locations list (existing sender locations)
+  // Teslim Alma Noktası list (existing sender locations)
   const [pickupList, setPickupList] = React.useState<PickupWarehouse[]>([]);
   const [pickupListLoading, setPickupListLoading] = React.useState(false);
   const [pickupListErr, setPickupListErr] = React.useState<string | null>(null);
@@ -350,7 +350,7 @@ export default function CreateCargoPage() {
   const [lat, setLat] = React.useState("");
   const [lon, setLon] = React.useState("");
 
-  // Sender logistics (pickup location create: country/il/ilçe from endpoints + auto lat/lon)
+  // Sender logistics (Teslim Alma Noktası create: country/il/ilçe from endpoints + auto lat/lon)
   const [senderCountryId, setSenderCountryId] = React.useState<number | "">("");
   const [senderStateId, setSenderStateId] = React.useState<number | "">("");
   const [senderCityId, setSenderCityId] = React.useState<number | "">("");
@@ -582,7 +582,7 @@ export default function CreateCargoPage() {
         setCountryId(tr.id);
         setCountryCode(String(tr.iso2 || "TR").toUpperCase() || "TR");
 
-        // sender defaults (pickup location)
+        // sender defaults (Teslim Alma Noktası)
         setSenderCountryId(tr.id);
       }
     } catch (e: any) {
@@ -932,7 +932,7 @@ export default function CreateCargoPage() {
       }
     } catch (e: any) {
       setPickupList([]);
-      setPickupListErr(e?.message || "Pickup location listesi alınamadı.");
+      setPickupListErr(e?.message || "Teslim Alma Noktası listesi alınamadı.");
     } finally {
       setPickupListLoading(false);
     }
@@ -1140,13 +1140,13 @@ export default function CreateCargoPage() {
       if (!res.ok) throw new Error(pickMsg(json, `HTTP ${res.status}`));
 
       const code = String(json?.code || json?.data?.code || body.code || "").trim();
-      if (!code) throw new Error(json?.otoErrorMessage || json?.message || "Pickup location code dönmedi.");
+      if (!code) throw new Error(json?.otoErrorMessage || json?.message || "Teslim Alma Noktası code dönmedi.");
 
       setPickupLocationCode(code);
-      setPickupCreateOk(`Pickup location oluşturuldu. code=${code}`);
+      setPickupCreateOk(`Teslim Alma Noktası oluşturuldu. code=${code}`);
       return true;
     } catch (e: any) {
-      setPickupCreateErr(e?.message || "Pickup location oluşturulamadı.");
+      setPickupCreateErr(e?.message || "Teslim Alma Noktası oluşturulamadı.");
       return false;
     } finally {
       setPickupCreating(false);
@@ -1282,10 +1282,10 @@ export default function CreateCargoPage() {
   function validateStep(s: StepKey): string | null {
     if (s === 1) {
       if (useDifferentSender) {
-        if (!pickupLocationCode.trim()) return "Pickup Location oluşturmadın. Lütfen Step 1'de pickup oluştur ve code oluştuğunu doğrula.";
+        if (!pickupLocationCode.trim()) return "Teslim Alma Noktası oluşturmadın. Lütfen Step 1'de pickup oluştur ve code oluştuğunu doğrula.";
       } else {
         if (!pickupLocationCode.trim())
-          return "Gönderici konumu seçmelisin (Pickup Location).";
+          return "Gönderici konumu seçmelisin (Teslim Alma Noktası).";
       }
       if (!receiverName.trim()) return "Alıcının Tam Adı zorunlu.";
       if (!receiverPhone.trim()) return "Alıcı Telefon Numarası zorunlu.";
@@ -1406,7 +1406,7 @@ export default function CreateCargoPage() {
       }
     }
     if (useDifferentSender && !pickupLocationCode.trim()) {
-      setErrMsg("Pickup Location code yok. Step 1'e dönüp pickup oluşturmalısın.");
+      setErrMsg("Teslim Alma Noktası code yok. Step 1'e dönüp pickup oluşturmalısın.");
       setStep(1);
       return;
     }
@@ -1587,7 +1587,7 @@ export default function CreateCargoPage() {
                   ) : null}
 
                   <div className="mt-3">
-                    <Label text="Pickup Location *" />
+                    <Label text="Teslim Alma Noktası *" />
                     <select
                       value={selectedPickupCode || pickupLocationCode || ""}
                       onChange={(e) => {
@@ -1645,7 +1645,7 @@ export default function CreateCargoPage() {
 
             {useDifferentSender ? (
               <div className="mt-4 rounded-xl border border-neutral-200 bg-white p-4">
-                <div className="text-sm font-semibold text-neutral-900">Gönderici Adresi (Pickup Location Oluştur)</div>
+                <div className="text-sm font-semibold text-neutral-900">Gönderici Adresi (Teslim Alma Noktası Oluştur)</div>
 
                 {pickupCreateErr ? (
                   <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{pickupCreateErr}</div>
@@ -1770,7 +1770,7 @@ export default function CreateCargoPage() {
                     }}
                     className="h-10 rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
                   >
-                    {pickupCreating ? "Oluşturuluyor…" : "Pickup Location Oluştur"}
+                    {pickupCreating ? "Oluşturuluyor…" : "Teslim Alma Noktası Oluştur"}
                   </button>
                 </div>
 

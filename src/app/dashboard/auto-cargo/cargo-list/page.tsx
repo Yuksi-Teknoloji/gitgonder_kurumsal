@@ -1293,7 +1293,7 @@ export default function CargoListPage() {
                     <button
                       type="button"
                       className={cn(
-                        "h-9 rounded-lg border px-3 text-sm font-semibold",
+                        "rounded-lg border px-5  text-sm font-semibold",
                         "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
                       )}
                       onClick={(e) => {
@@ -1308,7 +1308,7 @@ export default function CargoListPage() {
                     <button
                       type="button"
                       className={cn(
-                        "h-9 rounded-lg border px-3 text-sm font-semibold",
+                        "rounded-lg border px-5 text-sm font-semibold",
                         "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100",
                         canceling[r.id] ? "opacity-60 pointer-events-none" : ""
                       )}
@@ -1321,6 +1321,7 @@ export default function CargoListPage() {
                       {canceling[r.id] ? "İptal ediliyor…" : "Kargoyu İptal Et"}
                     </button>
                   </div>
+                  
                 </div>
 
               </div>

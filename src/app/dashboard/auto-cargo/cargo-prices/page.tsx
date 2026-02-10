@@ -428,7 +428,7 @@ export default function CargoPricesPage() {
                 disabled={loading}
                 title="Sonuçları temizle"
               >
-                Clear
+                Temizle
               </button>
             </div>
           </div>
