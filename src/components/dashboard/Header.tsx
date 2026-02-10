@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from "react";
 import { type JwtClaims, decodeJwt } from "@/src/utils/jwt";
 import { getAuthToken } from "@/src/utils/auth";
 import Image from "next/image";
+import { Menu, Bell } from "lucide-react";
+
 
 const token = getAuthToken();
 const claims: JwtClaims | null = token ? (decodeJwt(token) as JwtClaims) : null;
@@ -274,11 +276,11 @@ export default function Header({
           <button
             type="button"
             onClick={() => window.dispatchEvent(new CustomEvent("sidebar:open"))}
-            className="lg:hidden inline-flex items-center justify-center h-10 w-10 rounded-lg hover:bg-black/5"
+            className="lg:hidden inline-flex items-center justify-center h-10 w-10 rounded-lg hover:bg-black/5 text-neutral-600"
             aria-label="Menüyü aç"
             title="Menüyü aç"
           >
-            <span className="text-lg leading-none">☰</span>
+            <Menu className="h-6 w-6" />
           </button>
 
           <h1 className={["text-lg font-semibold", titleClass].join(" ")}>
@@ -292,25 +294,10 @@ export default function Header({
             <button
               type="button"
               onClick={() => setNotifOpen((s) => !s)}
-              className="relative flex items-center justify-center h-10 w-10 rounded-lg hover:bg-black/5"
+              className="relative flex items-center justify-center h-10 w-10 rounded-lg hover:bg-black/5 text-neutral-600"
               title="Bildirimler"
             >
-              {/* Bell icon (inline SVG) */}
-              <svg
-                viewBox="0 0 24 24"
-                width="18"
-                height="18"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="opacity-80"
-                aria-hidden="true"
-              >
-                <path d="M18 8a6 6 0 10-12 0c0 7-3 7-3 7h18s-3 0-3-7" />
-                <path d="M13.73 21a2 2 0 01-3.46 0" />
-              </svg>
+              <Bell className="h-5 w-5 opacity-80" />
 
               {unreadCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[11px] font-semibold flex items-center justify-center">

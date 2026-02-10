@@ -3,6 +3,7 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
+import { X } from "lucide-react";
 
 type ModalProps = {
   open?: boolean;                // varsayılan: true
@@ -61,7 +62,7 @@ export default function Modal({
               aria-label="Kapat"
               title="Kapat"
             >
-              ✕
+              <X className="h-5 w-5" />
             </button>
           </header>
         )}

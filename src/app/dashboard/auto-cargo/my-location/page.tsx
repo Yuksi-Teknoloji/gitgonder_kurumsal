@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { getAuthToken } from "@/src/utils/auth";
 import { ModuleAccessGuard } from "@/src/components/access/ModuleAccessGuard";
 import { CORPORATE_MODULES } from "@/src/hooks/useCorporateAccess";
-
+import{ Locate} from 'lucide-react'
 /* ================= Helpers ================= */
 
 async function readJson<T = any>(res: Response): Promise<T> {
@@ -723,7 +723,7 @@ export default function MyLocationPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <div className="h-8 w-8 sm:h-9 sm:w-9 shrink-0 rounded-lg border border-neutral-200 bg-white flex items-center justify-center text-neutral-700">
-            <span className="text-base sm:text-lg">⌂</span>
+            <Locate />
           </div>
           <h1 className="text-xl sm:text-2xl font-semibold text-neutral-900 truncate">Gönderici Konumları</h1>
         </div>

@@ -12,6 +12,7 @@ export type RawNavGroup = {
   title: string;
   items: RawNavItem[];
   requiredAccess?: number[]; // Grup seviyesinde erişim kontrolü
+  icon?: string;
 };
 
 // Proje dosya yapına göre path’ler:
@@ -21,6 +22,7 @@ export const NAV: Record<Role, RawNavGroup[]> = {
   admin: [
     {
       title: "Ayarlar",
+      icon: "settings",
       items: [
         { label: "Ana", path: "dashboard" },
         { label: "Genel Ayarlar", path: "dashboard/settings" },
@@ -33,6 +35,7 @@ export const NAV: Record<Role, RawNavGroup[]> = {
     },
     {
       title: "Fiyatlandırmalar",
+      icon: "tag",
       items: [
         {
           label: "Restoran Fiyatlandırma",
@@ -46,6 +49,7 @@ export const NAV: Record<Role, RawNavGroup[]> = {
     },
     {
       title: "Nakliyeler",
+      icon: "truck",
       items: [
         { label: "Lojistik Takip", path: "dashboard/shipments/shipping-list" },
         {
@@ -56,6 +60,7 @@ export const NAV: Record<Role, RawNavGroup[]> = {
     },
     {
       title: "Taşıyıcılar",
+      icon: "users-cog",
       items: [
         { label: "Taşıyıcı Listesi", path: "dashboard/carriers/carrier-list" },
         { label: "Yük Oluştur", path: "dashboard/carriers/create-load" },
@@ -64,6 +69,7 @@ export const NAV: Record<Role, RawNavGroup[]> = {
     },
     {
       title: "Restoranlar",
+      icon: "utensils-crossed",
       items: [
         {
           label: "Restoran Listesi",
@@ -77,6 +83,7 @@ export const NAV: Record<Role, RawNavGroup[]> = {
     },
     {
       title: "Bayiler",
+      icon: "store",
       items: [
         { label: "Bayi Listesi", path: "dashboard/dealers/dealer-list" },
         { label: "Bayi Oluştur", path: "dashboard/dealers/create-dealer" },
@@ -84,6 +91,7 @@ export const NAV: Record<Role, RawNavGroup[]> = {
     },
     {
       title: "Şirketler",
+      icon: "building-2",
       items: [
         { label: "Şirket Oluştur", path: "dashboard/companies/create-company" },
         { label: "Şirket Listesi", path: "dashboard/companies/company-list" },
@@ -95,10 +103,12 @@ export const NAV: Record<Role, RawNavGroup[]> = {
     },
     {
       title: "Kullanıcılar",
+      icon: "users",
       items: [{ label: "Kullanıcı Listesi", path: "dashboard/user-list" }],
     },
     {
       title: "İçerikler",
+      icon: "file-text",
       items: [
         { label: "Sayfa Listesi", path: "dashboard/contents/page-list" },
         {
@@ -109,6 +119,7 @@ export const NAV: Record<Role, RawNavGroup[]> = {
     },
     {
       title: "Sistem",
+      icon: "cpu",
       items: [
         { label: "Taşıyıcı Tipleri", path: "dashboard/system/carrier-types" },
         { label: "Araç Tipleri", path: "dashboard/system/vehicle-types" },
@@ -131,6 +142,7 @@ export const NAV: Record<Role, RawNavGroup[]> = {
   dealer: [
     {
       title: "Bayi",
+      icon: "store",
       items: [
         { label: "Ana", path: "dashboard" },
         { label: "Siparişler", path: "dashboard/transportations" },
@@ -151,9 +163,10 @@ export const NAV: Record<Role, RawNavGroup[]> = {
   corporate: [
     {
       title: "Kurumsal",
+      icon: "briefcase",
       items: [
         { label: "Ana", path: "dashboard" },
-        { label: "Profil Yönetimi", path: "dashboard/profile"},
+        { label: "Profil Yönetimi", path: "dashboard/profile" },
         { label: "Lojistik Takip", path: "dashboard/logistics-tracking", requiredAccess: [1] },
         { label: "Yük Oluştur", path: "dashboard/create-load", requiredAccess: [1] },
         { label: "Ticarim", path: "dashboard/commercial", requiredAccess: [2] },
@@ -162,6 +175,7 @@ export const NAV: Record<Role, RawNavGroup[]> = {
     },
     {
       title: "Yüksi-Kargo",
+      icon: "box",
       requiredAccess: [3], // Grup seviyesinde kontrol - sadece access 3 varsa göster
       items: [
         { label: "Ana Sayfa", path: "dashboard/auto-cargo/home", requiredAccess: [3] },
@@ -177,6 +191,7 @@ export const NAV: Record<Role, RawNavGroup[]> = {
   marketing: [
     {
       title: "Pazarlama",
+      icon: "megaphone",
       items: [{ label: "Ana", path: "marketing" }],
     },
   ],
@@ -184,6 +199,7 @@ export const NAV: Record<Role, RawNavGroup[]> = {
   restaurant: [
     {
       title: "Restoran",
+      icon: "utensils-crossed",
       items: [
         { label: "Ana", path: "dashboard" },
         { label: "Profil Yönetimi", path: "dashboard/profile" },
@@ -221,6 +237,7 @@ export function navForRole(role: Role): SidebarNavGroup[] | undefined {
 
   return raw.map((g) => ({
     title: g.title,
+    icon: g.icon,
     requiredAccess: g.requiredAccess, // Grup seviyesinde erişim kontrolü
     items: g.items.map((it) => ({
       label: it.label,

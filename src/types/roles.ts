@@ -12,6 +12,7 @@ export type NavGroup = {
   title: string;
   items: NavItem[];
   requiredAccess?: number[]; // Grup seviyesinde erişim kontrolü
+  icon?: string;
 };
 
 // Type guard
