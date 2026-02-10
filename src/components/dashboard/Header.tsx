@@ -6,6 +6,7 @@ import { type JwtClaims, decodeJwt } from "@/src/utils/jwt";
 import { getAuthToken } from "@/src/utils/auth";
 import Image from "next/image";
 import { Menu, Bell } from "lucide-react";
+import Link from "next/link";
 
 
 const token = getAuthToken();
@@ -100,6 +101,7 @@ export default function Header({
 
       const arr: ApiNotif[] = Array.isArray(json?.data) ? json.data : [];
       // sadece listeyi basıyoruz. burada delivered/seen dokunmuyoruz.
+
       setNotifs(arr);
     } catch (e: any) {
       setNotifErr(e?.message || "Bildirimler alınamadı.");
@@ -419,11 +421,18 @@ export default function Header({
 
             {open && (
               <div className="absolute right-0 mt-2 w-44 rounded-xl border border-neutral-200 bg-white text-neutral-800 shadow-lg">
+                <Link
+                  href="/dashboard/profile"
+                  onClick={() => setOpen(false)}
+                  className="block w-full px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 rounded-t-xl border-b border-neutral-100 transition-colors"
+                >
+                  Profil Yönetimi
+                </Link>
                 <button
                   type="button"
                   onClick={handleLogout}
                   disabled={loggingOut}
-                  className="w-full px-3 py-2 text-left rounded-t-xl hover:bg-neutral-50 disabled:opacity-60"
+                  className="w-full px-3 py-2 text-left text-sm font-medium text-rose-600 hover:bg-neutral-50 disabled:opacity-60 rounded-b-xl transition-colors"
                 >
                   {loggingOut ? "Çıkış yapılıyor…" : "Çıkış Yap"}
                 </button>

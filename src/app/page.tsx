@@ -111,6 +111,8 @@ export default function CorporateLoginPage() {
         userRole = anyClaimRole?.toLowerCase().trim();
       }
 
+      console.log('user role : ', userRole);
+      
       if (userRole !== "corporate" && userRole !== "business") {
         setErr("Bu panele sadece kurumsal üyeler erişebilir.");
         return;
@@ -174,7 +176,7 @@ export default function CorporateLoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               className="w-full px-4 py-2 border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-700"
-              placeholder="corporate@example.com"
+              placeholder=""
             />
           </div>
 
@@ -188,7 +190,7 @@ export default function CorporateLoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               className="w-full px-4 py-2 border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-700"
-              placeholder="••••••••"
+              placeholder=""
             />
           </div>
 

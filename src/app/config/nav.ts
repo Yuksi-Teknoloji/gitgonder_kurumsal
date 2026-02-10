@@ -166,7 +166,6 @@ export const NAV: Record<Role, RawNavGroup[]> = {
       icon: "briefcase",
       items: [
         { label: "Ana", path: "dashboard" },
-        { label: "Profil Yönetimi", path: "dashboard/profile" },
         { label: "Lojistik Takip", path: "dashboard/logistics-tracking", requiredAccess: [1] },
         { label: "Yük Oluştur", path: "dashboard/create-load", requiredAccess: [1] },
         { label: "Ticarim", path: "dashboard/commercial", requiredAccess: [2] },
