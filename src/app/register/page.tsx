@@ -1,4 +1,4 @@
-// src/app/register/page.tsx
+  // src/app/register/page.tsx
 "use client";
 
 import * as React from "react";
@@ -270,7 +270,7 @@ export default function CorporateRegisterPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-white to-orange-50">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#032e97]/5 via-white to-[#032e97]/5">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-green-200 p-8">
           <div className="text-center">
             <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
@@ -301,11 +301,11 @@ export default function CorporateRegisterPage() {
   }
 
   return (
-    <div className="min-h-screen py-10 sm:py-12 px-4 bg-gradient-to-br from-orange-50 via-white to-orange-50">
+    <div className="min-h-screen py-10 sm:py-12 px-4 bg-gradient-to-br from-[#032e97]/5 via-white to-[#032e97]/5">
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-2xl shadow-xl border border-neutral-200">
           <div className="border-b border-neutral-200 px-4 sm:px-6 md:px-8 py-5 sm:py-6">
-            <h1 className="text-2xl sm:text-3xl font-bold text-orange-600">
+            <h1 className="text-2xl sm:text-3xl font-bold text-[#032e97]">
               Kurumsal Üyelik Kaydı
             </h1>
             <p className="mt-2 text-sm sm:text-base text-neutral-600">
@@ -335,7 +335,7 @@ export default function CorporateRegisterPage() {
                     onChange={(e) =>
                       setForm({ ...form, companyName: e.target.value })
                     }
-                    className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                    className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
                     placeholder="Şirket Adı A.Ş."
                   />
                 </div>
@@ -353,7 +353,7 @@ export default function CorporateRegisterPage() {
                       onChange={(e) =>
                         setForm({ ...form, taxOffice: e.target.value })
                       }
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
                       placeholder="Kadıköy"
                     />
                   </div>
@@ -371,7 +371,7 @@ export default function CorporateRegisterPage() {
                         const value = e.target.value.replace(/\D/g, "");
                         setForm({ ...form, vkn: value });
                       }}
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
                       placeholder="1234567890"
                     />
                   </div>
@@ -397,7 +397,7 @@ export default function CorporateRegisterPage() {
                         setCities([]);
                       }}
                       disabled={statesLoading}
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none bg-white disabled:bg-neutral-100"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none bg-white disabled:bg-neutral-100"
                     >
                       <option value="">
                         {statesLoading ? "Yükleniyor..." : "İl Seçiniz"}
@@ -419,7 +419,7 @@ export default function CorporateRegisterPage() {
                       value={form.district}
                       onChange={(e) => setForm({ ...form, district: e.target.value })}
                       disabled={!selectedStateId || citiesLoading}
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none bg-white disabled:bg-neutral-100"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none bg-white disabled:bg-neutral-100"
                     >
                       <option value="">
                         {citiesLoading
@@ -448,7 +448,7 @@ export default function CorporateRegisterPage() {
                       onChange={(e) =>
                         setForm({ ...form, neighborhood: e.target.value })
                       }
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
                       placeholder="Caferağa"
                     />
                   </div>
@@ -463,7 +463,7 @@ export default function CorporateRegisterPage() {
                       onChange={(e) =>
                         setForm({ ...form, street: e.target.value })
                       }
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
                       placeholder="Moda Caddesi"
                     />
                   </div>
@@ -480,7 +480,7 @@ export default function CorporateRegisterPage() {
                       onChange={(e) =>
                         setForm({ ...form, buildingNumber: e.target.value })
                       }
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
                       placeholder="123"
                     />
                   </div>
@@ -495,7 +495,7 @@ export default function CorporateRegisterPage() {
                       onChange={(e) =>
                         setForm({ ...form, apartmentNumber: e.target.value })
                       }
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
                       placeholder="5"
                     />
                   </div>
@@ -510,7 +510,7 @@ export default function CorporateRegisterPage() {
                       onChange={(e) =>
                         setForm({ ...form, floor: e.target.value })
                       }
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
                       placeholder="3"
                     />
                   </div>
@@ -525,7 +525,7 @@ export default function CorporateRegisterPage() {
                       onChange={(e) =>
                         setForm({ ...form, postalCode: e.target.value })
                       }
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
                       placeholder="34710"
                     />
                   </div>
@@ -552,7 +552,7 @@ export default function CorporateRegisterPage() {
                       onChange={(e) =>
                         setForm({ ...form, firstName: e.target.value })
                       }
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
                       placeholder="Ali"
                     />
                   </div>
@@ -568,7 +568,7 @@ export default function CorporateRegisterPage() {
                       onChange={(e) =>
                         setForm({ ...form, lastName: e.target.value })
                       }
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
                       placeholder="Yılmaz"
                     />
                   </div>
@@ -585,7 +585,7 @@ export default function CorporateRegisterPage() {
                     onChange={(e) =>
                       setForm({ ...form, email: e.target.value })
                     }
-                    className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                    className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
                     placeholder="firma@example.com"
                   />
                 </div>
@@ -601,7 +601,7 @@ export default function CorporateRegisterPage() {
                     onChange={(e) =>
                       setForm({ ...form, phone: e.target.value })
                     }
-                    className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                    className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
                     placeholder="05XX XXX XX XX"
                   />
                 </div>
@@ -627,7 +627,7 @@ export default function CorporateRegisterPage() {
                     onChange={(e) =>
                       setForm({ ...form, password: e.target.value })
                     }
-                    className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                    className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
                     placeholder="••••••••"
                   />
                 </div>
@@ -644,7 +644,7 @@ export default function CorporateRegisterPage() {
                     onChange={(e) =>
                       setForm({ ...form, passwordConfirm: e.target.value })
                     }
-                    className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                    className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
                     placeholder="••••••••"
                   />
                 </div>
@@ -661,17 +661,17 @@ export default function CorporateRegisterPage() {
                   onChange={(e) =>
                     setForm({ ...form, acceptedTos: e.target.checked })
                   }
-                  className="mt-1 w-4 h-4 text-orange-600 border-neutral-300 rounded focus:ring-orange-500"
+                  className="mt-1 w-4 h-4 text-[#032e97] border-neutral-300 rounded focus:ring-[#032e97]"
                 />
                 <span className="text-sm text-neutral-700">
                   <a
                     href="/tos"
                     target="_blank"
-                    className="text-orange-600 hover:underline"
+                    className="text-[#032e97] hover:underline"
                   >
                     Kullanım Şartları
                   </a>
-                  'nı okudum ve kabul ediyorum.{" "}
+                  &apos;ni okudum ve kabul ediyorum.{" "}
                   <span className="text-red-500">*</span>
                 </span>
               </label>
@@ -684,17 +684,17 @@ export default function CorporateRegisterPage() {
                   onChange={(e) =>
                     setForm({ ...form, acceptedKvkk: e.target.checked })
                   }
-                  className="mt-1 w-4 h-4 text-orange-600 border-neutral-300 rounded focus:ring-orange-500"
+                  className="mt-1 w-4 h-4 text-[#032e97] border-neutral-300 rounded focus:ring-[#032e97]"
                 />
                 <span className="text-sm text-neutral-700">
                   <a
                     href="/kvkk"
                     target="_blank"
-                    className="text-orange-600 hover:underline"
+                    className="text-[#032e97] hover:underline"
                   >
                     KVKK Aydınlatma Metni
                   </a>
-                  'ni okudum ve kabul ediyorum.{" "}
+                  &apos;ni okudum ve kabul ediyorum.{" "}
                   <span className="text-red-500">*</span>
                 </span>
               </label>
@@ -713,7 +713,7 @@ export default function CorporateRegisterPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full sm:w-auto px-8 py-3 bg-orange-600 text-white font-semibold rounded-lg shadow-md hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full sm:w-auto px-8 py-3 bg-[#032e97] text-white font-semibold rounded-lg shadow-md hover:bg-[#032e97]/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? "Kaydediliyor..." : "Kayıt Ol"}
               </button>

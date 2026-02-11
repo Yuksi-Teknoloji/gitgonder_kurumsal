@@ -150,7 +150,7 @@ export default function Sidebar({ nav = [] as NavGroup[] }: { nav?: NavGroup[] }
               draggable={false}
             />
 
-            <p className="text-lg font-semibold text-orange-600">Kurumsal Üye</p>
+            <p className="text-lg font-semibold text-[#032e97]">Gitgönder Üye</p>
 
             <button
               type="button"
@@ -183,7 +183,7 @@ export default function Sidebar({ nav = [] as NavGroup[] }: { nav?: NavGroup[] }
               <div key={group.title} className="rounded-2xl">
                 <button
                   onClick={() => setOpen((s) => ({ ...s, [group.title]: !isOpen }))}
-                  className="w-full flex items-center justify-between rounded-xl px-4 py-3 bg-orange-50 text-orange-700 hover:bg-orange-100 transition"
+                  className="w-full flex items-center justify-between rounded-xl px-4 py-3 bg-[#032e97]/5 text-[#032e97] hover:bg-[#032e97]/10 transition"
                 >
                   <div className="flex items-center gap-2">
                     {Icon && <Icon className="h-5 w-5" />}
@@ -209,12 +209,12 @@ export default function Sidebar({ nav = [] as NavGroup[] }: { nav?: NavGroup[] }
                           }}
                           className={[
                             "flex items-center justify-between rounded-xl px-4 py-3 transition",
-                            active ? "bg-orange-500 text-white shadow-sm" : "text-orange-600 hover:bg-orange-50",
+                            active ? "bg-[#032e97] text-white shadow-sm" : "text-[#032e97] hover:bg-[#032e97]/10",
                           ].join(" ")}
                         >
                           <span className="text-sm font-medium">{it.label}</span>
                           
-                          <ChevronRight className={`h-4 w-4 ${active ? "text-white" : "text-orange-500"}`} />
+                          <ChevronRight className={`h-4 w-4 ${active ? "text-white" : "text-[#032e97]"}`} />
                         </Link>
                       </li>
                     );

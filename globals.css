@@ -15,17 +15,17 @@
 }
 
 :root {
-  --foreground: #171717;
-  --background-color: #f97316;
-  /* flat orange base */
+  --foreground: #ffffff;
+  --background-color: #032e97;
+  /* flat navy blue base */
 }
 
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
   :root {
-    --foreground: #171717;
+    --foreground: #ffffff;
     /* karanlık temada yazıların görünmesi için */
-    --background-color: #f97316;
+    --background-color: #032e97;
   }
 }
 

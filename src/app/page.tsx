@@ -151,9 +151,9 @@ export default function CorporateLoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <div className="w-full max-w-md bg-white/90 backdrop-blur-md p-8 rounded-2xl shadow-2xl border border-orange-200">
+      <div className="w-full max-w-md bg-white/90 backdrop-blur-md p-8 rounded-2xl shadow-2xl border border-[#032e97]/20">
         <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-orange-600">
+          <h1 className="text-3xl font-bold text-[#032e97]">
             Kurumsal Üye Girişi
           </h1>
           <p className="text-gray-600 mt-2">Kurumsal Üye giriş ekranı</p>
@@ -175,7 +175,7 @@ export default function CorporateLoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-4 py-2 border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-700"
+              className="w-full px-4 py-2 border border-[#032e97]/30 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none text-gray-700"
               placeholder=""
             />
           </div>
@@ -189,7 +189,7 @@ export default function CorporateLoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-4 py-2 border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-700"
+              className="w-full px-4 py-2 border border-[#032e97]/30 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none text-gray-700"
               placeholder=""
             />
           </div>
@@ -197,7 +197,7 @@ export default function CorporateLoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2 px-4 bg-orange-600 text-white font-semibold rounded-lg shadow-md hover:bg-orange-700 transition disabled:opacity-60"
+            className="w-full py-2 px-4 bg-[#032e97] text-white font-semibold rounded-lg shadow-md hover:bg-[#032e97]/90 transition disabled:opacity-60"
           >
             {loading ? "Giriş yapılıyor..." : "Kurumsal Üye Giriş"}
           </button>
@@ -209,7 +209,7 @@ export default function CorporateLoginPage() {
             <button
               type="button"
               onClick={() => router.push("/register")}
-              className="text-orange-600 hover:underline font-semibold"
+              className="text-[#032e97] hover:underline font-semibold"
             >
               Kayıt Ol
             </button>

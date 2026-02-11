@@ -16,8 +16,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Yuksi Kurumsal",
-  description: "Yuksi Kurumsal Panel",
+  title: "Gitgönder Kurumsal",
+  description: "Gitgönder Kurumsal Panel",
 };
 
 export default function RootLayout({
