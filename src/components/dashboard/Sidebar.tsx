@@ -141,15 +141,17 @@ export default function Sidebar({ nav = [] as NavGroup[] }: { nav?: NavGroup[] }
         ].join(" ")}
       >
         {/* Header */}
-        <div className="px-5 pt-6 pb-4">
-          <div className="flex items-center gap-2 h-8 overflow-visible">
+        <div className="px-5  ">
+          <div className="flex  items-center gap-2   overflow-visible">
             <img
               src="/Brand/yuksi.png"
               alt="Yüksi"
-              className="h-28 w-[120px] object-contain shrink-0 select-none"
+              className="h-28 w-[120px] object-cover shrink-0 select-none"
               draggable={false}
             />
-            <div className="text-lg font-semibold text-orange-600">Kurumsal Üye</div>
+
+            <p className="text-lg font-semibold text-orange-600">Kurumsal Üye</p>
+
             <button
               type="button"
               onClick={() => setSidebarOpen(false)}

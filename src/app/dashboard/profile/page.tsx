@@ -4,6 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import MapPicker, { type GeoPoint } from "@/src/components/map/MapPicker";
 import { getAuthToken } from "@/src/utils/auth";
+import { Pencil, X } from "lucide-react";
 
 const readJson = async (res: Response): Promise<any> => {
   const t = await res.text();
@@ -29,8 +30,6 @@ type CorporateProfileForm = {
   tax_number: string;
   iban: string;
   resume: string;
-
-  // ✅ NEW: password (sadece update için)
   password: string;
 };
 
@@ -67,40 +66,22 @@ export default function CorporateProfilePage() {
     tax_number: "",
     iban: "",
     resume: "",
-
-    // ✅ NEW
     password: "",
   });
 
   const [commissionRate, setCommissionRate] = React.useState<number | null>(null);
   const [commissionRateDescription, setCommissionRateDescription] = React.useState<string>("");
 
-  const [editing, setEditing] = React.useState({
-    email: false,
-    phone: false,
-    firstName: false,
-    lastName: false,
-    fullAddress: false,
-    countryId: false,
-    stateId: false,
-    cityId: false,
-    latitude: false,
-    longitude: false,
-    tax_office: false,
-    tax_number: false,
-    iban: false,
-    resume: false,
-
-    // ✅ NEW
-    password: false,
-  });
-
-  const toggle = (k: keyof typeof editing) => setEditing((s) => ({ ...s, [k]: !s[k] }));
-
   const [loading, setLoading] = React.useState(true);
-  const [saving, setSaving] = React.useState(false);
   const [okMsg, setOkMsg] = React.useState<string | null>(null);
   const [errMsg, setErrMsg] = React.useState<string | null>(null);
+
+  // Modal states
+  const [generalModalOpen, setGeneralModalOpen] = React.useState(false);
+  const [contactModalOpen, setContactModalOpen] = React.useState(false);
+  const [taxModalOpen, setTaxModalOpen] = React.useState(false);
+  const [passwordModalOpen, setPasswordModalOpen] = React.useState(false);
+  const [locationModalOpen, setLocationModalOpen] = React.useState(false);
 
   // Geo lists
   const [countries, setCountries] = React.useState<Country[]>([]);
@@ -108,18 +89,9 @@ export default function CorporateProfilePage() {
   const [cities, setCities] = React.useState<City[]>([]);
   const [geoLoading, setGeoLoading] = React.useState({ countries: false, states: false, cities: false });
 
-  // ========= input helpers =========
-  const onChangeText =
-    (k: keyof CorporateProfileForm) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-      setForm((p) => ({ ...p, [k]: e.target.value as any }));
-
-  const onChangeNumber =
-    (k: keyof CorporateProfileForm) =>
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const v = e.target.value;
-      setForm((p) => ({ ...p, [k]: v === "" ? 0 : Number(v) } as any));
-    };
+  // Temp form for modals
+  const [tempForm, setTempForm] = React.useState<Partial<CorporateProfileForm>>({});
+  const [saving, setSaving] = React.useState(false);
 
   const mapValue: GeoPoint | null = React.useMemo(() => {
     const lat = Number(form.latitude);
@@ -129,7 +101,7 @@ export default function CorporateProfilePage() {
   }, [form.latitude, form.longitude]);
 
   const onPickFromMap = (p: GeoPoint) => {
-    setForm((prev) => ({
+    setTempForm((prev) => ({
       ...prev,
       latitude: Number(p.lat.toFixed(6)),
       longitude: Number(p.lng.toFixed(6)),
@@ -150,7 +122,6 @@ export default function CorporateProfilePage() {
       const list: Country[] = Array.isArray(j?.data) ? j.data : Array.isArray(j) ? j : [];
       setCountries(list);
     } catch (e: any) {
-      // ülkeler gelmezse sayfayı tamamen öldürmeyelim
       setErrMsg(e?.message || "Ülke listesi alınamadı.");
     } finally {
       setGeoLoading((s) => ({ ...s, countries: false }));
@@ -212,7 +183,6 @@ export default function CorporateProfilePage() {
       setLoading(true);
       setErrMsg(null);
       try {
-        // countries paralel gelsin
         loadCountries();
 
         const res = await fetch("/yuksi/corporate/profile", {
@@ -244,8 +214,6 @@ export default function CorporateProfilePage() {
           resume: data.resume ?? "",
           latitude: Number(data.latitude ?? 0) || 0,
           longitude: Number(data.longitude ?? 0) || 0,
-
-          // ✅ NEW: server'dan gelmese bile boş kalsın
           password: "",
         };
 
@@ -254,7 +222,6 @@ export default function CorporateProfilePage() {
         if (data.commissionRate != null) setCommissionRate(Number(data.commissionRate) || 0);
         if (data.commissionDescription != null) setCommissionRateDescription(String(data.commissionDescription || ""));
 
-        // mevcut seçimlere göre state/city listelerini doldur
         if (nextForm.countryId >= 1) await loadStates(nextForm.countryId);
         if (nextForm.stateId >= 1) await loadCities(nextForm.stateId);
       } catch (e: any) {
@@ -270,57 +237,24 @@ export default function CorporateProfilePage() {
     };
   }, [token, loadCountries, loadStates, loadCities]);
 
-  // ========= handlers for selects =========
-  const onPickCountry = async (countryId: number) => {
-    setForm((p) => ({ ...p, countryId, stateId: 0, cityId: 0 }));
-    setCities([]);
-    await loadStates(countryId);
-  };
-
-  const onPickState = async (stateId: number) => {
-    setForm((p) => ({ ...p, stateId, cityId: 0 }));
-    await loadCities(stateId);
-  };
-
-  const onPickCity = (cityId: number) => setForm((p) => ({ ...p, cityId }));
-
-  // ========= save =========
-  const saveAll = async () => {
+  // ========= Save functions for each section =========
+  const saveSection = async (fields: Partial<CorporateProfileForm>) => {
     if (!token || saving) return;
 
     setOkMsg(null);
     setErrMsg(null);
-
-    // Backend min 1 istiyor -> seçilmediyse kaydetme
-    if (!(Number(form.countryId) >= 1)) return setErrMsg("Lütfen ülke seçin.");
-    if (!(Number(form.stateId) >= 1)) return setErrMsg("Lütfen il seçin.");
-    if (!(Number(form.cityId) >= 1)) return setErrMsg("Lütfen ilçe seçin.");
-
     setSaving(true);
+
     try {
-      const body: any = {
-        email: String(form.email || ""),
-        phone: String(form.phone || ""),
-        firstName: String(form.firstName || ""),
-        lastName: String(form.lastName || ""),
-        fullAddress: String(form.fullAddress || ""),
-        tax_office: String(form.tax_office || ""),
-        tax_number: String(form.tax_number || ""),
-        iban: String(form.iban || ""),
-        resume: String(form.resume || ""),
-        countryId: Number(form.countryId),
-        stateId: Number(form.stateId),
-        cityId: Number(form.cityId),
-      };
+      const body: any = {};
 
-      const latNum = Number(form.latitude);
-      const lngNum = Number(form.longitude);
-      if (Number.isFinite(latNum)) body.latitude = latNum;
-      if (Number.isFinite(lngNum)) body.longitude = lngNum;
-
-      // ✅ NEW: password sadece doluysa gönder (boşsa backend'de şifreyi ezmesin)
-      const pw = String(form.password || "").trim();
-      if (pw) body.password = pw;
+      // Only include fields that are being updated
+      Object.keys(fields).forEach((key) => {
+        const value = fields[key as keyof CorporateProfileForm];
+        if (value !== undefined) {
+          body[key] = value;
+        }
+      });
 
       const res = await fetch("/yuksi/corporate/profile", {
         method: "PUT",
@@ -335,35 +269,82 @@ export default function CorporateProfilePage() {
       const j = await readJson(res);
       if (!res.ok) throw new Error(pickMsg(j, `HTTP ${res.status}`));
 
-      setOkMsg(j?.message || "Profil başarıyla güncellendi.");
+      setOkMsg(j?.message || "Başarıyla güncellendi.");
 
-      // ✅ NEW: başarı sonrası password alanını temizle
-      setForm((p) => ({ ...p, password: "" }));
+      // Update main form with saved values
+      setForm((prev) => ({ ...prev, ...fields }));
 
-      setEditing({
-        email: false,
-        phone: false,
-        firstName: false,
-        lastName: false,
-        fullAddress: false,
-        countryId: false,
-        stateId: false,
-        cityId: false,
-        tax_office: false,
-        tax_number: false,
-        iban: false,
-        resume: false,
-        latitude: false,
-        longitude: false,
+      // Close modals
+      setGeneralModalOpen(false);
+      setContactModalOpen(false);
+      setTaxModalOpen(false);
+      setPasswordModalOpen(false);
+      setLocationModalOpen(false);
 
-        // ✅ NEW
-        password: false,
-      });
+      // Clear temp form
+      setTempForm({});
     } catch (e: any) {
-      setErrMsg(e?.message || "Profil güncellenemedi.");
+      setErrMsg(e?.message || "Güncelleme başarısız.");
     } finally {
       setSaving(false);
     }
+  };
+
+  const openGeneralModal = () => {
+    setTempForm({
+      firstName: form.firstName,
+      lastName: form.lastName,
+      resume: form.resume,
+    });
+    setGeneralModalOpen(true);
+  };
+
+  const openContactModal = async () => {
+    setTempForm({
+      phone: form.phone,
+      email: form.email,
+      countryId: form.countryId,
+      stateId: form.stateId,
+      cityId: form.cityId,
+      fullAddress: form.fullAddress,
+    });
+    if (form.countryId >= 1) await loadStates(form.countryId);
+    if (form.stateId >= 1) await loadCities(form.stateId);
+    setContactModalOpen(true);
+  };
+
+  const openTaxModal = () => {
+    setTempForm({
+      tax_office: form.tax_office,
+      tax_number: form.tax_number,
+      iban: form.iban,
+    });
+    setTaxModalOpen(true);
+  };
+
+  const openPasswordModal = () => {
+    setTempForm({ password: "" });
+    setPasswordModalOpen(true);
+  };
+
+  const openLocationModal = () => {
+    setTempForm({
+      latitude: form.latitude,
+      longitude: form.longitude,
+      fullAddress: form.fullAddress,
+    });
+    setLocationModalOpen(true);
+  };
+
+  const onPickCountry = async (countryId: number) => {
+    setTempForm((p) => ({ ...p, countryId, stateId: 0, cityId: 0 }));
+    setCities([]);
+    await loadStates(countryId);
+  };
+
+  const onPickState = async (stateId: number) => {
+    setTempForm((p) => ({ ...p, stateId, cityId: 0 }));
+    await loadCities(stateId);
   };
 
   return (
@@ -374,257 +355,80 @@ export default function CorporateProfilePage() {
 
       {!loading && (
         <section className="grid gap-6 lg:grid-cols-[1fr_320px]">
-          <div className="rounded-2xl border border-neutral-200/70 bg-orange-50 p-4 sm:p-6">
+          <div className="space-y-4">
             {okMsg && (
-              <div className="mb-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700">
+              <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700">
                 {okMsg}
               </div>
             )}
             {errMsg && (
-              <div className="mb-3 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-rose-700">
+              <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-rose-700">
                 {errMsg}
               </div>
             )}
 
-            <Block title="Genel Bilgiler">
-              <Row>
-                <input
-                  className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none disabled:bg-white"
-                  placeholder="Ad"
-                  value={form.firstName}
-                  onChange={onChangeText("firstName")}
-                  disabled={!editing.firstName}
-                />
-                <EditButton onClick={() => toggle("firstName")} active={editing.firstName} />
-              </Row>
-              <Row>
-                <input
-                  className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none disabled:bg-white"
-                  placeholder="Soyad"
-                  value={form.lastName}
-                  onChange={onChangeText("lastName")}
-                  disabled={!editing.lastName}
-                />
-                <EditButton onClick={() => toggle("lastName")} active={editing.lastName} />
-              </Row>
-              <Row>
-                <input
-                  className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none disabled:bg-white"
-                  placeholder="Özgeçmiş / açıklama"
-                  value={form.resume}
-                  onChange={onChangeText("resume")}
-                  disabled={!editing.resume}
-                />
-                <EditButton onClick={() => toggle("resume")} active={editing.resume} />
-              </Row>
-            </Block>
+            {/* General Info Section */}
+            <SectionCard
+              title="Genel Bilgiler"
+              onEdit={openGeneralModal}
+            >
+              <InfoRow label="Ad" value={form.firstName || "-"} />
+              <InfoRow label="Soyad" value={form.lastName || "-"} />
+              <InfoRow label="Özgeçmiş" value={form.resume || "-"} />
+            </SectionCard>
 
-            <Block title="İletişim & Adres">
-              <Row>
-                <input
-                  className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none disabled:bg-white"
-                  placeholder="Telefon"
-                  value={form.phone}
-                  onChange={onChangeText("phone")}
-                  disabled={!editing.phone}
-                />
-                <EditButton onClick={() => toggle("phone")} active={editing.phone} />
-              </Row>
-              <Row>
-                <input
-                  className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none disabled:bg-white"
-                  placeholder="E-Posta"
-                  value={form.email}
-                  onChange={onChangeText("email")}
-                  disabled={!editing.email}
-                />
-                <EditButton onClick={() => toggle("email")} active={editing.email} />
-              </Row>
+            {/* Contact & Address Section */}
+            <SectionCard
+              title="İletişim & Adres"
+              onEdit={openContactModal}
+            >
+              <InfoRow label="Telefon" value={form.phone || "-"} />
+              <InfoRow label="E-Posta" value={form.email || "-"} />
+              <InfoRow
+                label="Konum"
+                value={`${countries.find(c => c.id === form.countryId)?.name || "-"} / ${states.find(s => s.id === form.stateId)?.name || "-"} / ${cities.find(c => c.id === form.cityId)?.name || "-"}`}
+              />
+              <InfoRow label="Adres" value={form.fullAddress || "-"} />
+            </SectionCard>
 
-              {/* Country / State / City */}
-              <Row>
-                <select
-                  className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none disabled:bg-white"
-                  value={form.countryId}
-                  disabled={!editing.countryId || geoLoading.countries}
-                  onChange={(e) => onPickCountry(Number(e.target.value))}
-                >
-                  <option value={0}>{geoLoading.countries ? "Ülkeler yükleniyor..." : "Ülke seçin"}</option>
-                  {countries.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                <EditButton onClick={() => toggle("countryId")} active={editing.countryId} />
-              </Row>
+            {/* Tax/Finance Section */}
+            <SectionCard
+              title="Vergi/Finans"
+              onEdit={openTaxModal}
+            >
+              <InfoRow label="Vergi Dairesi" value={form.tax_office || "-"} />
+              <InfoRow label="Vergi No" value={form.tax_number || "-"} />
+              <InfoRow label="IBAN" value={form.iban || "-"} />
+            </SectionCard>
 
-              <Row>
-                <select
-                  className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none disabled:bg-white"
-                  value={form.stateId}
-                  disabled={!editing.stateId || geoLoading.states || !(form.countryId >= 1)}
-                  onChange={(e) => onPickState(Number(e.target.value))}
-                >
-                  <option value={0}>
-                    {!(form.countryId >= 1)
-                      ? "Önce ülke seçin"
-                      : geoLoading.states
-                      ? "İller yükleniyor..."
-                      : "İl seçin"}
-                  </option>
-                  {states.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-                <EditButton onClick={() => toggle("stateId")} active={editing.stateId} />
-              </Row>
+            {/* Password Section */}
+            <SectionCard
+              title="Şifre Güncelle"
+              onEdit={openPasswordModal}
+            >
+              <InfoRow label="Şifre" value="••••••••" />
+            </SectionCard>
 
-              <Row>
-                <select
-                  className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none disabled:bg-white"
-                  value={form.cityId}
-                  disabled={!editing.cityId || geoLoading.cities || !(form.stateId >= 1)}
-                  onChange={(e) => onPickCity(Number(e.target.value))}
-                >
-                  <option value={0}>
-                    {!(form.stateId >= 1)
-                      ? "Önce il seçin"
-                      : geoLoading.cities
-                      ? "İlçeler yükleniyor..."
-                      : "İlçe seçin"}
-                  </option>
-                  {cities.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                <EditButton onClick={() => toggle("cityId")} active={editing.cityId} />
-              </Row>
+            {/* Location Section */}
+            <SectionCard
+              title="Konum (Harita)"
+              onEdit={openLocationModal}
+            >
+              <InfoRow label="Enlem" value={form.latitude || "-"} />
+              <InfoRow label="Boylam" value={form.longitude || "-"} />
+            </SectionCard>
 
-              <Row>
-                <textarea
-                  rows={3}
-                  className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none disabled:bg-white"
-                  placeholder="Adres"
-                  value={form.fullAddress}
-                  onChange={onChangeText("fullAddress")}
-                  disabled={!editing.fullAddress}
-                />
-                <EditButton onClick={() => toggle("fullAddress")} active={editing.fullAddress} />
-              </Row>
-            </Block>
-
-            <Block title="Vergi/Finans">
-              <Row>
-                <input
-                  className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none disabled:bg-white"
-                  placeholder="Vergi Dairesi"
-                  value={form.tax_office}
-                  onChange={onChangeText("tax_office")}
-                  disabled={!editing.tax_office}
-                />
-                <EditButton onClick={() => toggle("tax_office")} active={editing.tax_office} />
-              </Row>
-              <Row>
-                <input
-                  className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none disabled:bg-white"
-                  placeholder="Vergi No"
-                  value={form.tax_number}
-                  onChange={onChangeText("tax_number")}
-                  disabled={!editing.tax_number}
-                />
-                <EditButton onClick={() => toggle("tax_number")} active={editing.tax_number} />
-              </Row>
-              <Row>
-                <input
-                  className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none disabled:bg-white"
-                  placeholder="IBAN"
-                  value={form.iban}
-                  onChange={onChangeText("iban")}
-                  disabled={!editing.iban}
-                />
-                <EditButton onClick={() => toggle("iban")} active={editing.iban} />
-              </Row>
-            </Block>
-            <Block title="Şifre Güncelle (sadece doluysa kaydedilir)">
-              <Row>
-                <input
-                  type="password"
-                  autoComplete="new-password"
-                  className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none disabled:bg-white"
-                  placeholder="Yeni Şifre"
-                  value={form.password}
-                  onChange={onChangeText("password")}
-                  disabled={!editing.password}
-                />
-                <EditButton onClick={() => toggle("password")} active={editing.password} />
-              </Row>
-            </Block>
-            <Block title="Konum">
-              <Row>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none disabled:bg-white"
-                  placeholder="Enlem (örn: 40.123456)"
-                  value={form.latitude}
-                  onChange={onChangeNumber("latitude")}
-                  disabled={!editing.latitude}
-                />
-                <EditButton onClick={() => toggle("latitude")} active={editing.latitude} />
-              </Row>
-              <Row>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none disabled:bg-white"
-                  placeholder="Boylam (örn: 29.123456)"
-                  value={form.longitude}
-                  onChange={onChangeNumber("longitude")}
-                  disabled={!editing.longitude}
-                />
-                <EditButton onClick={() => toggle("longitude")} active={editing.longitude} />
-              </Row>
-
-              <div className="mt-3">
-                <MapPicker
-                  label="Haritada Konum Seç"
-                  value={mapValue}
-                  onChange={onPickFromMap}
-                  defaultCenter={{ lat: 41.015137, lng: 28.97953 }}
-                />
+            {/* Commission Info (Read-only) */}
+            <div className="rounded-2xl border border-neutral-200/70 bg-white p-6">
+              <div className="mb-4 text-sm font-semibold text-neutral-900">Komisyon Bilgisi</div>
+              <div className="space-y-2 text-sm">
+                <InfoRow label="Komisyon Oranı" value={commissionRate != null ? `%${commissionRate}` : "-"} />
+                <InfoRow label="Açıklama" value={commissionRateDescription || "-"} />
               </div>
-            </Block>
-
-            <Block title="Komisyon Bilgisi (sadece görüntüleme)">
-              <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800">
-                <div>
-                  <span className="font-semibold">Komisyon Oranı: </span>
-                  {commissionRate != null ? `%${commissionRate}` : "-"}
-                </div>
-                <div className="mt-1">
-                  <div className="font-semibold">Açıklama: </div>
-                  {commissionRateDescription || "-"}
-                </div>
-              </div>
-            </Block>
-
-            <div className="flex justify-center pt-2">
-              <button
-                type="button"
-                onClick={saveAll}
-                disabled={saving || !token}
-                className="rounded-xl border border-orange-300 bg-white px-6 py-2.5 text-sm font-semibold text-orange-600 shadow-sm hover:bg-orange-50 disabled:opacity-60"
-              >
-                {saving ? "Kaydediliyor..." : "Kaydet"}
-              </button>
             </div>
           </div>
 
+          {/* Sidebar */}
           <aside className="rounded-2xl border border-neutral-200/70 bg-white p-6">
             <div className="flex flex-col items-center text-center">
               <div className="relative h-40 w-40">
@@ -656,33 +460,367 @@ export default function CorporateProfilePage() {
           </aside>
         </section>
       )}
+
+      {/* Modals */}
+      {generalModalOpen && (
+        <Modal
+          title="Genel Bilgileri Düzenle"
+          onClose={() => setGeneralModalOpen(false)}
+          onSave={() => saveSection({
+            firstName: tempForm.firstName,
+            lastName: tempForm.lastName,
+            resume: tempForm.resume,
+          })}
+          saving={saving}
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-neutral-800">Ad</label>
+              <input
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                value={tempForm.firstName || ""}
+                onChange={(e) => setTempForm((p) => ({ ...p, firstName: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-neutral-800">Soyad</label>
+              <input
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                value={tempForm.lastName || ""}
+                onChange={(e) => setTempForm((p) => ({ ...p, lastName: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-neutral-800">Özgeçmiş</label>
+              <input
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                value={tempForm.resume || ""}
+                onChange={(e) => setTempForm((p) => ({ ...p, resume: e.target.value }))}
+              />
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {contactModalOpen && (
+        <Modal
+          title="İletişim & Adres Bilgilerini Düzenle"
+          onClose={() => setContactModalOpen(false)}
+          onSave={() => {
+            if (!(Number(tempForm.countryId) >= 1)) return setErrMsg("Lütfen ülke seçin.");
+            if (!(Number(tempForm.stateId) >= 1)) return setErrMsg("Lütfen il seçin.");
+            if (!(Number(tempForm.cityId) >= 1)) return setErrMsg("Lütfen ilçe seçin.");
+            saveSection({
+              phone: tempForm.phone,
+              email: tempForm.email,
+              countryId: tempForm.countryId,
+              stateId: tempForm.stateId,
+              cityId: tempForm.cityId,
+              fullAddress: tempForm.fullAddress,
+            });
+          }}
+          saving={saving}
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-neutral-800">Telefon</label>
+              <input
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                value={tempForm.phone || ""}
+                onChange={(e) => setTempForm((p) => ({ ...p, phone: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-neutral-800">E-Posta</label>
+              <input
+                type="email"
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                value={tempForm.email || ""}
+                onChange={(e) => setTempForm((p) => ({ ...p, email: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-neutral-800">Ülke</label>
+              <select
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                value={tempForm.countryId || 0}
+                onChange={(e) => onPickCountry(Number(e.target.value))}
+              >
+                <option value={0}>{geoLoading.countries ? "Ülkeler yükleniyor..." : "Ülke seçin"}</option>
+                {countries.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-neutral-800">İl</label>
+              <select
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                value={tempForm.stateId || 0}
+                disabled={!(tempForm.countryId && tempForm.countryId >= 1)}
+                onChange={(e) => onPickState(Number(e.target.value))}
+              >
+                <option value={0}>
+                  {!(tempForm.countryId && tempForm.countryId >= 1)
+                    ? "Önce ülke seçin"
+                    : geoLoading.states
+                      ? "İller yükleniyor..."
+                      : "İl seçin"}
+                </option>
+                {states.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-neutral-800">İlçe</label>
+              <select
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                value={tempForm.cityId || 0}
+                disabled={!(tempForm.stateId && tempForm.stateId >= 1)}
+                onChange={(e) => setTempForm((p) => ({ ...p, cityId: Number(e.target.value) }))}
+              >
+                <option value={0}>
+                  {!(tempForm.stateId && tempForm.stateId >= 1)
+                    ? "Önce il seçin"
+                    : geoLoading.cities
+                      ? "İlçeler yükleniyor..."
+                      : "İlçe seçin"}
+                </option>
+                {cities.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-neutral-800">Adres</label>
+              <textarea
+                rows={3}
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                value={tempForm.fullAddress || ""}
+                onChange={(e) => setTempForm((p) => ({ ...p, fullAddress: e.target.value }))}
+              />
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {taxModalOpen && (
+        <Modal
+          title="Vergi/Finans Bilgilerini Düzenle"
+          onClose={() => setTaxModalOpen(false)}
+          onSave={() => saveSection({
+            tax_office: tempForm.tax_office,
+            tax_number: tempForm.tax_number,
+            iban: tempForm.iban,
+          })}
+          saving={saving}
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-neutral-800">Vergi Dairesi</label>
+              <input
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                value={tempForm.tax_office || ""}
+                onChange={(e) => setTempForm((p) => ({ ...p, tax_office: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-neutral-800">Vergi No</label>
+              <input
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                value={tempForm.tax_number || ""}
+                onChange={(e) => setTempForm((p) => ({ ...p, tax_number: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-neutral-800">IBAN</label>
+              <input
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                value={tempForm.iban || ""}
+                onChange={(e) => setTempForm((p) => ({ ...p, iban: e.target.value }))}
+              />
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {passwordModalOpen && (
+        <Modal
+          title="Şifre Güncelle"
+          onClose={() => setPasswordModalOpen(false)}
+          onSave={() => {
+            const pw = String(tempForm.password || "").trim();
+            if (!pw) return setErrMsg("Lütfen yeni şifre girin.");
+            saveSection({ password: pw });
+          }}
+          saving={saving}
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-neutral-800">Yeni Şifre</label>
+              <input
+                type="password"
+                autoComplete="new-password"
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                value={tempForm.password || ""}
+                onChange={(e) => setTempForm((p) => ({ ...p, password: e.target.value }))}
+              />
+            </div>
+            <div className="text-xs text-neutral-600">
+              Şifre sadece doluysa güncellenecektir.
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {locationModalOpen && (
+        <Modal
+          title="Konum Bilgilerini Düzenle"
+          onClose={() => setLocationModalOpen(false)}
+          onSave={() => saveSection({
+            latitude: tempForm.latitude,
+            longitude: tempForm.longitude,
+            fullAddress: tempForm.fullAddress,
+          })}
+          saving={saving}
+          large
+        >
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-neutral-800">Enlem</label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                  value={tempForm.latitude || ""}
+                  onChange={(e) => setTempForm((p) => ({ ...p, latitude: Number(e.target.value) }))}
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-neutral-800">Boylam</label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                  value={tempForm.longitude || ""}
+                  onChange={(e) => setTempForm((p) => ({ ...p, longitude: Number(e.target.value) }))}
+                />
+              </div>
+            </div>
+            <div>
+              <MapPicker
+                label="Haritada Konum Seç"
+                value={
+                  tempForm.latitude && tempForm.longitude
+                    ? { lat: Number(tempForm.latitude), lng: Number(tempForm.longitude) }
+                    : null
+                }
+                onChange={onPickFromMap}
+                defaultCenter={{ lat: 41.015137, lng: 28.97953 }}
+              />
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
 
-function Block({ title, children }: { title: string; children: React.ReactNode }) {
+// ========= Components =========
+
+function SectionCard({
+  title,
+  onEdit,
+  children,
+}: {
+  title: string;
+  onEdit: () => void;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="mb-6">
-      <div className="mb-2 text-sm font-semibold text-neutral-800">{title}</div>
+    <div className="rounded-2xl border border-neutral-200/70 bg-white p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="text-sm font-semibold text-neutral-900">{title}</div>
+        <button
+          type="button"
+          onClick={onEdit}
+          className="flex items-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-sm font-semibold text-orange-700 hover:bg-orange-100 transition-colors"
+        >
+          <Pencil className="h-4 w-4" />
+          Düzenle
+        </button>
+      </div>
       <div className="space-y-3">{children}</div>
     </div>
   );
 }
 
-function Row({ children }: { children: React.ReactNode }) {
-  return <div className="grid grid-cols-[1fr_auto] items-center gap-3">{children}</div>;
+function InfoRow({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="flex items-start justify-between text-sm">
+      <span className="font-medium text-neutral-600">{label}:</span>
+      <span className="text-neutral-900 text-right max-w-[60%]">{value}</span>
+    </div>
+  );
 }
 
-function EditButton({ onClick, active }: { onClick: () => void; active: boolean }) {
+function Modal({
+  title,
+  onClose,
+  onSave,
+  saving,
+  children,
+  large = false,
+}: {
+  title: string;
+  onClose: () => void;
+  onSave: () => void;
+  saving: boolean;
+  children: React.ReactNode;
+  large?: boolean;
+}) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition ${
-        active ? "bg-emerald-600 hover:bg-emerald-700" : "bg-emerald-500 hover:bg-emerald-600"
-      }`}
-    >
-      DÜZENLE
-    </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className={`w-full ${large ? "max-w-3xl" : "max-w-lg"} rounded-2xl border border-neutral-200 bg-white shadow-xl`}>
+        <div className="flex items-center justify-between border-b border-neutral-200 px-6 py-4">
+          <h2 className="text-lg font-semibold text-neutral-900">{title}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1 hover:bg-neutral-100 transition-colors"
+          >
+            <X className="h-5 w-5 text-neutral-600" />
+          </button>
+        </div>
+        <div className="max-h-[70vh] overflow-y-auto p-6">
+          {children}
+        </div>
+        <div className="flex items-center justify-end gap-3 border-t border-neutral-200 px-6 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors"
+          >
+            İptal
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={saving}
+            className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700 disabled:opacity-60 transition-colors"
+          >
+            {saving ? "Kaydediliyor..." : "Kaydet"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
