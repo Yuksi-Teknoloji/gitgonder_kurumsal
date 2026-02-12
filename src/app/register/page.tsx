@@ -335,7 +335,7 @@ export default function CorporateRegisterPage() {
                     onChange={(e) =>
                       setForm({ ...form, companyName: e.target.value })
                     }
-                    className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
+                    className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none placeholder:text-neutral-500"
                     placeholder="Şirket Adı A.Ş."
                   />
                 </div>
@@ -353,7 +353,7 @@ export default function CorporateRegisterPage() {
                       onChange={(e) =>
                         setForm({ ...form, taxOffice: e.target.value })
                       }
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none placeholder:text-neutral-500"
                       placeholder="Kadıköy"
                     />
                   </div>
@@ -371,7 +371,7 @@ export default function CorporateRegisterPage() {
                         const value = e.target.value.replace(/\D/g, "");
                         setForm({ ...form, vkn: value });
                       }}
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none placeholder:text-neutral-500"
                       placeholder="1234567890"
                     />
                   </div>
@@ -397,9 +397,9 @@ export default function CorporateRegisterPage() {
                         setCities([]);
                       }}
                       disabled={statesLoading}
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none bg-white disabled:bg-neutral-100"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none bg-white disabled:bg-neutral-100 text-neutral-700"
                     >
-                      <option value="">
+                      <option value="" disabled className="text-neutral-500">
                         {statesLoading ? "Yükleniyor..." : "İl Seçiniz"}
                       </option>
                       {states.map((state) => (
@@ -419,9 +419,9 @@ export default function CorporateRegisterPage() {
                       value={form.district}
                       onChange={(e) => setForm({ ...form, district: e.target.value })}
                       disabled={!selectedStateId || citiesLoading}
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none bg-white disabled:bg-neutral-100"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none bg-white disabled:bg-neutral-100 text-neutral-700"
                     >
-                      <option value="">
+                      <option value="" disabled className="text-neutral-500">
                         {citiesLoading
                           ? "Yükleniyor..."
                           : !selectedStateId
@@ -448,7 +448,7 @@ export default function CorporateRegisterPage() {
                       onChange={(e) =>
                         setForm({ ...form, neighborhood: e.target.value })
                       }
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none placeholder:text-neutral-500"
                       placeholder="Caferağa"
                     />
                   </div>
@@ -463,7 +463,7 @@ export default function CorporateRegisterPage() {
                       onChange={(e) =>
                         setForm({ ...form, street: e.target.value })
                       }
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none placeholder:text-neutral-500"
                       placeholder="Moda Caddesi"
                     />
                   </div>
@@ -480,7 +480,7 @@ export default function CorporateRegisterPage() {
                       onChange={(e) =>
                         setForm({ ...form, buildingNumber: e.target.value })
                       }
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none placeholder:text-neutral-500"
                       placeholder="123"
                     />
                   </div>
@@ -495,7 +495,7 @@ export default function CorporateRegisterPage() {
                       onChange={(e) =>
                         setForm({ ...form, apartmentNumber: e.target.value })
                       }
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none placeholder:text-neutral-500"
                       placeholder="5"
                     />
                   </div>
@@ -510,7 +510,7 @@ export default function CorporateRegisterPage() {
                       onChange={(e) =>
                         setForm({ ...form, floor: e.target.value })
                       }
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none placeholder:text-neutral-500"
                       placeholder="3"
                     />
                   </div>
@@ -525,7 +525,7 @@ export default function CorporateRegisterPage() {
                       onChange={(e) =>
                         setForm({ ...form, postalCode: e.target.value })
                       }
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none placeholder:text-neutral-500"
                       placeholder="34710"
                     />
                   </div>
@@ -552,7 +552,7 @@ export default function CorporateRegisterPage() {
                       onChange={(e) =>
                         setForm({ ...form, firstName: e.target.value })
                       }
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none placeholder:text-neutral-500"
                       placeholder="Ali"
                     />
                   </div>
@@ -568,7 +568,7 @@ export default function CorporateRegisterPage() {
                       onChange={(e) =>
                         setForm({ ...form, lastName: e.target.value })
                       }
-                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
+                      className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none placeholder:text-neutral-500"
                       placeholder="Yılmaz"
                     />
                   </div>
@@ -585,7 +585,7 @@ export default function CorporateRegisterPage() {
                     onChange={(e) =>
                       setForm({ ...form, email: e.target.value })
                     }
-                    className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
+                    className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none placeholder:text-neutral-500"
                     placeholder="firma@example.com"
                   />
                 </div>
@@ -601,7 +601,7 @@ export default function CorporateRegisterPage() {
                     onChange={(e) =>
                       setForm({ ...form, phone: e.target.value })
                     }
-                    className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
+                    className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none placeholder:text-neutral-500"
                     placeholder="05XX XXX XX XX"
                   />
                 </div>
@@ -627,7 +627,7 @@ export default function CorporateRegisterPage() {
                     onChange={(e) =>
                       setForm({ ...form, password: e.target.value })
                     }
-                    className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
+                    className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none placeholder:text-neutral-500"
                     placeholder="••••••••"
                   />
                 </div>
@@ -644,7 +644,7 @@ export default function CorporateRegisterPage() {
                     onChange={(e) =>
                       setForm({ ...form, passwordConfirm: e.target.value })
                     }
-                    className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none"
+                    className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#032e97] focus:border-[#032e97] outline-none placeholder:text-neutral-500"
                     placeholder="••••••••"
                   />
                 </div>

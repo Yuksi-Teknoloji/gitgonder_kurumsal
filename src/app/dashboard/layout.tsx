@@ -18,10 +18,10 @@ export default async function CorporateLayout({
     <SubscriptionGateWrapper>
       <div className="min-h-dvh bg-neutral-100 flex">
         <Sidebar nav={nav} />
-        <div className="flex-1 orange-ui">
+        <div className="flex-1 navy-ui">
           <Header
             title=""
-            headerClass="bg-orange-500 border-orange-400 text-white"
+            headerClass="bg-[#032e97] border-[#032e97] text-white"
             titleClass="font-extrabold"
           />
           <main className="px-4 py-6">

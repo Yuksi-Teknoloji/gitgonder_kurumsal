@@ -162,7 +162,7 @@ export const NAV: Record<Role, RawNavGroup[]> = {
 
   corporate: [
     {
-      title: "Kurumsal",
+      title: "Gitgönder",
       icon: "briefcase",
       items: [
         { label: "Ana", path: "dashboard" },
@@ -173,7 +173,7 @@ export const NAV: Record<Role, RawNavGroup[]> = {
       ],
     },
     {
-      title: "Yüksi-Kargo",
+      title: "Gitgönder-Kargo",
       icon: "box",
       requiredAccess: [3], // Grup seviyesinde kontrol - sadece access 3 varsa göster
       items: [

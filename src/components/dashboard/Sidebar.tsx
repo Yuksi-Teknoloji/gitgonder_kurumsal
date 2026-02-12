@@ -141,16 +141,16 @@ export default function Sidebar({ nav = [] as NavGroup[] }: { nav?: NavGroup[] }
         ].join(" ")}
       >
         {/* Header */}
-        <div className="px-5  ">
-          <div className="flex  items-center gap-2   overflow-visible">
+        <div className="px-5 pt-4">
+          <div className="flex items-center gap-8 overflow-visible">
             <img
-              src="/Brand/yuksi.png"
-              alt="Yüksi"
-              className="h-28 w-[120px] object-cover shrink-0 select-none"
+              src="/Brand/gıtgonder.png"
+              alt="Gitgönder"
+              className="h-12 w-auto object-contain shrink-0 select-none"
               draggable={false}
             />
 
-            <p className="text-lg font-semibold text-[#032e97]">Gitgönder Üye</p>
+            <p className="text-lg font-semibold text-[#032e97]">Gitgönder Kurumsal Üye</p>
 
             <button
               type="button"
@@ -164,10 +164,15 @@ export default function Sidebar({ nav = [] as NavGroup[] }: { nav?: NavGroup[] }
           </div>
         </div>
 
+        {/* Header separator */}
+        <div className="px-5 mt-4 mb-2">
+          <div className="border-b border-neutral-200"></div>
+        </div>
+
         {/* Scrollable area */}
         <nav className="flex-1 overflow-y-auto px-3 pb-6 space-y-4 [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-neutral-300/60 [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-track]:bg-transparent">
           {accessLoading && (
-            <div className="px-4 py-2 text-sm text-orange-500 animate-pulse">
+            <div className="px-4 py-2 text-sm text-[#032e97] animate-pulse">
               Menü yükleniyor...
             </div>
           )}
