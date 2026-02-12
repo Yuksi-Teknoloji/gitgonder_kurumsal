@@ -16,8 +16,12 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Gitgönder Kurumsal",
-  description: "Gitgönder Kurumsal Panel",
+  title: "Git Gönder Kurumsal",
+  description: "Git Gönder Kurumsal Panel",
+  icons: {
+    icon: "/Brand/gıtgonder.png",
+    shortcut: "/Brand/gıtgonder.png",
+  },
 };
 
 export default function RootLayout({

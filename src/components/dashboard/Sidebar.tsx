@@ -145,12 +145,12 @@ export default function Sidebar({ nav = [] as NavGroup[] }: { nav?: NavGroup[] }
           <div className="flex items-center gap-8 overflow-visible">
             <img
               src="/Brand/gıtgonder.png"
-              alt="Gitgönder"
+              alt="Git Gönder"
               className="h-12 w-auto object-contain shrink-0 select-none"
               draggable={false}
             />
 
-            <p className="text-lg font-semibold text-[#032e97]">Gitgönder Kurumsal Üye</p>
+            <p className="text-lg font-semibold text-[#032e97]">Git Gönder Kurumsal Üye</p>
 
             <button
               type="button"
