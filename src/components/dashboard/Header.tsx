@@ -411,7 +411,7 @@ export default function Header({
               <span className="text-lg font-medium opacity-90">{userLabel}</span>
               <Image
                 src="/Brand/gıtgonder.png"
-                alt="Gitgönder"
+                alt="Git Gönder"
                 unoptimized
                 width={64}
                 height={64}
