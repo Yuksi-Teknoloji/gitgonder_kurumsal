@@ -433,7 +433,7 @@ export default function CorporateProfilePage() {
             <div className="flex flex-col items-center text-center">
               <div className="relative h-40 w-40">
                 <Image
-                  src="/Brand/yuksi.png"
+                  src="/gitgonder.png"
                   alt="profile"
                   unoptimized
                   fill

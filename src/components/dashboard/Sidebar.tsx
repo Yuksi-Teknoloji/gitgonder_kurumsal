@@ -144,8 +144,8 @@ export default function Sidebar({ nav = [] as NavGroup[] }: { nav?: NavGroup[] }
         <div className="px-5  ">
           <div className="flex  items-center gap-2   overflow-visible">
             <img
-              src="/Brand/yuksi.png"
-              alt="Yüksi"
+              src="/gitgonder.png"
+              alt="Gitgonder"
               className="h-28 w-[120px] object-cover shrink-0 select-none"
               draggable={false}
             />
