@@ -19,8 +19,8 @@ export const metadata: Metadata = {
   title: "Git Gönder Kurumsal",
   description: "Git Gönder Kurumsal Panel",
   icons: {
-    icon: "/Brand/gıtgonder.png",
-    shortcut: "/Brand/gıtgonder.png",
+    icon: "/gitgonder.png",
+    shortcut: "/gitgonder.png",
   },
 };
 
