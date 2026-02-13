@@ -1,9 +1,9 @@
-/* ---- Orange / Cream Satır Teması (genel) ---- */
+/* ---- Lacivert / Beyaz Satır Teması (genel) ---- */
 :root{
-  --soft-row-bg:     #fdf3eb;  /* krem-turuncu */
-  --soft-row-hover:  #fbe7d7;
-  --soft-border:     #f8d9b6;
-  --soft-sep:        #fae3c6;
+  --soft-row-bg:     #f0f4ff;  /* açık lacivert */
+  --soft-row-hover:  #e0e8ff;
+  --soft-border:     #c7d2fe;
+  --soft-sep:        #e0e8ff;
 }
 
 /* Tüm tema .orange-ui içinde çalışır (layout’ta var) */

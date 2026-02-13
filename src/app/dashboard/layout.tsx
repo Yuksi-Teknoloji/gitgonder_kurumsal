@@ -21,7 +21,7 @@ export default async function CorporateLayout({
         <div className="flex-1 orange-ui">
           <Header
             title=""
-            headerClass="bg-orange-500 border-orange-400 text-white"
+            headerClass="bg-[#032e97] border-[#032e97] text-white"
             titleClass="font-extrabold"
           />
           <main className="px-4 py-6">

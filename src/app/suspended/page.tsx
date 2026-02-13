@@ -33,10 +33,10 @@ export default function SuspendedPage() {
               İletişim Bilgileri
             </p>
             <p className="text-sm text-neutral-600">
-              E-posta: <a href="mailto:destek@yuksi.com" className="text-orange-600 hover:underline">destek@yuksi.com</a>
+              E-posta: <a href="mailto:destek@gitgonder.com" className="text-[#032e97] hover:underline">destek@gitgonder.com</a>
             </p>
             <p className="text-sm text-neutral-600">
-              Telefon: <a href="tel:+908501234567" className="text-orange-600 hover:underline">0850 123 45 67</a>
+              Telefon: <a href="tel:+908501234567" className="text-[#032e97] hover:underline">0850 123 45 67</a>
             </p>
           </div>
         </div>

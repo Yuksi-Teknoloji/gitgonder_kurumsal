@@ -167,7 +167,7 @@ export default function Sidebar({ nav = [] as NavGroup[] }: { nav?: NavGroup[] }
         {/* Scrollable area */}
         <nav className="flex-1 overflow-y-auto px-3 pb-6 space-y-4 [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-neutral-300/60 [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-track]:bg-transparent">
           {accessLoading && (
-            <div className="px-4 py-2 text-sm text-orange-500 animate-pulse">
+            <div className="px-4 py-2 text-sm text-[#032e97] animate-pulse">
               Menü yükleniyor...
             </div>
           )}

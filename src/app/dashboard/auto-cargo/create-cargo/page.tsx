@@ -2251,7 +2251,7 @@ export default function CreateCargoPage() {
               <button
                 type="button"
                 disabled={feeLoading}
-                className="h-9 rounded-lg border border-neutral-200 bg-orange-300 px-3 text-sm font-semibold hover:bg-neutral-50 disabled:opacity-60"
+                className="h-9 rounded-lg border border-neutral-200 bg-[#032e97] px-3 text-sm font-semibold hover:bg-neutral-50 disabled:opacity-60"
               >
                 {feeLoading ? "Yükleniyor…" : "Filtreye Göre Fiyatları Yenile"}
               </button>

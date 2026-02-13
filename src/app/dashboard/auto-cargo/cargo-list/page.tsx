@@ -276,7 +276,7 @@ function statusBadgeClass(tr: RowStatusTr) {
     case "Teslim edildi":
       return "border-emerald-200 bg-emerald-50 text-emerald-800";
     case "İade edildi":
-      return "border-orange-200 bg-orange-50 text-orange-800";
+      return "border-orange-200 bg-[#032e97]/10 text-[#032e97]";
     case "İptal edildi":
       return "border-rose-200 bg-rose-50 text-rose-800";
     case "Askıda":

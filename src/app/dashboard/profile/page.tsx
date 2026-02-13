@@ -437,22 +437,22 @@ export default function CorporateProfilePage() {
                   alt="profile"
                   unoptimized
                   fill
-                  className="rounded-full object-cover ring-4 ring-orange-500"
+                  className="rounded-full object-cover ring-4 ring-[#032e97]"
                 />
               </div>
               <div className="mt-4 space-y-2 text-sm">
                 <p>
-                  <span className="font-semibold text-orange-600">Ad Soyad:</span>{" "}
+                  <span className="font-semibold text-[#032e97]">Ad Soyad:</span>{" "}
                   {form.firstName || form.lastName ? `${form.firstName} ${form.lastName}` : "-"}
                 </p>
                 <p>
-                  <span className="font-semibold text-orange-600">Telefon:</span> {form.phone || "-"}
+                  <span className="font-semibold text-[#032e97]">Telefon:</span> {form.phone || "-"}
                 </p>
                 <p>
-                  <span className="font-semibold text-orange-600">E-Posta:</span> {form.email || "-"}
+                  <span className="font-semibold text-[#032e97]">E-Posta:</span> {form.email || "-"}
                 </p>
                 <p>
-                  <span className="font-semibold text-orange-600">Komisyon Oranı:</span>{" "}
+                  <span className="font-semibold text-[#032e97]">Komisyon Oranı:</span>{" "}
                   {commissionRate != null ? `${commissionRate}` : "-"}
                 </p>
               </div>
@@ -477,7 +477,7 @@ export default function CorporateProfilePage() {
             <div>
               <label className="mb-2 block text-sm font-semibold text-neutral-800">Ad</label>
               <input
-                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#032e97]"
                 value={tempForm.firstName || ""}
                 onChange={(e) => setTempForm((p) => ({ ...p, firstName: e.target.value }))}
               />
@@ -485,7 +485,7 @@ export default function CorporateProfilePage() {
             <div>
               <label className="mb-2 block text-sm font-semibold text-neutral-800">Soyad</label>
               <input
-                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#032e97]"
                 value={tempForm.lastName || ""}
                 onChange={(e) => setTempForm((p) => ({ ...p, lastName: e.target.value }))}
               />
@@ -493,7 +493,7 @@ export default function CorporateProfilePage() {
             <div>
               <label className="mb-2 block text-sm font-semibold text-neutral-800">Özgeçmiş</label>
               <input
-                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#032e97]"
                 value={tempForm.resume || ""}
                 onChange={(e) => setTempForm((p) => ({ ...p, resume: e.target.value }))}
               />
@@ -525,7 +525,7 @@ export default function CorporateProfilePage() {
             <div>
               <label className="mb-2 block text-sm font-semibold text-neutral-800">Telefon</label>
               <input
-                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#032e97]"
                 value={tempForm.phone || ""}
                 onChange={(e) => setTempForm((p) => ({ ...p, phone: e.target.value }))}
               />
@@ -534,7 +534,7 @@ export default function CorporateProfilePage() {
               <label className="mb-2 block text-sm font-semibold text-neutral-800">E-Posta</label>
               <input
                 type="email"
-                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#032e97]"
                 value={tempForm.email || ""}
                 onChange={(e) => setTempForm((p) => ({ ...p, email: e.target.value }))}
               />
@@ -542,7 +542,7 @@ export default function CorporateProfilePage() {
             <div>
               <label className="mb-2 block text-sm font-semibold text-neutral-800">Ülke</label>
               <select
-                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#032e97]"
                 value={tempForm.countryId || 0}
                 onChange={(e) => onPickCountry(Number(e.target.value))}
               >
@@ -557,7 +557,7 @@ export default function CorporateProfilePage() {
             <div>
               <label className="mb-2 block text-sm font-semibold text-neutral-800">İl</label>
               <select
-                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#032e97]"
                 value={tempForm.stateId || 0}
                 disabled={!(tempForm.countryId && tempForm.countryId >= 1)}
                 onChange={(e) => onPickState(Number(e.target.value))}
@@ -579,7 +579,7 @@ export default function CorporateProfilePage() {
             <div>
               <label className="mb-2 block text-sm font-semibold text-neutral-800">İlçe</label>
               <select
-                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#032e97]"
                 value={tempForm.cityId || 0}
                 disabled={!(tempForm.stateId && tempForm.stateId >= 1)}
                 onChange={(e) => setTempForm((p) => ({ ...p, cityId: Number(e.target.value) }))}
@@ -602,7 +602,7 @@ export default function CorporateProfilePage() {
               <label className="mb-2 block text-sm font-semibold text-neutral-800">Adres</label>
               <textarea
                 rows={3}
-                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#032e97]"
                 value={tempForm.fullAddress || ""}
                 onChange={(e) => setTempForm((p) => ({ ...p, fullAddress: e.target.value }))}
               />
@@ -626,7 +626,7 @@ export default function CorporateProfilePage() {
             <div>
               <label className="mb-2 block text-sm font-semibold text-neutral-800">Vergi Dairesi</label>
               <input
-                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#032e97]"
                 value={tempForm.tax_office || ""}
                 onChange={(e) => setTempForm((p) => ({ ...p, tax_office: e.target.value }))}
               />
@@ -634,7 +634,7 @@ export default function CorporateProfilePage() {
             <div>
               <label className="mb-2 block text-sm font-semibold text-neutral-800">Vergi No</label>
               <input
-                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#032e97]"
                 value={tempForm.tax_number || ""}
                 onChange={(e) => setTempForm((p) => ({ ...p, tax_number: e.target.value }))}
               />
@@ -642,7 +642,7 @@ export default function CorporateProfilePage() {
             <div>
               <label className="mb-2 block text-sm font-semibold text-neutral-800">IBAN</label>
               <input
-                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#032e97]"
                 value={tempForm.iban || ""}
                 onChange={(e) => setTempForm((p) => ({ ...p, iban: e.target.value }))}
               />
@@ -668,7 +668,7 @@ export default function CorporateProfilePage() {
               <input
                 type="password"
                 autoComplete="new-password"
-                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#032e97]"
                 value={tempForm.password || ""}
                 onChange={(e) => setTempForm((p) => ({ ...p, password: e.target.value }))}
               />
@@ -699,7 +699,7 @@ export default function CorporateProfilePage() {
                 <input
                   type="number"
                   inputMode="decimal"
-                  className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                  className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#032e97]"
                   value={tempForm.latitude || ""}
                   onChange={(e) => setTempForm((p) => ({ ...p, latitude: Number(e.target.value) }))}
                 />
@@ -709,7 +709,7 @@ export default function CorporateProfilePage() {
                 <input
                   type="number"
                   inputMode="decimal"
-                  className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                  className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#032e97]"
                   value={tempForm.longitude || ""}
                   onChange={(e) => setTempForm((p) => ({ ...p, longitude: Number(e.target.value) }))}
                 />
@@ -752,7 +752,7 @@ function SectionCard({
         <button
           type="button"
           onClick={onEdit}
-          className="flex items-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-sm font-semibold text-orange-700 hover:bg-orange-100 transition-colors"
+          className="flex items-center gap-2 rounded-lg border border-[#032e97] bg-[#032e97]/10 px-3 py-1.5 text-sm font-semibold text-[#032e97] hover:bg-[#032e97]/20 transition-colors"
         >
           <Pencil className="h-4 w-4" />
           Düzenle
@@ -815,7 +815,7 @@ function Modal({
             type="button"
             onClick={onSave}
             disabled={saving}
-            className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700 disabled:opacity-60 transition-colors"
+            className="rounded-lg bg-[#032e97] px-4 py-2 text-sm font-semibold text-white hover:bg-[#032e97]/90 disabled:opacity-60 transition-colors"
           >
             {saving ? "Kaydediliyor..." : "Kaydet"}
           </button>
