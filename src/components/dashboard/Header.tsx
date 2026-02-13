@@ -285,7 +285,7 @@ export default function Header({
             <Menu className="h-6 w-6" />
           </button>
 
-          <h1 className={["text-lg font-semibold", titleClass].join(" ")}>
+          <h1 style={{ color: 'white' }} className={["text-lg font-semibold", titleClass].join(" ")}>
             Hoşgeldiniz, {userName}
           </h1>
         </div>
@@ -408,7 +408,7 @@ export default function Header({
               className="flex items-center gap-3 rounded-lg px-2 py-1 hover:bg-white/10"
               title={userLabel}
             >
-              <span className="text-lg font-medium opacity-90">{userLabel}</span>
+              <span style={{ color: 'white' }} className="text-lg font-medium opacity-90">{userLabel}</span>
               <Image
                 src="/gitgonder.png"
                 alt="Git Gönder"

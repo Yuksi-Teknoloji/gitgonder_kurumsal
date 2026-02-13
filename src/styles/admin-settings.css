@@ -189,3 +189,16 @@
   margin-top:12px;
 }
 .pt-2{ padding-top:8px; }
+
+/* Profile modal specific placeholder visibility */
+.profile-modal input::placeholder,
+.profile-modal textarea::placeholder{
+  color: #000 !important;
+  opacity: 1 !important;
+}
+
+/* Force profile sidebar text to dark to override global foreground */
+.profile-sidebar,
+.profile-sidebar * {
+  color: #0f172a !important;
+}

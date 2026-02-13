@@ -349,6 +349,12 @@ export default function CorporateProfilePage() {
 
   return (
     <div className="space-y-6">
+      <style dangerouslySetInnerHTML={{ __html: `
+        .profile-sidebar, .profile-sidebar * {
+          color: #0f172a !important;
+          -webkit-text-fill-color: #0f172a !important;
+        }
+      ` }} />
       <h1 className="text-2xl font-semibold tracking-tight text-black">Profil</h1>
 
       {loading && <div className="rounded-xl border border-neutral-200 bg-white p-4">Yükleniyor...</div>}
@@ -429,7 +435,7 @@ export default function CorporateProfilePage() {
           </div>
 
           {/* Sidebar */}
-          <aside className="rounded-2xl border border-neutral-200/70 bg-white p-6">
+          <aside className="rounded-2xl border border-neutral-200/70 bg-white p-6 profile-sidebar">
             <div className="flex flex-col items-center text-center">
               <div className="relative h-40 w-40">
                 <Image
@@ -443,17 +449,19 @@ export default function CorporateProfilePage() {
               <div className="mt-4 space-y-2 text-sm">
                 <p>
                   <span className="font-semibold text-[#032e97]">Ad Soyad:</span>{" "}
-                  {form.firstName || form.lastName ? `${form.firstName} ${form.lastName}` : "-"}
+                  <span className="text-neutral-900" style={{ color: '#0f172a' }}>{form.firstName || form.lastName ? `${form.firstName} ${form.lastName}` : "-"}</span>
                 </p>
                 <p>
-                  <span className="font-semibold text-[#032e97]">Telefon:</span> {form.phone || "-"}
+                  <span className="font-semibold text-[#032e97]">Telefon:</span>{" "}
+                  <span className="text-neutral-900" style={{ color: '#0f172a' }}>{form.phone || "-"}</span>
                 </p>
                 <p>
-                  <span className="font-semibold text-[#032e97]">E-Posta:</span> {form.email || "-"}
+                  <span className="font-semibold text-[#032e97]">E-Posta:</span>{" "}
+                  <span className="text-neutral-900" style={{ color: '#0f172a' }}>{form.email || "-"}</span>
                 </p>
                 <p>
                   <span className="font-semibold text-[#032e97]">Komisyon Oranı:</span>{" "}
-                  {commissionRate != null ? `${commissionRate}` : "-"}
+                  <span className="text-neutral-900" style={{ color: '#0f172a' }}>{commissionRate != null ? `${commissionRate}` : "-"}</span>
                 </p>
               </div>
             </div>
@@ -524,8 +532,8 @@ export default function CorporateProfilePage() {
           <div className="space-y-4">
             <div>
               <label className="mb-2 block text-sm font-semibold text-neutral-800">Telefon</label>
-              <input
-                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#032e97]"
+                <input
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-900 outline-none focus:ring-2 focus:ring-[#032e97]"
                 value={tempForm.phone || ""}
                 onChange={(e) => setTempForm((p) => ({ ...p, phone: e.target.value }))}
               />
@@ -534,7 +542,7 @@ export default function CorporateProfilePage() {
               <label className="mb-2 block text-sm font-semibold text-neutral-800">E-Posta</label>
               <input
                 type="email"
-                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#032e97]"
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-900 outline-none focus:ring-2 focus:ring-[#032e97]"
                 value={tempForm.email || ""}
                 onChange={(e) => setTempForm((p) => ({ ...p, email: e.target.value }))}
               />
@@ -542,7 +550,7 @@ export default function CorporateProfilePage() {
             <div>
               <label className="mb-2 block text-sm font-semibold text-neutral-800">Ülke</label>
               <select
-                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#032e97]"
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-900 outline-none focus:ring-2 focus:ring-[#032e97]"
                 value={tempForm.countryId || 0}
                 onChange={(e) => onPickCountry(Number(e.target.value))}
               >
@@ -557,7 +565,7 @@ export default function CorporateProfilePage() {
             <div>
               <label className="mb-2 block text-sm font-semibold text-neutral-800">İl</label>
               <select
-                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#032e97]"
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-900 outline-none focus:ring-2 focus:ring-[#032e97]"
                 value={tempForm.stateId || 0}
                 disabled={!(tempForm.countryId && tempForm.countryId >= 1)}
                 onChange={(e) => onPickState(Number(e.target.value))}
@@ -579,7 +587,7 @@ export default function CorporateProfilePage() {
             <div>
               <label className="mb-2 block text-sm font-semibold text-neutral-800">İlçe</label>
               <select
-                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#032e97]"
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-900 outline-none focus:ring-2 focus:ring-[#032e97]"
                 value={tempForm.cityId || 0}
                 disabled={!(tempForm.stateId && tempForm.stateId >= 1)}
                 onChange={(e) => setTempForm((p) => ({ ...p, cityId: Number(e.target.value) }))}
@@ -602,7 +610,7 @@ export default function CorporateProfilePage() {
               <label className="mb-2 block text-sm font-semibold text-neutral-800">Adres</label>
               <textarea
                 rows={3}
-                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#032e97]"
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-900 outline-none focus:ring-2 focus:ring-[#032e97]"
                 value={tempForm.fullAddress || ""}
                 onChange={(e) => setTempForm((p) => ({ ...p, fullAddress: e.target.value }))}
               />
@@ -626,7 +634,7 @@ export default function CorporateProfilePage() {
             <div>
               <label className="mb-2 block text-sm font-semibold text-neutral-800">Vergi Dairesi</label>
               <input
-                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#032e97]"
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-900 outline-none focus:ring-2 focus:ring-[#032e97]"
                 value={tempForm.tax_office || ""}
                 onChange={(e) => setTempForm((p) => ({ ...p, tax_office: e.target.value }))}
               />
@@ -634,7 +642,7 @@ export default function CorporateProfilePage() {
             <div>
               <label className="mb-2 block text-sm font-semibold text-neutral-800">Vergi No</label>
               <input
-                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#032e97]"
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-900 outline-none focus:ring-2 focus:ring-[#032e97]"
                 value={tempForm.tax_number || ""}
                 onChange={(e) => setTempForm((p) => ({ ...p, tax_number: e.target.value }))}
               />
@@ -642,7 +650,7 @@ export default function CorporateProfilePage() {
             <div>
               <label className="mb-2 block text-sm font-semibold text-neutral-800">IBAN</label>
               <input
-                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#032e97]"
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-900 outline-none focus:ring-2 focus:ring-[#032e97]"
                 value={tempForm.iban || ""}
                 onChange={(e) => setTempForm((p) => ({ ...p, iban: e.target.value }))}
               />
@@ -668,7 +676,7 @@ export default function CorporateProfilePage() {
               <input
                 type="password"
                 autoComplete="new-password"
-                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#032e97]"
+                className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-900 outline-none focus:ring-2 focus:ring-[#032e97]"
                 value={tempForm.password || ""}
                 onChange={(e) => setTempForm((p) => ({ ...p, password: e.target.value }))}
               />
@@ -699,7 +707,7 @@ export default function CorporateProfilePage() {
                 <input
                   type="number"
                   inputMode="decimal"
-                  className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#032e97]"
+                  className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-900 outline-none focus:ring-2 focus:ring-[#032e97]"
                   value={tempForm.latitude || ""}
                   onChange={(e) => setTempForm((p) => ({ ...p, latitude: Number(e.target.value) }))}
                 />
@@ -709,7 +717,7 @@ export default function CorporateProfilePage() {
                 <input
                   type="number"
                   inputMode="decimal"
-                  className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#032e97]"
+                  className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-900 outline-none focus:ring-2 focus:ring-[#032e97]"
                   value={tempForm.longitude || ""}
                   onChange={(e) => setTempForm((p) => ({ ...p, longitude: Number(e.target.value) }))}
                 />
@@ -788,7 +796,7 @@ function Modal({
   large?: boolean;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 profile-modal">
       <div className={`w-full ${large ? "max-w-3xl" : "max-w-lg"} rounded-2xl border border-neutral-200 bg-white shadow-xl`}>
         <div className="flex items-center justify-between border-b border-neutral-200 px-6 py-4">
           <h2 className="text-lg font-semibold text-neutral-900">{title}</h2>

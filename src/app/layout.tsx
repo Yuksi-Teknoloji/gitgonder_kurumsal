@@ -16,8 +16,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Gitgönder Kurumsal",
-  description: "Gitgönder Kurumsal Panel",
+  title: "Git Gönder Kurumsal",
+  description: "Git Gönder Kurumsal Panel",
   icons: {
     icon: "/gitgonder.png",
     shortcut: "/gitgonder.png",
