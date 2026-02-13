@@ -141,16 +141,16 @@ export default function Sidebar({ nav = [] as NavGroup[] }: { nav?: NavGroup[] }
         ].join(" ")}
       >
         {/* Header */}
-        <div className="px-5  ">
+        <div className="px-5 pb-8">
           <div className="flex  items-center gap-2   overflow-visible">
-            <img
+<img
               src="/gitgonder.png"
-              alt="Gitgonder"
-              className="h-28 w-[120px] object-cover shrink-0 select-none"
+              alt="Git Gönder"
+              className="h-16 w-auto object-contain shrink-0 select-none"
               draggable={false}
             />
 
-            <p className="text-lg font-semibold text-[#032e97]">Gitgönder Üye</p>
+            <p className="text-lg font-semibold text-[#032e97]">Git Gönder Üye</p>
 
             <button
               type="button"

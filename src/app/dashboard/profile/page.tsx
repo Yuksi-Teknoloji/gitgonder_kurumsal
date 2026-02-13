@@ -349,7 +349,7 @@ export default function CorporateProfilePage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Profil</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-black">Profil</h1>
 
       {loading && <div className="rounded-xl border border-neutral-200 bg-white p-4">Yükleniyor...</div>}
 

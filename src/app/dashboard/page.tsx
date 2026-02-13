@@ -258,9 +258,9 @@ export default function CorporateHome() {
                         2
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="text-sm font-semibold text-neutral-900">Yüksi-Kargo Kaydını Başlat</div>
+                        <div className="text-sm font-semibold text-neutral-900">Git Gönder-Kargo Kaydını Başlat</div>
                         <div className="mt-1 text-sm text-neutral-700">
-                          Profil bilgilerini tamamladıktan sonra <span className="font-semibold">yüksi-kargo</span>{" "}
+                          Profil bilgilerini tamamladıktan sonra <span className="font-semibold">gitgonder-kargo</span>{" "}
                           kaydınızın başlatılması için iletişime geçin.
                         </div>
 
@@ -388,7 +388,7 @@ export default function CorporateHome() {
 
                 {/* Footer thanks */}
                 <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 flex items-center justify-between gap-3">
-                  <div className="text-sm font-semibold text-emerald-900">YÜKSİ'yi tercih ettiğiniz için teşekkür ederiz</div>
+                  <div className="text-sm font-semibold text-emerald-900">Git Gönder'i tercih ettiğiniz için teşekkür ederiz</div>
                   <div className="text-xs text-emerald-800">Destek gerekirse bizimle iletişime geçebilirsiniz.</div>
                 </div>
               </div>

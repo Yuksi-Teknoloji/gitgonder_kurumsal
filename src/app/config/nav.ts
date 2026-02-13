@@ -173,7 +173,7 @@ export const NAV: Record<Role, RawNavGroup[]> = {
       ],
     },
     {
-      title: "Yüksi-Kargo",
+      title: "Git Gönder-Kargo",
       icon: "box",
       requiredAccess: [3], // Grup seviyesinde kontrol - sadece access 3 varsa göster
       items: [

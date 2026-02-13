@@ -410,12 +410,12 @@ export default function Header({
             >
               <span className="text-lg font-medium opacity-90">{userLabel}</span>
               <Image
-                src="/Brand/logo1.png"
-                alt="Gitgönder"
+                src="/gitgonder.png"
+                alt="Git Gönder"
                 unoptimized
                 width={64}
                 height={64}
-                className="h-12 w-12 rounded-full bg-[#032e97] p-0 object-contain"
+                className="h-12 w-12 rounded-full bg-white p-0 object-contain"
               />
             </button>
 
