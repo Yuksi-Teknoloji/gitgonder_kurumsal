@@ -35,6 +35,16 @@ body {
   font-family: var(--font-inter), system-ui, sans-serif;
 }
 
+/* Input ve textarea için yazı rengini düzelt */
+input, textarea, select {
+  color: #1f2937 !important;
+}
+
+/* Placeholder rengini de düzelt */
+input::placeholder, textarea::placeholder {
+  color: #9ca3af !important;
+}
+
 /* Dashboard alanı için yazı rengini düzelt - header hariç */
 .dashboard-content > *:not(header),
 .dashboard-content > *:not(header) * {
