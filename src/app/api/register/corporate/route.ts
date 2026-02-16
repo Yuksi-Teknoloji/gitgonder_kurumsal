@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { API_BASE } from "@/src/configs/api";
 
-const BACKEND_URL = `${API_BASE}/auth/corporate/register`;
+const BACKEND_URL = `${API_BASE}/Auth/register/corporate`;
 
 export async function POST(req: Request) {
   try {
