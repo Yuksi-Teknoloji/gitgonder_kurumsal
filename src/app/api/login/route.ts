@@ -6,7 +6,7 @@ const BACKEND_URL = process.env.AUTH_API ?? `${API_BASE}/Auth/login`;
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const payload = { ...body, platform: "gitgonder" };
+    const { platform, ...payload } = body;
 
     const res = await fetch(BACKEND_URL, {
       method: "POST",
