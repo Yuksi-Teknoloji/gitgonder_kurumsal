@@ -26,6 +26,7 @@ export async function loginService(input: LoginInput): Promise<MockResult<LoginI
   const payload: LoginInput = {
     email: input.email.trim(),
     password: input.password,
+    platform: "gitgonder",
   };
   return toJsonResult("/auth/login", payload);
 }
@@ -38,6 +39,7 @@ export async function registerService(input: RegisterInput): Promise<MockResult<
     email: input.email.trim(),
     password: input.password,
     acceptedTos: !!input.acceptedTos,
+    platform: "gitgonder",
   };
   return toJsonResult("/auth/register", payload);
 }

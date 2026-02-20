@@ -7,17 +7,18 @@ export async function POST(req: Request) {
   try {
     // Backend'e JSON formatında gönder (FormData değil)
     const body = await req.json();
+    const payload = { ...body, platform: "gitgonder" };
 
     console.log("=== CORPORATE REGISTER REQUEST ===");
     console.log("Backend URL:", BACKEND_URL);
-    console.log("Request Body:", JSON.stringify(body, null, 2));
+    console.log("Request Body:", JSON.stringify(payload, null, 2));
 
     const res = await fetch(BACKEND_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
     });
 
     const data = await res.json().catch(() => ({}));

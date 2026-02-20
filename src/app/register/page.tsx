@@ -192,6 +192,7 @@ export default function CorporateRegisterPage() {
         email: form.email,
         phone: form.phone,
         password: form.password,
+        platform: "gitgonder",
       };
 
       // Optional address fields

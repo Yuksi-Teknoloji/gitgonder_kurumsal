@@ -3,24 +3,23 @@
 
 
 export type ISODate = string;
-export interface LoginInput
-{
-    email : string;
+export interface LoginInput {
+    email: string;
     password: string;
+    platform?: string;
 }
 
-export interface RegisterInput
-{
+export interface RegisterInput {
     firstName: string;
     lastName: string;
     phone: string;
     email: string;
     password: string;
     acceptedTos: boolean;
+    platform?: string;
 }
 
-export interface CorporateRegisterInput
-{
+export interface CorporateRegisterInput {
     // Required fields - company_name (min 2 chars)
     companyName: string;
 
@@ -65,6 +64,7 @@ export interface CorporateRegisterInput
     // Consents
     acceptedTos: boolean;
     acceptedKvkk: boolean;
+    platform?: string;
 }
 
 export interface CorporateRegisterResponse {
@@ -75,8 +75,8 @@ export interface CorporateRegisterResponse {
     refreshToken: string;
 }
 
-export interface MockResult<T>{
-    ok:true;
+export interface MockResult<T> {
+    ok: true;
     endpoint: string;
     payload: T;
     createdAt: ISODate;
